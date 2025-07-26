@@ -458,4 +458,23 @@ export async function processManagerWithdraw(
   }
 }
 
+// 🎯 NOVA FUNÇÃO: Desvincular afiliado do gerente
+export async function unassignAffiliateFromManager(affiliateId: number): Promise<boolean> {
+  try {
+    console.log(`🔗 Desvinculando afiliado ${affiliateId} do gerente`)
+
+    await sql`
+      UPDATE affiliates 
+      SET manager_id = NULL, updated_at = NOW()
+      WHERE id = ${affiliateId}
+    `
+
+    console.log(`🎉 Afiliado ${affiliateId} desvinculado com sucesso`)
+    return true
+  } catch (error) {
+    console.error("❌ Erro ao desvincular afiliado do gerente:", error)
+    return false
+  }
+}
+
 export { sql }
