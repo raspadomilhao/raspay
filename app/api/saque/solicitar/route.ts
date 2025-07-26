@@ -33,26 +33,71 @@ async function getUserFromRequest(request: NextRequest) {
 async function getHorsePayToken(): Promise<string> {
   console.log("🔐 Obtendo token de autenticação da HorsePay...")
 
-  const authResponse = await fetch(`${config.horsepay.apiUrl}/auth`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      client_key: config.horsepay.clientKey,
-      client_secret: config.horsepay.clientSecret,
-    }),
-  })
+  // Verificar se as credenciais estão configuradas
+  const clientKey = process.env.HORSEPAY_CLIENT_KEY || process.env.NEXT_PUBLIC_HORSEPAY_CLIENT_KEY
+  const clientSecret = process.env.HORSEPAY_CLIENT_SECRET
 
-  if (!authResponse.ok) {
-    const errorData = await authResponse.text()
-    console.error("❌ Erro na autenticação HorsePay:", errorData)
-    throw new Error(`Erro na autenticação: ${authResponse.status}`)
+  console.log("🔑 Client Key:", clientKey ? `${clientKey.substring(0, 10)}...` : "Não configurado")
+  console.log("🔑 Client Secret:", clientSecret ? "Configurado" : "Não configurado")
+
+  if (!clientKey || !clientSecret) {
+    throw new Error("Credenciais da HorsePay não configuradas nas variáveis de ambiente")
   }
 
-  const authData = await authResponse.json()
-  console.log("✅ Token HorsePay obtido com sucesso")
-  return authData.token
+  try {
+    const authPayload = {
+      client_key: clientKey,
+      client_secret: clientSecret,
+    }
+
+    console.log("📤 Enviando requisição de autenticação para:", `${config.horsepay.apiUrl}/auth`)
+    console.log("📦 Payload:", { client_key: clientKey.substring(0, 10) + "...", client_secret: "***" })
+
+    const authResponse = await fetch(`${config.horsepay.apiUrl}/auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "RasPay/1.0",
+      },
+      body: JSON.stringify(authPayload),
+    })
+
+    console.log("📡 Status da resposta de autenticação:", authResponse.status)
+    console.log("📋 Headers da resposta:", Object.fromEntries(authResponse.headers.entries()))
+
+    const responseText = await authResponse.text()
+    console.log("📄 Resposta completa:", responseText)
+
+    if (!authResponse.ok) {
+      console.error("❌ Erro na autenticação HorsePay:", responseText)
+      throw new Error(`Erro na autenticação HorsePay: ${authResponse.status} - ${responseText}`)
+    }
+
+    let authData
+    try {
+      authData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error("❌ Erro ao fazer parse da resposta:", parseError)
+      throw new Error(`Resposta inválida da API: ${responseText}`)
+    }
+
+    console.log("✅ Resposta de autenticação recebida:", {
+      hasToken: !!authData.token,
+      tokenLength: authData.token?.length || 0,
+      keys: Object.keys(authData),
+    })
+
+    if (!authData.token) {
+      console.error("❌ Token não retornado pela API:", authData)
+      throw new Error("Token não retornado pela API da HorsePay")
+    }
+
+    return authData.token
+  } catch (error) {
+    console.error("❌ Erro ao obter token HorsePay:", error)
+    throw error
+  }
 }
 
 // Função para criar saque na HorsePay
@@ -67,34 +112,59 @@ async function createHorsePayWithdraw(data: {
   amount: number
   status: string
 }> {
-  console.log("💸 Criando saque na HorsePay:", data)
+  console.log("💸 Criando saque na HorsePay:", {
+    amount: data.amount,
+    pix_key: data.pix_key,
+    pix_type: data.pix_type,
+    callback_url: data.callback_url,
+  })
 
   try {
     // Obter token de autenticação
     const token = await getHorsePayToken()
+    console.log("🔑 Token obtido:", token.substring(0, 20) + "...")
+
+    const withdrawPayload = {
+      amount: data.amount,
+      pix_key: data.pix_key,
+      pix_type: data.pix_type.toUpperCase(),
+      callback_url: data.callback_url,
+    }
+
+    console.log("📤 Enviando requisição de saque para:", `${config.horsepay.apiUrl}/transaction/withdraw`)
+    console.log("📦 Payload do saque:", withdrawPayload)
 
     // Fazer requisição de saque
     const withdrawResponse = await fetch(`${config.horsepay.apiUrl}/transaction/withdraw`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
+        "User-Agent": "RasPay/1.0",
       },
-      body: JSON.stringify({
-        amount: data.amount,
-        pix_key: data.pix_key,
-        pix_type: data.pix_type.toUpperCase(),
-        callback_url: data.callback_url,
-      }),
+      body: JSON.stringify(withdrawPayload),
     })
 
+    console.log("📡 Status da resposta de saque:", withdrawResponse.status)
+    console.log("📋 Headers da resposta:", Object.fromEntries(withdrawResponse.headers.entries()))
+
+    const responseText = await withdrawResponse.text()
+    console.log("📄 Resposta completa do saque:", responseText)
+
     if (!withdrawResponse.ok) {
-      const errorData = await withdrawResponse.text()
-      console.error("❌ Erro na criação do saque HorsePay:", errorData)
-      throw new Error(`Erro na HorsePay: ${withdrawResponse.status} - ${errorData}`)
+      console.error("❌ Erro na criação do saque HorsePay:", responseText)
+      throw new Error(`Erro na HorsePay: ${withdrawResponse.status} - ${responseText}`)
     }
 
-    const withdrawData = await withdrawResponse.json()
+    let withdrawData
+    try {
+      withdrawData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error("❌ Erro ao fazer parse da resposta do saque:", parseError)
+      throw new Error(`Resposta inválida da API: ${responseText}`)
+    }
+
     console.log("✅ Saque criado na HorsePay:", withdrawData)
 
     return {
@@ -219,6 +289,32 @@ export async function POST(request: NextRequest) {
         transaction,
         message: "Solicitação de saque criada com sucesso! (Processamento automático)",
         is_blogger: true,
+      })
+    }
+
+    // Verificar se as credenciais da HorsePay estão configuradas
+    const clientKey = process.env.HORSEPAY_CLIENT_KEY || process.env.NEXT_PUBLIC_HORSEPAY_CLIENT_KEY
+    const clientSecret = process.env.HORSEPAY_CLIENT_SECRET
+
+    if (!clientKey || !clientSecret) {
+      console.log(`⚠️ Credenciais HorsePay não configuradas - processamento manual`)
+
+      // Criar transação para processamento manual
+      const transaction = await createTransaction({
+        user_id: userId,
+        type: "withdraw",
+        amount,
+        status: "pending",
+        pix_key,
+        pix_type,
+        description: `Saque via PIX - ${pix_type}: ${pix_key} (Processamento Manual)`,
+      })
+
+      return NextResponse.json({
+        success: true,
+        transaction,
+        message: "Solicitação de saque criada com sucesso! Será processada manualmente.",
+        manual_processing: true,
       })
     }
 
