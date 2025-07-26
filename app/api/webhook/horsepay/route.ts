@@ -388,8 +388,8 @@ async function processWithdrawCallback(payload: WithdrawCallback) {
   // Buscar a transação no banco
   console.log(`🔎 Buscando transação com external_id: ${payload.external_id}`)
   const [transaction] = await sql`
-  SELECT * FROM transactions WHERE external_id = ${payload.external_id}
-`
+    SELECT * FROM transactions WHERE external_id = ${payload.external_id}
+  `
 
   if (!transaction) {
     const errorMsg = `Transação com external_id ${payload.external_id} não encontrada`
@@ -399,54 +399,107 @@ async function processWithdrawCallback(payload: WithdrawCallback) {
 
   console.log(`📋 Transação encontrada:`, JSON.stringify(transaction, null, 2))
 
-  // Atualizar status da transação
-  console.log(`📝 Atualizando status da transação para: ${payload.status}`)
-  await sql`
-  UPDATE transactions 
-  SET status = ${payload.status}, end_to_end_id = COALESCE(${payload.end_to_end_id || null}, end_to_end_id)
-  WHERE external_id = ${payload.external_id}
-`
+  // Normalizar o status
+  const normalizedStatus = normalizeStatus(payload.status)
+  console.log(`📝 Status original: ${payload.status} → Status normalizado: ${normalizedStatus}`)
 
-  // Se o saque foi estornado, devolver o valor ao saldo
-  if (payload.status === "refunded") {
-    console.log(`🔄 Saque estornado! Devolvendo R$ ${payload.amount} ao saldo`)
+  // Atualizar status da transação
+  console.log(`📝 Atualizando status da transação para: ${normalizedStatus}`)
+  await sql`
+    UPDATE transactions 
+    SET status = ${normalizedStatus}, 
+        end_to_end_id = COALESCE(${payload.end_to_end_id || null}, end_to_end_id),
+        updated_at = NOW()
+    WHERE external_id = ${payload.external_id}
+  `
+
+  // Processar baseado no status
+  if (normalizedStatus === "success") {
+    console.log(`✅ Saque ${payload.external_id} confirmado com sucesso: R$ ${payload.amount}`)
+    console.log(`🎉 Pagamento PIX realizado - End-to-End ID: ${payload.end_to_end_id}`)
+  } else if (normalizedStatus === "refunded") {
+    console.log(`🔄 Saque ${payload.external_id} foi estornado! Devolvendo R$ ${payload.amount} ao saldo`)
 
     try {
+      // Devolver o valor ao saldo do usuário
       await sql`
-      INSERT INTO wallets (user_id, balance)
-      VALUES (${transaction.user_id}, ${payload.amount})
-      ON CONFLICT (user_id) DO UPDATE
-      SET balance = wallets.balance + ${payload.amount}
-    `
+        INSERT INTO wallets (user_id, balance)
+        VALUES (${transaction.user_id}, ${payload.amount})
+        ON CONFLICT (user_id) DO UPDATE
+        SET balance = wallets.balance + ${payload.amount}
+      `
 
-      console.log(`💰 Saldo do usuário ${transaction.user_id} atualizado (estorno): R$ ${payload.amount}`)
+      console.log(`💰 Saldo do usuário ${transaction.user_id} atualizado (estorno): +R$ ${payload.amount}`)
+
+      // Criar transação de estorno para histórico
+      await sql`
+        INSERT INTO transactions (user_id, type, amount, status, description, created_at)
+        VALUES (
+          ${transaction.user_id}, 
+          'game_prize', 
+          ${payload.amount}, 
+          'success', 
+          'Estorno de saque - PIX não processado', 
+          NOW()
+        )
+      `
 
       // Verificar saldo após a atualização
       const walletAfter = await getUserWallet(transaction.user_id)
-      console.log(`💰 Saldo depois: R$ ${walletAfter?.balance || 0}`)
+      console.log(`💰 Novo saldo após estorno: R$ ${walletAfter?.balance || 0}`)
     } catch (walletError) {
-      console.error(`❌ Erro ao atualizar saldo no estorno:`, walletError)
+      console.error(`❌ Erro ao processar estorno:`, walletError)
       throw new Error(
-        `Erro ao atualizar saldo: ${walletError instanceof Error ? walletError.message : "Erro desconhecido"}`,
+        `Erro ao processar estorno: ${walletError instanceof Error ? walletError.message : "Erro desconhecido"}`,
       )
     }
-  } else if (payload.status === "success") {
-    console.log(`✅ Saque ${payload.external_id} confirmado: R$ ${payload.amount}`)
-  } else if (payload.status === "pending") {
-    console.log(`⏳ Saque ${payload.external_id} pendente: R$ ${payload.amount}`)
+  } else if (normalizedStatus === "pending") {
+    console.log(`⏳ Saque ${payload.external_id} ainda está pendente: R$ ${payload.amount}`)
+  } else if (normalizedStatus === "failed") {
+    console.log(`❌ Saque ${payload.external_id} falhou: R$ ${payload.amount}`)
+
+    // Para saques que falharam, também devolver o valor
+    try {
+      await sql`
+        INSERT INTO wallets (user_id, balance)
+        VALUES (${transaction.user_id}, ${payload.amount})
+        ON CONFLICT (user_id) DO UPDATE
+        SET balance = wallets.balance + ${payload.amount}
+      `
+
+      console.log(`💰 Saldo devolvido devido à falha no saque: +R$ ${payload.amount}`)
+
+      // Criar transação de devolução para histórico
+      await sql`
+        INSERT INTO transactions (user_id, type, amount, status, description, created_at)
+        VALUES (
+          ${transaction.user_id}, 
+          'game_prize', 
+          ${payload.amount}, 
+          'success', 
+          'Devolução - Saque falhou', 
+          NOW()
+        )
+      `
+    } catch (walletError) {
+      console.error(`❌ Erro ao devolver saldo:`, walletError)
+    }
   } else {
-    console.log(`❓ Status desconhecido para saque ${payload.external_id}: ${payload.status}`)
+    console.log(`❓ Status desconhecido para saque ${payload.external_id}: ${normalizedStatus}`)
   }
+
+  console.log(`✅ Callback de saque processado com sucesso`)
 }
 
 // Endpoint para buscar logs dos webhooks
 export async function GET() {
   try {
     const logs = await sql`
-    SELECT * FROM webhook_logs
-    ORDER BY created_at DESC
-    LIMIT ${100}
-  `
+      SELECT * FROM webhook_logs
+      ORDER BY created_at DESC
+      LIMIT 100
+    `
+
     // Converter o payload JSONB se for uma string
     const formattedLogs = logs.map((log) => ({
       ...log,

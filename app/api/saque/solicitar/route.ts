@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { jwtVerify } from "jose"
 import { createTransaction, getUserWallet, updateWalletBalance, sql } from "@/lib/database"
+import { config } from "@/lib/config"
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "horsepay-secret-key")
 
@@ -28,10 +29,92 @@ async function getUserFromRequest(request: NextRequest) {
   }
 }
 
+// Função para obter token de autenticação da HorsePay
+async function getHorsePayToken(): Promise<string> {
+  console.log("🔐 Obtendo token de autenticação da HorsePay...")
+
+  const authResponse = await fetch(`${config.horsepay.apiUrl}/auth`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      client_key: config.horsepay.clientKey,
+      client_secret: config.horsepay.clientSecret,
+    }),
+  })
+
+  if (!authResponse.ok) {
+    const errorData = await authResponse.text()
+    console.error("❌ Erro na autenticação HorsePay:", errorData)
+    throw new Error(`Erro na autenticação: ${authResponse.status}`)
+  }
+
+  const authData = await authResponse.json()
+  console.log("✅ Token HorsePay obtido com sucesso")
+  return authData.token
+}
+
+// Função para criar saque na HorsePay
+async function createHorsePayWithdraw(data: {
+  amount: number
+  pix_key: string
+  pix_type: string
+  callback_url: string
+}): Promise<{
+  external_id: number
+  end_to_end_id?: string
+  amount: number
+  status: string
+}> {
+  console.log("💸 Criando saque na HorsePay:", data)
+
+  try {
+    // Obter token de autenticação
+    const token = await getHorsePayToken()
+
+    // Fazer requisição de saque
+    const withdrawResponse = await fetch(`${config.horsepay.apiUrl}/transaction/withdraw`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        amount: data.amount,
+        pix_key: data.pix_key,
+        pix_type: data.pix_type.toUpperCase(),
+        callback_url: data.callback_url,
+      }),
+    })
+
+    if (!withdrawResponse.ok) {
+      const errorData = await withdrawResponse.text()
+      console.error("❌ Erro na criação do saque HorsePay:", errorData)
+      throw new Error(`Erro na HorsePay: ${withdrawResponse.status} - ${errorData}`)
+    }
+
+    const withdrawData = await withdrawResponse.json()
+    console.log("✅ Saque criado na HorsePay:", withdrawData)
+
+    return {
+      external_id: withdrawData.external_id,
+      end_to_end_id: withdrawData.end_to_end_id,
+      amount: withdrawData.amount,
+      status: withdrawData.status || "pending",
+    }
+  } catch (error) {
+    console.error("❌ Erro ao criar saque na HorsePay:", error)
+    throw error
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const userId = await getUserFromRequest(request)
     const { amount, pix_key, pix_type } = await request.json()
+
+    console.log(`💸 Nova solicitação de saque - Usuário: ${userId}, Valor: R$ ${amount}`)
 
     // Validar dados de entrada
     if (!amount || amount <= 0) {
@@ -46,6 +129,10 @@ export async function POST(request: NextRequest) {
     const [user] = await sql`
       SELECT user_type, name FROM users WHERE id = ${userId}
     `
+
+    if (!user) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
+    }
 
     // Buscar valor mínimo de saque das configurações
     const [minWithdrawSetting] = await sql`
@@ -86,22 +173,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Debitar o valor do saldo imediatamente
+    console.log(`💰 Debitando R$ ${amount} do saldo do usuário ${userId}`)
     await updateWalletBalance(userId, amount, "subtract")
 
-    // Criar transação de saque
-    const transaction = await createTransaction({
-      user_id: userId,
-      type: "withdraw",
-      amount,
-      status: "pending",
-      pix_key,
-      pix_type,
-      description: `Saque via PIX - ${pix_type}: ${pix_key}`,
-    })
+    let horsePayData = null
+    let transactionStatus = "pending"
+    let externalId = null
+    let endToEndId = null
 
-    // Se o usuário for blogger, processar automaticamente em 10 segundos
-    if (user && user.user_type === "blogger") {
+    // Se o usuário for blogger, processar automaticamente sem HorsePay
+    if (user.user_type === "blogger") {
       console.log(`🤖 Usuário blogger detectado - processamento automático em 10s para ${user.name}`)
+
+      // Criar transação local sem external_id (processamento interno)
+      const transaction = await createTransaction({
+        user_id: userId,
+        type: "withdraw",
+        amount,
+        status: "pending",
+        pix_key,
+        pix_type,
+        description: `Saque via PIX - ${pix_type}: ${pix_key} (Blogger - Processamento Automático)`,
+      })
 
       // Processar automaticamente após 10 segundos
       setTimeout(async () => {
@@ -120,15 +213,98 @@ export async function POST(request: NextRequest) {
           console.error(`❌ Erro no processamento automático do saque:`, error)
         }
       }, 10000) // 10 segundos
+
+      return NextResponse.json({
+        success: true,
+        transaction,
+        message: "Solicitação de saque criada com sucesso! (Processamento automático)",
+        is_blogger: true,
+      })
     }
+
+    // Para usuários normais, integrar com HorsePay
+    try {
+      console.log(`🏦 Criando saque na HorsePay para usuário normal...`)
+
+      // Criar callback URL
+      const callbackUrl = `${config.baseUrl}/api/webhook/horsepay`
+
+      // Criar saque na HorsePay
+      horsePayData = await createHorsePayWithdraw({
+        amount,
+        pix_key,
+        pix_type,
+        callback_url: callbackUrl,
+      })
+
+      externalId = horsePayData.external_id
+      endToEndId = horsePayData.end_to_end_id
+      transactionStatus = horsePayData.status
+
+      console.log(`✅ Saque criado na HorsePay - External ID: ${externalId}`)
+    } catch (horsePayError) {
+      console.error(`❌ Erro ao criar saque na HorsePay:`, horsePayError)
+
+      // Reverter o débito do saldo em caso de erro
+      console.log(`🔄 Revertendo débito do saldo devido ao erro na HorsePay`)
+      await updateWalletBalance(userId, amount, "add")
+
+      return NextResponse.json(
+        {
+          error: "Erro ao processar saque. Tente novamente em alguns minutos.",
+          details: horsePayError instanceof Error ? horsePayError.message : "Erro desconhecido",
+        },
+        { status: 500 },
+      )
+    }
+
+    // Criar transação no banco com dados da HorsePay
+    const transaction = await createTransaction({
+      user_id: userId,
+      type: "withdraw",
+      amount,
+      status: transactionStatus,
+      external_id: externalId,
+      end_to_end_id: endToEndId,
+      pix_key,
+      pix_type,
+      callback_url: `${config.baseUrl}/api/webhook/horsepay`,
+      description: `Saque via PIX - ${pix_type}: ${pix_key}`,
+    })
+
+    console.log(`✅ Transação de saque criada - ID: ${transaction.id}, External ID: ${externalId}`)
 
     return NextResponse.json({
       success: true,
-      transaction,
-      message: "Solicitação de saque criada com sucesso!",
+      transaction: {
+        ...transaction,
+        external_id: externalId,
+        end_to_end_id: endToEndId,
+      },
+      horsepay_data: horsePayData,
+      message: "Solicitação de saque enviada para processamento!",
     })
   } catch (error) {
-    console.error("Erro ao solicitar saque:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    console.error("❌ Erro ao solicitar saque:", error)
+
+    // Em caso de erro, tentar reverter o saldo se possível
+    try {
+      const userId = await getUserFromRequest(request)
+      const { amount } = await request.json()
+      if (userId && amount) {
+        console.log(`🔄 Tentando reverter saldo devido ao erro`)
+        await updateWalletBalance(userId, amount, "add")
+      }
+    } catch (revertError) {
+      console.error("❌ Erro ao reverter saldo:", revertError)
+    }
+
+    return NextResponse.json(
+      {
+        error: "Erro interno do servidor",
+        details: error instanceof Error ? error.message : "Erro desconhecido",
+      },
+      { status: 500 },
+    )
   }
 }
