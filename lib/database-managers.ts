@@ -458,6 +458,43 @@ export async function processManagerWithdraw(
   }
 }
 
+// 🎯 NOVA FUNÇÃO: Vincular afiliado ao gerente
+export async function assignAffiliateToManager(affiliateId: number, managerId: number): Promise<boolean> {
+  try {
+    console.log(`🔗 Vinculando afiliado ${affiliateId} ao gerente ${managerId}`)
+
+    // Verificar se o gerente existe e está ativo
+    const manager = await getManagerById(managerId)
+    if (!manager || manager.status !== "active") {
+      console.log(`❌ Gerente ${managerId} não encontrado ou inativo`)
+      return false
+    }
+
+    // Verificar se o afiliado existe
+    const [affiliate] = await sql`
+      SELECT id, name FROM affiliates WHERE id = ${affiliateId}
+    `
+
+    if (!affiliate) {
+      console.log(`❌ Afiliado ${affiliateId} não encontrado`)
+      return false
+    }
+
+    // Vincular o afiliado ao gerente
+    await sql`
+      UPDATE affiliates 
+      SET manager_id = ${managerId}, updated_at = NOW()
+      WHERE id = ${affiliateId}
+    `
+
+    console.log(`🎉 Afiliado ${affiliate.name} (${affiliateId}) vinculado ao gerente ${manager.name} (${managerId})`)
+    return true
+  } catch (error) {
+    console.error("❌ Erro ao vincular afiliado ao gerente:", error)
+    return false
+  }
+}
+
 // 🎯 NOVA FUNÇÃO: Desvincular afiliado do gerente
 export async function unassignAffiliateFromManager(affiliateId: number): Promise<boolean> {
   try {
