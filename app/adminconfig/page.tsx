@@ -42,6 +42,9 @@ import {
   Link,
   Unlink,
   Zap,
+  Vault,
+  Gift,
+  TrendingDown,
 } from "lucide-react"
 
 import {
@@ -125,6 +128,29 @@ interface SystemSettings {
   min_withdraw_amount?: { value: string; description: string; updated_at: string }
 }
 
+interface CofreStats {
+  balance: number
+  availableForPrizes: number
+  totalContributed: number
+  totalDistributed: number
+  gameCount: number
+  prizeChance: number
+  nextPrizeValues: number[]
+}
+
+interface CofrePrize {
+  id: number
+  game_name: string
+  user_id: number
+  prize_amount: number
+  cofre_balance_before: number
+  cofre_balance_after: number
+  game_count_trigger: number
+  created_at: string
+  user_name: string
+  user_username: string
+}
+
 interface AdminStats {
   users: {
     total: number
@@ -199,7 +225,6 @@ interface AdminStats {
     created_at: string
   }>
   performance: {
-    // Added performance metrics
     avg_deposit_time: number | null
     avg_withdraw_time: number | null
     api_error_rate: string
@@ -221,6 +246,8 @@ export default function AdminConfigPage() {
   const [managerWithdraws, setManagerWithdraws] = useState<ManagerWithdraw[]>([])
   const [settings, setSettings] = useState<SystemSettings>({})
   const [stats, setStats] = useState<AdminStats | null>(null)
+  const [cofreStats, setCofreStats] = useState<CofreStats | null>(null)
+  const [cofrePrizes, setCofrePrizes] = useState<CofrePrize[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingAffiliate, setEditingAffiliate] = useState<Affiliate | null>(null)
   const [editingManager, setEditingManager] = useState<Manager | null>(null)
@@ -331,6 +358,7 @@ export default function AdminConfigPage() {
       fetchManagerWithdraws()
       fetchSettings()
       fetchStats()
+      fetchCofreStats()
     }
   }, [isAuthenticated])
 
@@ -345,6 +373,7 @@ export default function AdminConfigPage() {
           fetchManagerWithdraws(),
           fetchAffiliates(),
           fetchManagers(),
+          fetchCofreStats(),
         ])
         setLastUpdate(new Date())
       } catch (error) {
@@ -454,6 +483,21 @@ export default function AdminConfigPage() {
       console.error("Erro ao buscar estatísticas:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchCofreStats = async () => {
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/cofre/stats?game=raspe-da-esperanca", {
+        headers: { "X-Admin-Token": adminToken },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setCofreStats(data.stats)
+        setCofrePrizes(data.recentPrizes || [])
+      }
+    } catch (error) {
+      console.error("Erro ao buscar estatísticas do cofre:", error)
     }
   }
 
@@ -832,6 +876,7 @@ export default function AdminConfigPage() {
         fetchAffiliates(),
         fetchManagers(),
         fetchSettings(),
+        fetchCofreStats(),
       ])
       setLastUpdate(new Date())
       toast.success("Dados atualizados com sucesso!")
@@ -981,6 +1026,15 @@ export default function AdminConfigPage() {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
+                      onClick={() => document.querySelector('[value="cofre"]')?.click()}
+                      className="w-full justify-start"
+                    >
+                      <Vault className="h-4 w-4" />
+                      <span>Cofre</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
                       onClick={() => document.querySelector('[value="settings"]')?.click()}
                       className="w-full justify-start"
                     >
@@ -1116,6 +1170,14 @@ export default function AdminConfigPage() {
                         <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Saques Gerentes</span>
                         <span className="sm:hidden">S.Ger</span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="cofre"
+                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
+                      >
+                        <Vault className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Cofre</span>
+                        <span className="sm:hidden">Cofre</span>
                       </TabsTrigger>
                       <TabsTrigger
                         value="settings"
@@ -2431,6 +2493,217 @@ export default function AdminConfigPage() {
                         </TableBody>
                       </Table>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Cofre Tab - Mobile Optimized */}
+              <TabsContent value="cofre" className="space-y-4 lg:space-y-6">
+                <h2 className="text-lg sm:text-xl font-bold text-white">Sistema de Cofre</h2>
+
+                {/* Cofre Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-3 sm:p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-xs sm:text-sm">Saldo do Cofre</p>
+                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">
+                            {cofreStats ? formatCurrency(cofreStats.balance) : "R$ 0,00"}
+                          </p>
+                          <p className="text-xs text-gray-500">Valor líquido acumulado</p>
+                        </div>
+                        <Vault className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-green-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-3 sm:p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-xs sm:text-sm">Disponível para Prêmios</p>
+                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">
+                            {cofreStats ? formatCurrency(cofreStats.availableForPrizes) : "R$ 0,00"}
+                          </p>
+                          <p className="text-xs text-gray-500">30% do saldo total</p>
+                        </div>
+                        <Gift className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-3 sm:p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-xs sm:text-sm">Total Distribuído</p>
+                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">
+                            {cofreStats ? formatCurrency(cofreStats.totalDistributed) : "R$ 0,00"}
+                          </p>
+                          <p className="text-xs text-gray-500">Prêmios pagos</p>
+                        </div>
+                        <TrendingDown className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-purple-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-3 sm:p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-xs sm:text-sm">Chance de Prêmio</p>
+                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400">
+                            {cofreStats ? `${cofreStats.prizeChance}%` : "1%"}
+                          </p>
+                          <p className="text-xs text-gray-500">Por jogada</p>
+                        </div>
+                        <Activity className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-yellow-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Cofre Details */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                        <Vault className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
+                        <span>Estatísticas do Cofre</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 sm:space-y-4 pt-0">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 text-xs sm:text-sm">Total Contribuído</span>
+                        <span className="text-green-400 font-bold text-sm:text-base">
+                          {cofreStats ? formatCurrency(cofreStats.totalContributed) : "R$ 0,00"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 text-xs sm:text-sm">Total de Jogadas</span>
+                        <span className="text-blue-400 font-bold text-sm:text-base">
+                          {cofreStats ? cofreStats.gameCount.toLocaleString() : "0"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 text-xs sm:text-sm">Eficiência</span>
+                        <span className="text-purple-400 font-bold text-sm:text-base">
+                          {cofreStats && cofreStats.totalContributed > 0
+                            ? `${((cofreStats.totalDistributed / cofreStats.totalContributed) * 100).toFixed(1)}%`
+                            : "0%"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium text-xs sm:text-sm">Saldo Líquido</span>
+                        <span className="text-white font-bold text-sm:text-lg">
+                          {cofreStats
+                            ? formatCurrency(cofreStats.totalContributed - cofreStats.totalDistributed)
+                            : "R$ 0,00"}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                        <Gift className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                        <span>Próximos Prêmios Disponíveis</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {cofreStats?.nextPrizeValues?.length > 0 ? (
+                          cofreStats.nextPrizeValues.map((value, index) => (
+                            <div
+                              key={index}
+                              className="bg-slate-800 rounded-lg p-2 text-center border border-slate-600"
+                            >
+                              <span className="text-white font-medium text-xs sm:text-sm">{formatCurrency(value)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="col-span-3 sm:col-span-4 text-center py-4">
+                            <p className="text-gray-400 text-xs sm:text-sm">Saldo insuficiente para prêmios</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 text-center">
+                        <p className="text-gray-400 text-xs">Prêmios baseados em 30% do saldo atual do cofre</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Recent Cofre Prizes */}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                      <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
+                      <span>Prêmios Recentes do Cofre</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {cofrePrizes.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-slate-700">
+                              <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
+                              <TableHead className="text-gray-400 text-xs sm:text-sm">Prêmio</TableHead>
+                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
+                                Saldo Antes
+                              </TableHead>
+                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
+                                Saldo Depois
+                              </TableHead>
+                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
+                                Jogada #
+                              </TableHead>
+                              <TableHead className="text-gray-400 text-xs sm:text-sm">Data</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {cofrePrizes.map((prize) => (
+                              <TableRow key={prize.id} className="hover:bg-slate-800 border-slate-700">
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <span className="text-white text-xs sm:text-sm font-medium">{prize.user_name}</span>
+                                    <span className="text-gray-500 text-xs">@{prize.user_username}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-green-400 font-bold text-xs sm:text-sm">
+                                    {formatCurrency(prize.prize_amount)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  <span className="text-gray-400 text-xs sm:text-sm">
+                                    {formatCurrency(prize.cofre_balance_before)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  <span className="text-gray-400 text-xs sm:text-sm">
+                                    {formatCurrency(prize.cofre_balance_after)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="hidden lg:table-cell">
+                                  <span className="text-gray-400 text-xs sm:text-sm">#{prize.game_count_trigger}</span>
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-gray-400 text-xs">{formatDate(prize.created_at)}</span>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-gray-400">Nenhum prêmio do cofre distribuído ainda</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

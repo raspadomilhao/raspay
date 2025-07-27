@@ -1,109 +1,116 @@
-// Configurações dos jogos baseadas no tipo de usuário
 export interface GameConfig {
-  winChance: number // Porcentagem de chance de ganhar (0-100)
-  multipliers: number[] // Multiplicadores possíveis
-  maxPrize: number // Prêmio máximo
-  minPrize: number // Prêmio mínimo
+  name: string
+  price: number
+  prizes: number[]
+  probabilities: number[]
+  cofre?: {
+    enabled: boolean
+    contributionRate: number // Porcentagem do valor líquido que vai para o cofre
+    prizeChance: number // Chance de ganhar prêmio do cofre (1-100)
+    prizeValues: number[] // Valores possíveis de prêmio do cofre
+    availablePercentage: number // Porcentagem do saldo disponível para prêmios
+    minCofreAmount: number // Valor mínimo no cofre para sortear prêmios
+    onlyRegularUsers: boolean // Se apenas usuários regulares podem ganhar do cofre
+  }
 }
 
-export interface GameConfigs {
-  regular: GameConfig
-  blogger: GameConfig
-}
-
-// Configurações para Raspe da Esperança (R$ 1,00)
-export const raspeEsperancaConfig: GameConfigs = {
-  regular: {
-    winChance: 15, // 15% de chance
-    multipliers: [2, 3, 5, 10, 20, 50, 100, 500, 1000], // Até 1000x
-    maxPrize: 1000, // R$ 1.000
-    minPrize: 2, // R$ 2,00
+const gameConfigs: Record<string, GameConfig> = {
+  "raspe-da-esperanca": {
+    name: "Raspe da Esperança",
+    price: 1.0,
+    prizes: [2, 5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000],
+    probabilities: [0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03, 0.02, 0.015, 0.01, 0.008, 0.005, 0.003, 0.001],
+    cofre: {
+      enabled: true,
+      contributionRate: 100, // 100% do valor líquido vai para o cofre
+      prizeChance: 1, // 1% de chance por jogada
+      prizeValues: [50, 100, 200, 500, 1000, 2000], // Prêmios possíveis do cofre
+      availablePercentage: 30, // 30% do saldo do cofre disponível para prêmios
+      minCofreAmount: 100, // Mínimo R$ 100 no cofre para sortear
+      onlyRegularUsers: true, // Apenas usuários regulares
+    },
   },
-  blogger: {
-    winChance: 90, // 90% de chance
-    multipliers: [5, 10, 25, 50, 100, 200, 500, 1000, 5000, 10000, 25000, 50000], // Até 50.000x
-    maxPrize: 50000, // R$ 50.000
-    minPrize: 5, // R$ 5,00
+  "fortuna-dourada": {
+    name: "Fortuna Dourada",
+    price: 3.0,
+    prizes: [5, 10, 25, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000],
+    probabilities: [
+      0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.01, 0.008, 0.005, 0.003, 0.001,
+    ],
+    cofre: {
+      enabled: true,
+      contributionRate: 100,
+      prizeChance: 1.5, // 1.5% de chance
+      prizeValues: [100, 200, 500, 1000, 2000, 5000],
+      availablePercentage: 30,
+      minCofreAmount: 200,
+      onlyRegularUsers: true,
+    },
   },
-}
-
-// Configurações para Fortuna Dourada (R$ 3,00)
-export const fortunaDouradaConfig: GameConfigs = {
-  regular: {
-    winChance: 15, // 15% de chance
-    multipliers: [2, 3, 5, 8, 15, 25, 50, 100, 500, 1000, 1666], // Até 1666x (R$ 5.000)
-    maxPrize: 5000, // R$ 5.000
-    minPrize: 6, // R$ 6,00
-  },
-  blogger: {
-    winChance: 90, // 90% de chance
-    multipliers: [5, 10, 20, 50, 100, 200, 500, 1000, 2500, 5000, 10000, 25000], // Até 25.000x
-    maxPrize: 75000, // R$ 75.000
-    minPrize: 15, // R$ 15,00
-  },
-}
-
-// Configurações para Mega Sorte (R$ 5,00)
-export const megaSorteConfig: GameConfigs = {
-  regular: {
-    winChance: 15, // 15% de chance
-    multipliers: [2, 3, 5, 10, 20, 40, 80, 200, 500, 1000, 2000], // Até 2000x (R$ 10.000)
-    maxPrize: 10000, // R$ 10.000
-    minPrize: 10, // R$ 10,00
-  },
-  blogger: {
-    winChance: 90, // 90% de chance
-    multipliers: [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 12500, 25000], // Até 25.000x
-    maxPrize: 125000, // R$ 125.000
-    minPrize: 25, // R$ 25,00
+  "mega-sorte": {
+    name: "Mega Sorte",
+    price: 5.0,
+    prizes: [10, 25, 50, 100, 200, 300, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000],
+    probabilities: [0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.01, 0.005, 0.002],
+    cofre: {
+      enabled: true,
+      contributionRate: 100,
+      prizeChance: 2, // 2% de chance
+      prizeValues: [200, 500, 1000, 2000, 5000, 10000],
+      availablePercentage: 30,
+      minCofreAmount: 500,
+      onlyRegularUsers: true,
+    },
   },
 }
 
-// Função para obter configuração do jogo
 export function getGameConfig(gameName: string, userType = "regular"): GameConfig {
-  const type = userType === "blogger" ? "blogger" : "regular"
-
-  switch (gameName) {
-    case "raspe-da-esperanca":
-      return raspeEsperancaConfig[type]
-    case "fortuna-dourada":
-      return fortunaDouradaConfig[type]
-    case "mega-sorte":
-      return megaSorteConfig[type]
-    default:
-      return raspeEsperancaConfig[type]
-  }
-}
-
-// Função para calcular se o jogador ganhou
-export function calculateGameResult(
-  config: GameConfig,
-  betAmount: number,
-): {
-  won: boolean
-  prize: number
-  multiplier: number
-} {
-  const random = Math.random() * 100
-  const won = random <= config.winChance
-
-  if (!won) {
-    return { won: false, prize: 0, multiplier: 0 }
+  const config = gameConfigs[gameName]
+  if (!config) {
+    throw new Error(`Configuração não encontrada para o jogo: ${gameName}`)
   }
 
-  // Escolher multiplicador aleatório
-  const multiplier = config.multipliers[Math.floor(Math.random() * config.multipliers.length)]
-  let prize = betAmount * multiplier
-
-  // Garantir que o prêmio está dentro dos limites
-  prize = Math.min(prize, config.maxPrize)
-  prize = Math.max(prize, config.minPrize)
-
-  return { won: true, prize, multiplier }
+  console.log(`🎮 Configuração do jogo ${gameName} para usuário ${userType}:`, config)
+  return config
 }
 
-// Função para verificar se é blogueiro baseado no email
-export function isBloggerEmail(email: string): boolean {
-  const bloggerDomains = ["@blogger", "@influencer"]
-  return bloggerDomains.some((domain) => email.toLowerCase().includes(domain))
+export function shouldDrawCofrePrize(cofreConfig: GameConfig["cofre"], userType: string): boolean {
+  if (!cofreConfig?.enabled) {
+    console.log("🏦 Cofre desabilitado")
+    return false
+  }
+
+  if (cofreConfig.onlyRegularUsers && userType !== "regular") {
+    console.log(`🏦 Cofre apenas para usuários regulares, usuário atual: ${userType}`)
+    return false
+  }
+
+  const roll = Math.random() * 100
+  const shouldDraw = roll < cofreConfig.prizeChance
+
+  console.log(`🎰 Sorteio do cofre: ${roll.toFixed(2)}% < ${cofreConfig.prizeChance}% = ${shouldDraw}`)
+  return shouldDraw
+}
+
+export function calculateCofrePrize(cofreBalance: number, cofreConfig: GameConfig["cofre"]): number {
+  if (!cofreConfig) return 0
+
+  const availableAmount = (cofreBalance * cofreConfig.availablePercentage) / 100
+  console.log(
+    `💰 Valor disponível no cofre: R$ ${availableAmount.toFixed(2)} (${cofreConfig.availablePercentage}% de R$ ${cofreBalance.toFixed(2)})`,
+  )
+
+  // Filtrar prêmios que cabem no valor disponível
+  const availablePrizes = cofreConfig.prizeValues.filter((prize) => prize <= availableAmount)
+
+  if (availablePrizes.length === 0) {
+    console.log("❌ Nenhum prêmio disponível para o saldo atual")
+    return 0
+  }
+
+  // Sortear um prêmio aleatório dos disponíveis
+  const selectedPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)]
+  console.log(`🎁 Prêmio sorteado: R$ ${selectedPrize.toFixed(2)} (de ${availablePrizes.length} opções)`)
+
+  return selectedPrize
 }
