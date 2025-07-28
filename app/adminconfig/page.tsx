@@ -488,13 +488,21 @@ export default function AdminConfigPage() {
 
   const fetchCofreStats = async () => {
     try {
-      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/cofre/stats?game=raspe-da-esperanca", {
+      // Buscar estatísticas de todos os jogos, não apenas raspe-da-esperanca
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/cofre/stats", {
         headers: { "X-Admin-Token": adminToken },
       })
       if (response.ok) {
         const data = await response.json()
-        setCofreStats(data.stats)
-        setCofrePrizes(data.recentPrizes || [])
+        console.log("📊 Dados do cofre recebidos:", data)
+
+        // Se retornou dados de todos os cofres
+        if (data.cofres && data.cofres.length > 0) {
+          // Pegar o primeiro jogo como exemplo para exibir
+          const firstGame = data.cofres[0]
+          setCofreStats(firstGame.stats)
+          setCofrePrizes(firstGame.recentPrizes || [])
+        }
       }
     } catch (error) {
       console.error("Erro ao buscar estatísticas do cofre:", error)

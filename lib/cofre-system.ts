@@ -31,8 +31,22 @@ export interface CofrePrize {
 export function toNumber(value: string | number | null | undefined): number {
   if (value === null || value === undefined) return 0
   if (typeof value === "number") return value
-  const parsed = Number.parseFloat(value)
+  const parsed = Number.parseFloat(value.toString())
   return isNaN(parsed) ? 0 : parsed
+}
+
+// Função para garantir que o cofre existe
+async function ensureCofreExists(gameName: string): Promise<void> {
+  try {
+    await sql`
+      INSERT INTO game_cofres (game_name, balance, total_contributed, total_distributed, game_count)
+      VALUES (${gameName}, 0.00, 0.00, 0.00, 0)
+      ON CONFLICT (game_name) DO NOTHING
+    `
+    console.log(`🏦 Cofre garantido para ${gameName}`)
+  } catch (error) {
+    console.error(`❌ Erro ao garantir cofre para ${gameName}:`, error)
+  }
 }
 
 // Função para contribuir para o cofre com o valor líquido REAL do jogo
@@ -42,9 +56,14 @@ export async function contributeToCofreSystem(
   userId: number,
   userType = "regular",
 ): Promise<{ shouldCheckPrize: boolean; gameCount: number }> {
-  console.log(`🏦 Contribuindo para o cofre ${gameName}: R$ ${netAmount.toFixed(2)} (valor líquido)`)
+  console.log(`🏦 === CONTRIBUINDO PARA O COFRE ${gameName} ===`)
+  console.log(`💰 Valor líquido: R$ ${netAmount.toFixed(2)} (${netAmount >= 0 ? "GANHO" : "PERDA"})`)
+  console.log(`👤 Usuário: ${userId} (${userType})`)
 
   try {
+    // Garantir que o cofre existe
+    await ensureCofreExists(gameName)
+
     // VALOR LÍQUIDO CORRETO:
     // Se netAmount é negativo (jogador perdeu) = adiciona ao cofre
     // Se netAmount é positivo (jogador ganhou) = subtrai do cofre
@@ -87,12 +106,18 @@ export async function distributeCofrePrize(
   userId: number,
   userType = "regular",
 ): Promise<{ won: boolean; prize: number; cofreBalanceBefore: number; cofreBalanceAfter: number } | null> {
-  console.log(`🎰 Verificando prêmio do cofre para ${gameName} (usuário: ${userType})...`)
+  console.log(`🎰 === VERIFICANDO PRÊMIO DO COFRE ${gameName} ===`)
+  console.log(`👤 Usuário: ${userId} (${userType})`)
 
   try {
     const config = getGameConfig(gameName, userType)
-    if (!config.cofre?.enabled || !config.cofre.onlyRegularUsers || userType !== "regular") {
-      console.log(`❌ Cofre não disponível para este usuário (${userType})`)
+    if (!config.cofre?.enabled) {
+      console.log(`❌ Cofre desabilitado para ${gameName}`)
+      return null
+    }
+
+    if (config.cofre.onlyRegularUsers && userType !== "regular") {
+      console.log(`❌ Cofre apenas para usuários regulares (atual: ${userType})`)
       return null
     }
 
@@ -166,6 +191,7 @@ export async function distributeCofrePrize(
 // Função para obter estatísticas do cofre
 export async function getCofreStats(gameName: string): Promise<GameCofre | null> {
   try {
+    await ensureCofreExists(gameName)
     const [cofre] = await sql`
       SELECT * FROM game_cofres WHERE game_name = ${gameName}
     `
@@ -200,6 +226,11 @@ export async function getCofrePrizeHistory(gameName: string, limit = 50): Promis
 // Função para obter todos os cofres (admin)
 export async function getAllCofres(): Promise<GameCofre[]> {
   try {
+    // Garantir que todos os cofres existem
+    await ensureCofreExists("raspe-da-esperanca")
+    await ensureCofreExists("fortuna-dourada")
+    await ensureCofreExists("mega-sorte")
+
     const cofres = await sql`
       SELECT * FROM game_cofres ORDER BY game_name
     `

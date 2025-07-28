@@ -1,63 +1,81 @@
+export interface CofreConfig {
+  enabled: boolean
+  prizeChance: number // Porcentagem de chance de ganhar prêmio do cofre
+  prizeValues: number[] // Valores possíveis de prêmios
+  availablePercentage: number // Porcentagem do saldo disponível para prêmios
+  minCofreAmount: number // Valor mínimo no cofre para sortear
+  onlyRegularUsers: boolean // Se apenas usuários regulares podem ganhar
+}
+
 export interface GameConfig {
   name: string
-  price: number
-  prizes: number[]
-  probabilities: number[]
-  cofre?: {
-    enabled: boolean
-    contributionRate: number // Porcentagem do valor líquido que vai para o cofre
-    prizeChance: number // Chance de ganhar prêmio do cofre (1-100)
-    prizeValues: number[] // Valores possíveis de prêmio do cofre
-    availablePercentage: number // Porcentagem do saldo disponível para prêmios
-    minCofreAmount: number // Valor mínimo no cofre para sortear prêmios
-    onlyRegularUsers: boolean // Se apenas usuários regulares podem ganhar do cofre
-  }
+  minBet: number
+  maxBet: number
+  prizes: { value: number; probability: number }[]
+  houseEdge: number
+  cofre?: CofreConfig
 }
 
 const gameConfigs: Record<string, GameConfig> = {
   "raspe-da-esperanca": {
     name: "Raspe da Esperança",
-    price: 1.0,
-    prizes: [2, 5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000],
-    probabilities: [0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03, 0.02, 0.015, 0.01, 0.008, 0.005, 0.003, 0.001],
+    minBet: 1,
+    maxBet: 100,
+    prizes: [
+      { value: 0, probability: 70 }, // 70% chance de não ganhar nada
+      { value: 2, probability: 15 }, // 15% chance de ganhar 2x
+      { value: 5, probability: 10 }, // 10% chance de ganhar 5x
+      { value: 10, probability: 4 }, // 4% chance de ganhar 10x
+      { value: 50, probability: 1 }, // 1% chance de ganhar 50x
+    ],
+    houseEdge: 0.15, // 15% de margem da casa
     cofre: {
       enabled: true,
-      contributionRate: 100, // 100% do valor líquido vai para o cofre
       prizeChance: 1, // 1% de chance por jogada
-      prizeValues: [50, 100, 200, 500, 1000, 2000], // Prêmios possíveis do cofre
-      availablePercentage: 30, // 30% do saldo do cofre disponível para prêmios
-      minCofreAmount: 100, // Mínimo R$ 100 no cofre para sortear
+      prizeValues: [10, 25, 50, 100, 250, 500], // Valores possíveis
+      availablePercentage: 30, // 30% do saldo disponível
+      minCofreAmount: 100, // Mínimo R$ 100 no cofre
       onlyRegularUsers: true, // Apenas usuários regulares
     },
   },
   "fortuna-dourada": {
     name: "Fortuna Dourada",
-    price: 3.0,
-    prizes: [5, 10, 25, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000],
-    probabilities: [
-      0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.01, 0.008, 0.005, 0.003, 0.001,
+    minBet: 2,
+    maxBet: 200,
+    prizes: [
+      { value: 0, probability: 65 },
+      { value: 3, probability: 20 },
+      { value: 8, probability: 10 },
+      { value: 20, probability: 4 },
+      { value: 100, probability: 1 },
     ],
+    houseEdge: 0.18,
     cofre: {
       enabled: true,
-      contributionRate: 100,
-      prizeChance: 1.5, // 1.5% de chance
-      prizeValues: [100, 200, 500, 1000, 2000, 5000],
-      availablePercentage: 30,
+      prizeChance: 1.5,
+      prizeValues: [20, 50, 100, 200, 500, 1000],
+      availablePercentage: 25,
       minCofreAmount: 200,
       onlyRegularUsers: true,
     },
   },
   "mega-sorte": {
     name: "Mega Sorte",
-    price: 5.0,
-    prizes: [10, 25, 50, 100, 200, 300, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000],
-    probabilities: [0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.01, 0.005, 0.002],
+    minBet: 5,
+    maxBet: 500,
+    prizes: [
+      { value: 0, probability: 60 },
+      { value: 2, probability: 25 },
+      { value: 10, probability: 10 },
+      { value: 25, probability: 4 },
+      { value: 200, probability: 1 },
+    ],
+    houseEdge: 0.2,
     cofre: {
       enabled: true,
-      contributionRate: 100,
-      prizeChance: 2, // 2% de chance
-      prizeValues: [200, 500, 1000, 2000, 5000, 10000],
-      availablePercentage: 30,
+      prizeChance: 2,
+      prizeValues: [50, 100, 250, 500, 1000, 2500],
+      availablePercentage: 35,
       minCofreAmount: 500,
       onlyRegularUsers: true,
     },
@@ -69,48 +87,36 @@ export function getGameConfig(gameName: string, userType = "regular"): GameConfi
   if (!config) {
     throw new Error(`Configuração não encontrada para o jogo: ${gameName}`)
   }
-
-  console.log(`🎮 Configuração do jogo ${gameName} para usuário ${userType}:`, config)
   return config
 }
 
-export function shouldDrawCofrePrize(cofreConfig: GameConfig["cofre"], userType: string): boolean {
-  if (!cofreConfig?.enabled) {
-    console.log("🏦 Cofre desabilitado")
-    return false
-  }
+export function shouldDrawCofrePrize(cofreConfig: CofreConfig, userType = "regular"): boolean {
+  if (!cofreConfig.enabled) return false
+  if (cofreConfig.onlyRegularUsers && userType !== "regular") return false
 
-  if (cofreConfig.onlyRegularUsers && userType !== "regular") {
-    console.log(`🏦 Cofre apenas para usuários regulares, usuário atual: ${userType}`)
-    return false
-  }
+  const random = Math.random() * 100
+  const shouldDraw = random < cofreConfig.prizeChance
 
-  const roll = Math.random() * 100
-  const shouldDraw = roll < cofreConfig.prizeChance
+  console.log(`🎲 Sorteio do cofre: ${random.toFixed(2)}% < ${cofreConfig.prizeChance}% = ${shouldDraw}`)
 
-  console.log(`🎰 Sorteio do cofre: ${roll.toFixed(2)}% < ${cofreConfig.prizeChance}% = ${shouldDraw}`)
   return shouldDraw
 }
 
-export function calculateCofrePrize(cofreBalance: number, cofreConfig: GameConfig["cofre"]): number {
-  if (!cofreConfig) return 0
-
+export function calculateCofrePrize(cofreBalance: number, cofreConfig: CofreConfig): number {
   const availableAmount = (cofreBalance * cofreConfig.availablePercentage) / 100
-  console.log(
-    `💰 Valor disponível no cofre: R$ ${availableAmount.toFixed(2)} (${cofreConfig.availablePercentage}% de R$ ${cofreBalance.toFixed(2)})`,
-  )
+  const availablePrizes = cofreConfig.prizeValues.filter((value) => value <= availableAmount)
 
-  // Filtrar prêmios que cabem no valor disponível
-  const availablePrizes = cofreConfig.prizeValues.filter((prize) => prize <= availableAmount)
-
-  if (availablePrizes.length === 0) {
-    console.log("❌ Nenhum prêmio disponível para o saldo atual")
-    return 0
-  }
+  if (availablePrizes.length === 0) return 0
 
   // Sortear um prêmio aleatório dos disponíveis
-  const selectedPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)]
-  console.log(`🎁 Prêmio sorteado: R$ ${selectedPrize.toFixed(2)} (de ${availablePrizes.length} opções)`)
+  const randomIndex = Math.floor(Math.random() * availablePrizes.length)
+  const selectedPrize = availablePrizes[randomIndex]
+
+  console.log(`🎁 Prêmios disponíveis: [${availablePrizes.join(", ")}], sorteado: ${selectedPrize}`)
 
   return selectedPrize
+}
+
+export function getAllGameNames(): string[] {
+  return Object.keys(gameConfigs)
 }
