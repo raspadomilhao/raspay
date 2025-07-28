@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -196,9 +197,13 @@ export default function HomePage() {
                       {/* Header */}
                       <div className="flex items-center justify-between p-4 border-b border-border">
                         <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-gradient-to-r from-primary to-blue-500 rounded-full flex items-center justify-center">
-                            <Zap className="h-4 w-4 text-white" />
-                          </div>
+                          <Image
+                            src="/images/raspay-logo-new.png"
+                            alt="RasPay Logo"
+                            width={32}
+                            height={32}
+                            className="rounded-full"
+                          />
                           <span className="text-foreground font-bold">RasPay</span>
                         </div>
                       </div>
@@ -332,9 +337,13 @@ export default function HomePage() {
                   </SheetContent>
                 </Sheet>
                 <Link href="/" className="flex items-center space-x-2">
-                  <div className="w-9 h-9 bg-gradient-to-r from-primary to-blue-500 rounded-full flex items-center justify-center">
-                    <Zap className="h-5 w-5 text-white" />
-                  </div>
+                  <Image
+                    src="/images/raspay-logo-new.png"
+                    alt="RasPay Logo"
+                    width={36}
+                    height={36}
+                    className="rounded-full"
+                  />
                   <span className="text-xl font-bold text-foreground">RasPay</span>
                 </Link>
               </div>
