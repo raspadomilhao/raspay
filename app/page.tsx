@@ -66,6 +66,7 @@ export default function HomePage() {
   const [isFortunaDauradaModalOpen, setIsFortunaDauradaModalOpen] = useState(false)
   const [isMegaSorteModalOpen, setIsMegaSorteModalOpen] = useState(false)
   const [showReferralPopup, setShowReferralPopup] = useState(false)
+  const [selectedGame, setSelectedGame] = useState<string | null>(null)
 
   useEffect(() => {
     const token = AuthClient.getToken()
@@ -115,6 +116,7 @@ export default function HomePage() {
       return
     }
 
+    setSelectedGame(gameId)
     switch (gameId) {
       case "raspe-da-esperanca":
         setIsGameModalOpen(true)
@@ -158,9 +160,9 @@ export default function HomePage() {
   ]
 
   const bannerImages = [
-    "/images/carousel-banner-1.png",
-    "/images/carousel-banner-2.png",
-    "/images/carousel-banner-3.png",
+    "/images/carousel-banner-new-1.png",
+    "/images/carousel-banner-new-2.png",
+    "/images/carousel-banner-new-3.png",
   ]
 
   if (isLoading) {
@@ -422,15 +424,14 @@ export default function HomePage() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
             </Carousel>
           </div>
         </div>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-24">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
           <section>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground">Jogos em Destaque</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">Jogos em Destaque</h2>
               <Link href="/jogos">
                 <Button variant="ghost" className="text-primary hover:text-primary/80">
                   Ver todos
@@ -438,7 +439,7 @@ export default function HomePage() {
                 </Button>
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {games.map((game) => (
                 <Card
                   key={game.id}
@@ -467,7 +468,7 @@ export default function HomePage() {
                         className="gradient-primary text-white font-semibold group-hover:animate-glow"
                       >
                         <Play className="h-4 w-4 mr-2" />
-                        {isLoggedIn ? "Jogar Agora" : "Entrar para Jogar"}
+                        Jogar Agora
                       </Button>
                     </div>
                   </CardContent>
@@ -477,8 +478,8 @@ export default function HomePage() {
           </section>
 
           <section>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
               <Link href="/vencedores">
                 <Button variant="ghost" className="text-primary hover:text-primary/80">
                   Ver todos
@@ -541,7 +542,9 @@ export default function HomePage() {
       <Dialog open={isGameModalOpen} onOpenChange={setIsGameModalOpen}>
         <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-black border-gray-800">
           <div className="w-full h-full overflow-auto">
-            <RaspeDaEsperancaPage />
+            {selectedGame === "raspe-da-esperanca" && <RaspeDaEsperancaPage />}
+            {selectedGame === "fortuna-dourada" && <FortunaDauradaPage />}
+            {selectedGame === "mega-sorte" && <MegaSortePage />}
           </div>
         </DialogContent>
       </Dialog>

@@ -353,12 +353,12 @@ export default function MegaSortePage() {
       ctx.globalCompositeOperation = "destination-out"
     }
     img.onerror = () => {
-      ctx.fillStyle = "#4338CA"
+      ctx.fillStyle = "#1E40AF"
       ctx.fillRect(0, 0, width, height)
       const gradient = ctx.createLinearGradient(0, 0, width, height)
-      gradient.addColorStop(0, "#6366F1")
-      gradient.addColorStop(0.5, "#4F46E5")
-      gradient.addColorStop(1, "#4338CA")
+      gradient.addColorStop(0, "#3B82F6")
+      gradient.addColorStop(0.5, "#2563EB")
+      gradient.addColorStop(1, "#1E40AF")
       ctx.fillStyle = gradient
       ctx.fillRect(0, 0, width, height)
       ctx.globalCompositeOperation = "destination-out"
@@ -421,14 +421,14 @@ export default function MegaSortePage() {
         const symbolText = symbolSpan?.textContent || symbolElement.textContent
         if (symbolText === winningSymbol) {
           symbolElement.style.animation = "pulse 1.5s ease-in-out infinite"
-          symbolElement.style.boxShadow = "0 0 25px rgba(99, 102, 241, 0.8), inset 0 0 25px rgba(99, 102, 241, 0.3)"
-          symbolElement.style.border = "3px solid #6366F1"
-          symbolElement.style.backgroundColor = "rgba(99, 102, 241, 0.15)"
+          symbolElement.style.boxShadow = "0 0 25px rgba(59, 130, 246, 0.8), inset 0 0 25px rgba(59, 130, 246, 0.3)"
+          symbolElement.style.border = "3px solid #3B82F6"
+          symbolElement.style.backgroundColor = "rgba(59, 130, 246, 0.15)"
           symbolElement.style.transform = "scale(1.05)"
           symbolElement.style.zIndex = "10"
           const img = symbolElement.querySelector("img")
           if (img) {
-            img.style.filter = "brightness(1.3) drop-shadow(0 0 10px rgba(99, 102, 241, 0.8))"
+            img.style.filter = "brightness(1.3) drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))"
           }
         }
       }
@@ -675,7 +675,7 @@ export default function MegaSortePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-white">Carregando Jogo...</p>
         </div>
       </div>

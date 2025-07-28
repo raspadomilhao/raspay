@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Heart, Volume2, VolumeX, Sparkles } from "lucide-react"
+import { Zap, Volume2, VolumeX, Sparkles } from "lucide-react"
 import { AuthClient } from "@/lib/auth-client"
 import { FloatingBalance } from "@/components/floating-balance"
 import { getRandomOverlayImage } from "@/lib/game-overlays"
@@ -515,14 +515,14 @@ export default function RaspeDaEsperancaPage() {
         const symbolText = symbolSpan?.textContent || symbolElement.textContent
         if (symbolText === winningSymbol) {
           symbolElement.style.animation = "pulse 1.5s ease-in-out infinite"
-          symbolElement.style.boxShadow = "0 0 25px rgba(255, 215, 0, 0.8), inset 0 0 25px rgba(255, 215, 0, 0.3)"
-          symbolElement.style.border = "3px solid #FFD700"
-          symbolElement.style.backgroundColor = "rgba(255, 215, 0, 0.15)"
+          symbolElement.style.boxShadow = "0 0 25px rgba(59, 130, 246, 0.8), inset 0 0 25px rgba(59, 130, 246, 0.3)"
+          symbolElement.style.border = "3px solid #3B82F6"
+          symbolElement.style.backgroundColor = "rgba(59, 130, 246, 0.15)"
           symbolElement.style.transform = "scale(1.05)"
           symbolElement.style.zIndex = "10"
           const img = symbolElement.querySelector("img")
           if (img) {
-            img.style.filter = "brightness(1.3) drop-shadow(0 0 10px rgba(255, 215, 0, 0.8))"
+            img.style.filter = "brightness(1.3) drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))"
           }
         }
       }
@@ -699,13 +699,13 @@ export default function RaspeDaEsperancaPage() {
       const symbolIds = generateScratchCardSymbols()
       const gameContainer = document.createElement("div")
       gameContainer.className =
-        "relative w-full aspect-square bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border-2 border-pink-400/30 shadow-2xl shadow-pink-500/10"
+        "relative w-full aspect-square bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border-2 border-blue-400/30 shadow-2xl shadow-blue-500/10"
       const symbolsGrid = document.createElement("div")
       symbolsGrid.className = "absolute inset-0 grid grid-cols-3 gap-2 p-3"
       for (let i = 0; i < NUM_CELLS; i++) {
         const cellContent = document.createElement("div")
         cellContent.className =
-          "flex flex-col justify-center items-center text-pink-300 font-bold bg-gray-800/70 rounded-lg p-2 opacity-0 scale-75 transition-all duration-300"
+          "flex flex-col justify-center items-center text-blue-300 font-bold bg-gray-800/70 rounded-lg p-2 opacity-0 scale-75 transition-all duration-300"
         cellContent.id = `symbol-${i}`
         const symbol = createSymbolHtml(symbolIds[i])
         if (symbol.imageUrl) {
@@ -786,15 +786,15 @@ export default function RaspeDaEsperancaPage() {
       <audio ref={audioCoinRef} src="/sounds/coin.mp3" preload="auto" />
       <audio ref={audioAmbientRef} src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Fantasy%20Dream%20Music%20-%20Dessert%20Land%20%E2%98%85924%20_%20Soothing%2C%20Beautiful%20%282%29-FxmO0t8tSiZUth7OsRAv6ykMhrRHQX.mp3" preload="auto" loop />
 
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-pink-900/20 to-gray-900 opacity-70"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(236,72,153,0.1)_0,_transparent_60%)]"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 opacity-70"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.1)_0,_transparent_60%)]"></div>
 
       <main className="relative z-10 max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col justify-center">
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-red-400">
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
             Raspe da Esperança
           </h1>
-          <p className="text-pink-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
+          <p className="text-blue-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
         </div>
 
         <div ref={scratchGridRef} className="mb-6" />
@@ -814,7 +814,7 @@ export default function RaspeDaEsperancaPage() {
             <Button
               onClick={initGame}
               disabled={gameLoading || !canPlay}
-              className="w-full font-bold py-3 text-lg bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white rounded-lg shadow-lg shadow-pink-500/30 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
+              className="w-full font-bold py-3 text-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg shadow-lg shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
             >
               {gameLoading
                 ? "Preparando..."
@@ -837,7 +837,7 @@ export default function RaspeDaEsperancaPage() {
 
         <div className="flex items-center justify-between text-sm mt-8 text-gray-400">
           <div className="flex items-center space-x-2">
-            <Heart className="h-4 w-4 text-pink-400" />
+            <Zap className="h-4 w-4 text-blue-400" />
             <span>Preço por Jogo: R$ {GAME_PRICE.toFixed(2)}</span>
           </div>
           <Button
@@ -847,7 +847,7 @@ export default function RaspeDaEsperancaPage() {
               setSoundEnabled(!soundEnabled)
               toggleAmbientSound()
             }}
-            className="text-gray-400 hover:text-pink-400 h-8 w-8 rounded-full"
+            className="text-gray-400 hover:text-blue-400 h-8 w-8 rounded-full"
           >
             {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
