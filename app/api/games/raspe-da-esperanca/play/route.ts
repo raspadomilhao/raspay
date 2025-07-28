@@ -2,9 +2,33 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { neon } from "@neondatabase/serverless"
 import { processAffiliateLossCommission } from "@/lib/database"
+import {
+  selectRandomPhysicalPrize,
+  decrementPhysicalPrizeStock,
+  createPhysicalPrizeWinner,
+} from "@/lib/database-physical-prizes"
 
 const sql = neon(process.env.DATABASE_URL!)
 const GAME_PRICE = 1.0
+
+async function getPhysicalPrizeChance(): Promise<number> {
+  try {
+    const [setting] = await sql`
+      SELECT setting_value FROM system_settings 
+      WHERE setting_key = 'physical_prize_chance_raspe_esperanca'
+    `
+
+    if (setting) {
+      const chance = Number.parseFloat(setting.setting_value)
+      return isNaN(chance) ? 0.01 : chance // 1% padrão se inválido
+    }
+
+    return 0.01 // 1% padrão se não encontrado
+  } catch (error) {
+    console.error("Erro ao buscar chance de prêmios físicos:", error)
+    return 0.01 // 1% padrão em caso de erro
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,25 +85,65 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5. Usar o resultado do frontend (hasWon e prizeAmount)
-    const hasWon = gameResult.hasWon || false
-    let prizeAmount = 0
+    // 5. Verificar se ganhou prêmio físico (chance especial)
+    let wonPhysicalPrize = false
+    let physicalPrize = null
+    let physicalPrizeWinner = null
 
-    if (hasWon) {
-      // Usar o valor do prêmio calculado pelo frontend
-      prizeAmount = Number.parseFloat(gameResult.prizeAmount) || 0
-      console.log(`🏆 Frontend disse que ganhou: R$ ${prizeAmount.toFixed(2)}`)
-    } else {
-      console.log("💔 Frontend disse que não ganhou")
+    const physicalPrizeChance = await getPhysicalPrizeChance()
+    console.log(`🎁 Chance de prêmio físico: ${(physicalPrizeChance * 100).toFixed(2)}%`)
+
+    if (Math.random() < physicalPrizeChance) {
+      console.log("🎁 Verificando prêmios físicos disponíveis...")
+      physicalPrize = await selectRandomPhysicalPrize()
+
+      if (physicalPrize) {
+        console.log(`🎁 Prêmio físico selecionado: ${physicalPrize.name}`)
+
+        // Tentar decrementar estoque
+        const stockDecremented = await decrementPhysicalPrizeStock(
+          physicalPrize.id,
+          `Ganho no jogo Raspe da Esperança pelo usuário ${auth.userId}`,
+        )
+
+        if (stockDecremented) {
+          wonPhysicalPrize = true
+          console.log(`✅ Estoque decrementado para prêmio: ${physicalPrize.name}`)
+        } else {
+          console.log(`❌ Falha ao decrementar estoque para prêmio: ${physicalPrize.name}`)
+          physicalPrize = null
+        }
+      }
     }
 
-    // 6. Processar transações
+    // 6. Determinar resultado final
+    let hasWon = false
+    let prizeAmount = 0
+
+    if (wonPhysicalPrize) {
+      // Se ganhou prêmio físico, considera como vitória (mas sem prêmio monetário)
+      hasWon = true
+      prizeAmount = 0
+      console.log(`🎁 Ganhou prêmio físico: ${physicalPrize?.name}`)
+    } else {
+      // Usar resultado do frontend para prêmios monetários
+      hasWon = gameResult.hasWon || false
+      prizeAmount = hasWon ? Number.parseFloat(gameResult.prizeAmount) || 0 : 0
+
+      if (hasWon) {
+        console.log(`🏆 Frontend disse que ganhou: R$ ${prizeAmount.toFixed(2)}`)
+      } else {
+        console.log("💔 Frontend disse que não ganhou")
+      }
+    }
+
+    // 7. Processar transações
     let gamePlayTransactionId: number
     try {
       // Debitar aposta
       const [gamePlayTransaction] = await sql`
-        INSERT INTO transactions (user_id, type, amount, status, created_at)
-        VALUES (${auth.userId}, 'game_play', ${-GAME_PRICE}, 'completed', NOW())
+        INSERT INTO transactions (user_id, type, amount, status, created_at, description)
+        VALUES (${auth.userId}, 'game_play', ${-GAME_PRICE}, 'completed', NOW(), 'Raspe da Esperança')
         RETURNING id
       `
       gamePlayTransactionId = gamePlayTransaction.id
@@ -89,14 +153,25 @@ export async function POST(request: NextRequest) {
       let newBalance = currentBalance - GAME_PRICE
       console.log(`💰 Saldo após débito: R$ ${newBalance.toFixed(2)}`)
 
-      // Se ganhou prêmio, creditar
+      // Se ganhou prêmio monetário, creditar
       if (prizeAmount > 0) {
         await sql`
-          INSERT INTO transactions (user_id, type, amount, status, created_at)
-          VALUES (${auth.userId}, 'game_prize', ${prizeAmount}, 'completed', NOW())
+          INSERT INTO transactions (user_id, type, amount, status, created_at, description)
+          VALUES (${auth.userId}, 'game_prize', ${prizeAmount}, 'completed', NOW(), 'Prêmio Raspe da Esperança')
         `
         console.log(`💰 Creditado: R$ ${prizeAmount.toFixed(2)}`)
         newBalance += prizeAmount
+      }
+
+      // Se ganhou prêmio físico, registrar ganhador
+      if (wonPhysicalPrize && physicalPrize) {
+        physicalPrizeWinner = await createPhysicalPrizeWinner({
+          user_id: auth.userId,
+          physical_prize_id: physicalPrize.id,
+          transaction_id: gamePlayTransactionId,
+          game_name: "Raspe da Esperança",
+        })
+        console.log(`🎁 Ganhador de prêmio físico registrado (ID: ${physicalPrizeWinner.id})`)
       }
 
       // Calcular resultado líquido
@@ -121,9 +196,11 @@ export async function POST(request: NextRequest) {
         // Não falhar o jogo por causa da comissão
       }
 
-      // 7. Preparar mensagem baseada no resultado
+      // 8. Preparar mensagem baseada no resultado
       let message = ""
-      if (prizeAmount === 0) {
+      if (wonPhysicalPrize && physicalPrize) {
+        message = `🎁 PARABÉNS! Você ganhou um prêmio físico: ${physicalPrize.name}! Entraremos em contato para entrega.`
+      } else if (prizeAmount === 0) {
         message = "Que pena! Você não ganhou nada desta vez."
       } else if (netResult < 0) {
         message = `Você ganhou R$ ${prizeAmount.toFixed(2)}, mas perdeu R$ ${Math.abs(netResult).toFixed(2)} no total.`
@@ -133,12 +210,23 @@ export async function POST(request: NextRequest) {
         message = `Parabéns! Você ganhou R$ ${prizeAmount.toFixed(2)} e lucrou R$ ${netResult.toFixed(2)}!`
       }
 
-      // 8. Retornar resultado no formato esperado pelo frontend
+      // 9. Retornar resultado no formato esperado pelo frontend
       return NextResponse.json({
         success: true,
         gameResult: {
-          hasWon: prizeAmount > 0,
+          hasWon: hasWon, // true para prêmios físicos e monetários
           prizeAmount: prizeAmount,
+          wonPhysicalPrize: wonPhysicalPrize,
+          physicalPrize: physicalPrize
+            ? {
+                id: physicalPrize.id,
+                name: physicalPrize.name,
+                description: physicalPrize.description,
+                image_url: physicalPrize.image_url,
+                estimated_value: physicalPrize.estimated_value,
+              }
+            : null,
+          physicalPrizeWinnerId: physicalPrizeWinner?.id || null,
         },
         newBalance: newBalance,
         message: message,
@@ -150,6 +238,8 @@ export async function POST(request: NextRequest) {
           balanceAfter: newBalance,
           userType: auth.userType,
           transactionId: gamePlayTransactionId,
+          wonPhysicalPrize: wonPhysicalPrize,
+          physicalPrizeName: physicalPrize?.name || null,
         },
       })
     } catch (dbError) {

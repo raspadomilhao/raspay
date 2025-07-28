@@ -34,6 +34,22 @@ interface GameState {
   gameEnded: boolean
   hasWonRealPrize: boolean
   realPrizeAmount: number
+  wonPhysicalPrize: boolean
+  physicalPrize: any
+}
+
+interface GameResult {
+  hasWon: boolean
+  prizeAmount: number
+  wonPhysicalPrize?: boolean
+  physicalPrize?: {
+    id: number
+    name: string
+    description: string
+    image_url: string
+    estimated_value: number
+  }
+  physicalPrizeWinnerId?: number
 }
 
 const NUM_CELLS = 9
@@ -43,7 +59,7 @@ const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
 // Configurações para usuários regulares
 const regularConfig = {
-  winFrequency: 0.5, // 65% de chance de ganhar
+  winFrequency: 0.5, // 50% de chance de ganhar
   scratchThreshold: 0.7,
   prizeConfig: {
     small: {
@@ -63,7 +79,7 @@ const regularConfig = {
 
 // Configurações para bloggers - CONFIGURE AQUI OS PRÊMIOS PARA BLOGGERS
 const bloggerConfig = {
-  winFrequency: 0.75, // 65% de chance de ganhar para bloggers
+  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: {
     small: {
@@ -109,6 +125,12 @@ const winMessages = [
   "Que alegria! R$@valor@ na sua conta!",
 ]
 
+const physicalPrizeMessages = [
+  "🎁 INCRÍVEL! Você ganhou um prêmio físico: @premio@!",
+  "🏆 PARABÉNS! Prêmio físico conquistado: @premio@!",
+  "✨ QUE SORTE! Você ganhou: @premio@!",
+]
+
 const loseMessages = [
   "Não foi desta vez, mas a esperança nunca morre!",
   "Continue tentando, a sorte está chegando!",
@@ -149,12 +171,13 @@ export default function RaspeDaEsperancaPage() {
   const [gameLoading, setGameLoading] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [modalType, setModalType] = useState<"win" | "lose">("lose")
+  const [modalType, setModalType] = useState<"win" | "lose" | "physical">("lose")
   const [modalTitle, setModalTitle] = useState("")
   const [modalMessage, setModalMessage] = useState("")
   const [message, setMessage] = useState("Clique ou arraste para raspar!")
   const [canPlay, setCanPlay] = useState(false)
   const [gameActive, setGameActive] = useState(false)
+  const [gameResultFromServer, setGameResultFromServer] = useState<GameResult | null>(null)
 
   const router = useRouter()
   const scratchGridRef = useRef<HTMLDivElement>(null)
@@ -169,6 +192,8 @@ export default function RaspeDaEsperancaPage() {
     gameEnded: false,
     hasWonRealPrize: false,
     realPrizeAmount: 0,
+    wonPhysicalPrize: false,
+    physicalPrize: null,
   })
 
   // Audio refs
@@ -334,8 +359,84 @@ export default function RaspeDaEsperancaPage() {
     let finalSymbolIds = Array(NUM_CELLS).fill(null)
     const config = getGameConfig()
 
+    // Se já temos resultado do servidor, usar ele
+    if (gameResultFromServer) {
+      if (gameResultFromServer.wonPhysicalPrize && gameResultFromServer.physicalPrize) {
+        // Para prêmio físico, usar o nome do prêmio como símbolo vencedor
+        const winningSymbolId = gameResultFromServer.physicalPrize.name
+        gameStateRef.current.hasWonRealPrize = true
+        gameStateRef.current.wonPhysicalPrize = true
+        gameStateRef.current.physicalPrize = gameResultFromServer.physicalPrize
+        gameStateRef.current.realPrizeAmount = 0
+
+        // Colocar 3 símbolos do prêmio físico
+        const prizePositions = new Set()
+        while (prizePositions.size < 3) {
+          prizePositions.add(Math.floor(Math.random() * NUM_CELLS))
+        }
+
+        prizePositions.forEach((pos) => {
+          finalSymbolIds[pos] = winningSymbolId
+        })
+
+        // Preencher o resto com símbolos não vencedores
+        const nonWinningFillPool: string[] = []
+        nonWinningSymbols.forEach((symbolId) => {
+          for (let k = 0; k < MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD; k++) {
+            nonWinningFillPool.push(symbolId)
+          }
+        })
+        shuffleArray(nonWinningFillPool)
+
+        let currentFillIndex = 0
+        for (let i = 0; i < NUM_CELLS; i++) {
+          if (finalSymbolIds[i] === null) {
+            finalSymbolIds[i] = nonWinningFillPool[currentFillIndex]
+            currentFillIndex++
+          }
+        }
+        shuffleArray(finalSymbolIds)
+        return finalSymbolIds
+      } else if (gameResultFromServer.hasWon && gameResultFromServer.prizeAmount > 0) {
+        // Para prêmio monetário
+        const winningSymbolId = `R$${gameResultFromServer.prizeAmount}`
+        gameStateRef.current.hasWonRealPrize = true
+        gameStateRef.current.realPrizeAmount = gameResultFromServer.prizeAmount
+        gameStateRef.current.wonPhysicalPrize = false
+
+        const prizePositions = new Set()
+        while (prizePositions.size < 3) {
+          prizePositions.add(Math.floor(Math.random() * NUM_CELLS))
+        }
+
+        prizePositions.forEach((pos) => {
+          finalSymbolIds[pos] = winningSymbolId
+        })
+
+        const nonWinningFillPool: string[] = []
+        nonWinningSymbols.forEach((symbolId) => {
+          for (let k = 0; k < MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD; k++) {
+            nonWinningFillPool.push(symbolId)
+          }
+        })
+        shuffleArray(nonWinningFillPool)
+
+        let currentFillIndex = 0
+        for (let i = 0; i < NUM_CELLS; i++) {
+          if (finalSymbolIds[i] === null) {
+            finalSymbolIds[i] = nonWinningFillPool[currentFillIndex]
+            currentFillIndex++
+          }
+        }
+        shuffleArray(finalSymbolIds)
+        return finalSymbolIds
+      }
+    }
+
+    // Lógica original para quando não há resultado do servidor ainda
     gameStateRef.current.hasWonRealPrize = Math.random() < config.winFrequency
     gameStateRef.current.realPrizeAmount = 0
+    gameStateRef.current.wonPhysicalPrize = false
 
     if (gameStateRef.current.hasWonRealPrize) {
       const winningPrizeAmount = gerarPremioReal()
@@ -507,7 +608,14 @@ export default function RaspeDaEsperancaPage() {
   }
 
   const highlightWinningCells = () => {
-    const winningSymbol = `R$${gameStateRef.current.realPrizeAmount}`
+    let winningSymbol = ""
+
+    if (gameStateRef.current.wonPhysicalPrize && gameStateRef.current.physicalPrize) {
+      winningSymbol = gameStateRef.current.physicalPrize.name
+    } else {
+      winningSymbol = `R$${gameStateRef.current.realPrizeAmount}`
+    }
+
     for (let i = 0; i < NUM_CELLS; i++) {
       const symbolElement = document.getElementById(`symbol-${i}`)
       if (symbolElement) {
@@ -530,50 +638,48 @@ export default function RaspeDaEsperancaPage() {
   }
 
   const processGameResult = async () => {
-    try {
-      const response = await AuthClient.makeAuthenticatedRequest("/api/games/raspe-da-esperanca/play", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gameResult: {
-            hasWon: gameStateRef.current.hasWonRealPrize,
-            prizeAmount: gameStateRef.current.realPrizeAmount,
-          },
-        }),
-      })
-      if (response.ok) {
-        const result = await response.json()
-        if (userProfile) {
-          setUserProfile({
-            ...userProfile,
-            wallet: { ...userProfile.wallet, balance: result.newBalance },
-          })
-          setCanPlay(Number.parseFloat(result.newBalance) >= GAME_PRICE)
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao processar resultado do jogo:", error)
-    }
+    // Não precisa fazer nova chamada - resultado já foi obtido no initGame
+    // Apenas processa o final do jogo baseado no estado atual
+    return
   }
 
   const checkGameEnd = () => {
     if (gameStateRef.current.revealedCellsCount === NUM_CELLS && !gameStateRef.current.gameEnded) {
       gameStateRef.current.gameEnded = true
       setGameActive(false)
-      processGameResult()
+
+      // Não chama processGameResult() - resultado já foi processado no initGame
+
       if (gameStateRef.current.hasWonRealPrize) {
         setTimeout(highlightWinningCells, 500)
-        const messageText = winMessages[Math.floor(Math.random() * winMessages.length)].replace(
-          "@valor@",
-          `${gameStateRef.current.realPrizeAmount}`,
-        )
-        setMessage(messageText)
-        playSound(audioWinRef)
-        playSound(audioCoinRef)
-        setModalType("win")
-        setModalTitle("Esperança Premiada!")
-        setModalMessage(messageText)
-        setShowModal(true)
+
+        if (gameStateRef.current.wonPhysicalPrize && gameStateRef.current.physicalPrize) {
+          // Prêmio físico
+          const messageText = physicalPrizeMessages[Math.floor(Math.random() * physicalPrizeMessages.length)].replace(
+            "@premio@",
+            gameStateRef.current.physicalPrize.name,
+          )
+          setMessage(messageText)
+          playSound(audioWinRef)
+          playSound(audioCoinRef)
+          setModalType("physical")
+          setModalTitle("🎁 PRÊMIO FÍSICO!")
+          setModalMessage(messageText)
+          setShowModal(true)
+        } else {
+          // Prêmio monetário
+          const messageText = winMessages[Math.floor(Math.random() * winMessages.length)].replace(
+            "@valor@",
+            `${gameStateRef.current.realPrizeAmount}`,
+          )
+          setMessage(messageText)
+          playSound(audioWinRef)
+          playSound(audioCoinRef)
+          setModalType("win")
+          setModalTitle("Esperança Premiada!")
+          setModalMessage(messageText)
+          setShowModal(true)
+        }
       } else {
         const messageText = loseMessages[Math.floor(Math.random() * loseMessages.length)]
         setMessage(messageText)
@@ -678,7 +784,9 @@ export default function RaspeDaEsperancaPage() {
     }
     setGameLoading(true)
     setGameActive(true)
+
     try {
+      // Resetar estado do jogo
       gameStateRef.current = {
         scratchCanvases: [],
         contexts: [],
@@ -690,18 +798,62 @@ export default function RaspeDaEsperancaPage() {
         gameEnded: false,
         hasWonRealPrize: false,
         realPrizeAmount: 0,
+        wonPhysicalPrize: false,
+        physicalPrize: null,
       }
-      setMessage("Clique ou arraste para raspar a esperança!")
+
+      setMessage("Preparando seu jogo...")
       setShowModal(false)
+
       if (scratchGridRef.current) {
         scratchGridRef.current.innerHTML = ""
       }
+
+      // 1. PRIMEIRO: Fazer chamada para o servidor para determinar o resultado
+      let serverResult = null
+      try {
+        const response = await AuthClient.makeAuthenticatedRequest("/api/games/raspe-da-esperanca/play", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            gameResult: {
+              hasWon: gameStateRef.current.hasWonRealPrize,
+              prizeAmount: gameStateRef.current.realPrizeAmount,
+            },
+          }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          serverResult = result.gameResult
+
+          // Atualizar saldo imediatamente
+          if (userProfile) {
+            setUserProfile({
+              ...userProfile,
+              wallet: { ...userProfile.wallet, balance: result.newBalance },
+            })
+            setCanPlay(Number.parseFloat(result.newBalance) >= GAME_PRICE)
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao consultar servidor:", error)
+        // Se der erro, continua com lógica local
+      }
+
+      // 2. DEPOIS: Definir gameResultFromServer para gerar símbolos corretos
+      setGameResultFromServer(serverResult)
+
+      // 3. Gerar símbolos baseado no resultado do servidor
       const symbolIds = generateScratchCardSymbols()
+
+      // 4. Criar interface do jogo
       const gameContainer = document.createElement("div")
       gameContainer.className =
         "relative w-full aspect-square bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border-2 border-blue-400/30 shadow-2xl shadow-blue-500/10"
       const symbolsGrid = document.createElement("div")
       symbolsGrid.className = "absolute inset-0 grid grid-cols-3 gap-2 p-3"
+
       for (let i = 0; i < NUM_CELLS; i++) {
         const cellContent = document.createElement("div")
         cellContent.className =
@@ -738,6 +890,9 @@ export default function RaspeDaEsperancaPage() {
       gameStateRef.current.contexts = [ctx]
       gameStateRef.current.scratchCanvases = [canvas]
       gameStateRef.current.scratchedAreas = Array(NUM_CELLS).fill(0)
+
+      setMessage("Clique ou arraste para raspar a esperança!")
+
       setTimeout(async () => {
         const canvas = gameStateRef.current.scratchCanvases[0]
         const container = canvas.parentElement!
@@ -860,19 +1015,40 @@ export default function RaspeDaEsperancaPage() {
           onClick={handleBackdropClick}
         >
           <Card
-            className={`bg-gray-800/80 border-2 p-6 w-full max-w-xs text-center transform transition-all duration-300 ${showModal ? "scale-100 opacity-100" : "scale-95 opacity-0"} ${modalType === "win" ? "border-green-500 shadow-2xl shadow-green-500/30" : "border-red-500 shadow-2xl shadow-red-500/30"}`}
+            className={`bg-gray-800/80 border-2 p-6 w-full max-w-xs text-center transform transition-all duration-300 ${showModal ? "scale-100 opacity-100" : "scale-95 opacity-0"} ${
+              modalType === "win" || modalType === "physical"
+                ? "border-green-500 shadow-2xl shadow-green-500/30"
+                : "border-red-500 shadow-2xl shadow-red-500/30"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className={`text-2xl font-bold mb-2 ${modalType === "win" ? "text-green-400" : "text-red-400"}`}>
+            <h2
+              className={`text-2xl font-bold mb-2 ${
+                modalType === "win" || modalType === "physical" ? "text-green-400" : "text-red-400"
+              }`}
+            >
               {modalTitle}
             </h2>
             <p className="text-gray-300 mb-6">{modalMessage}</p>
+            {modalType === "physical" && (
+              <Button
+                type="button"
+                onClick={() => router.push("/meus-premios")}
+                className="w-full font-bold py-2 text-sm rounded-lg bg-blue-500 hover:bg-blue-600 text-white mb-2"
+              >
+                Ver Meus Prêmios
+              </Button>
+            )}
             <Button
               type="button"
               onClick={handleCloseModal}
-              className={`w-full font-bold py-2 text-sm rounded-lg ${modalType === "win" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} text-white`}
+              className={`w-full font-bold py-2 text-sm rounded-lg ${
+                modalType === "win" || modalType === "physical"
+                  ? "bg-green-500 hover:bg-green-600"
+                  : "bg-red-500 hover:bg-red-600"
+              } text-white`}
             >
-              {modalType === "win" ? "Coletar Prêmio!" : "Tentar Novamente"}
+              {modalType === "win" || modalType === "physical" ? "Coletar Prêmio!" : "Tentar Novamente"}
             </Button>
           </Card>
         </div>

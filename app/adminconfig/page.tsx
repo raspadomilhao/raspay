@@ -42,6 +42,9 @@ import {
   Link,
   Unlink,
   Zap,
+  Gift,
+  Package,
+  Trophy,
 } from "lucide-react"
 
 import {
@@ -207,6 +210,49 @@ interface AdminStats {
   }
 }
 
+interface PhysicalPrize {
+  id: number
+  name: string
+  description: string | null
+  image_url: string | null
+  estimated_value: number
+  stock_quantity: number
+  min_stock_alert: number
+  is_active: boolean
+  rarity_weight: number
+  created_at: string
+  updated_at: string
+}
+
+interface PhysicalPrizeWinner {
+  id: number
+  user_id: number
+  physical_prize_id: number
+  transaction_id: number | null
+  game_name: string
+  winner_name: string | null
+  winner_phone: string | null
+  winner_email: string | null
+  delivery_address: string | null
+  delivery_city: string | null
+  delivery_state: string | null
+  delivery_zipcode: string | null
+  delivery_notes: string | null
+  status: string
+  admin_notes: string | null
+  contacted_at: string | null
+  shipped_at: string | null
+  delivered_at: string | null
+  tracking_code: string | null
+  created_at: string
+  updated_at: string
+  user_name?: string
+  user_email?: string
+  prize_name?: string
+  prize_image_url?: string
+  prize_estimated_value?: number
+}
+
 export default function AdminConfigPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
@@ -232,6 +278,21 @@ export default function AdminConfigPage() {
   const [processingManagerWithdraw, setProcessingManagerWithdraw] = useState<number | null>(null)
   const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] = useState(false)
   const [selectedAffiliateForManager, setSelectedAffiliateForManager] = useState<Affiliate | null>(null)
+
+  const [physicalPrizes, setPhysicalPrizes] = useState<PhysicalPrize[]>([])
+  const [physicalPrizeWinners, setPhysicalPrizeWinners] = useState<PhysicalPrizeWinner[]>([])
+  const [physicalPrizesStats, setPhysicalPrizesStats] = useState<any>(null)
+  const [isCreatePhysicalPrizeDialogOpen, setIsCreatePhysicalPrizeDialogOpen] = useState(false)
+  const [isEditPhysicalPrizeDialogOpen, setIsEditPhysicalPrizeDialogOpen] = useState(false)
+  const [editingPhysicalPrize, setEditingPhysicalPrize] = useState<PhysicalPrize | null>(null)
+  const [isAddStockDialogOpen, setIsAddStockDialogOpen] = useState(false)
+  const [selectedPrizeForStock, setSelectedPrizeForStock] = useState<PhysicalPrize | null>(null)
+  const [isEditWinnerDialogOpen, setIsEditWinnerDialogOpen] = useState(false)
+  const [editingWinner, setEditingWinner] = useState<PhysicalPrizeWinner | null>(null)
+
+  const [physicalPrizeChance, setPhysicalPrizeChance] = useState<number>(1) // Porcentagem
+  const [isChanceDialogOpen, setIsChanceDialogOpen] = useState(false)
+  const [chanceForm, setChanceForm] = useState({ percentage: 1 })
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -274,6 +335,47 @@ export default function AdminConfigPage() {
   const [settingsForm, setSettingsForm] = useState({
     min_deposit_amount: "",
     min_withdraw_amount: "",
+  })
+
+  // Form states para prêmios físicos
+  const [createPhysicalPrizeForm, setCreatePhysicalPrizeForm] = useState({
+    name: "",
+    description: "",
+    image_url: "",
+    estimated_value: 0,
+    stock_quantity: 0,
+    min_stock_alert: 5,
+    rarity_weight: 5.0,
+  })
+
+  const [editPhysicalPrizeForm, setEditPhysicalPrizeForm] = useState({
+    name: "",
+    description: "",
+    image_url: "",
+    estimated_value: 0,
+    min_stock_alert: 5,
+    rarity_weight: 5.0,
+    is_active: true,
+  })
+
+  const [addStockForm, setAddStockForm] = useState({
+    quantity: 0,
+    reason: "",
+    admin_user: "admin",
+  })
+
+  const [editWinnerForm, setEditWinnerForm] = useState({
+    winner_name: "",
+    winner_phone: "",
+    winner_email: "",
+    delivery_address: "",
+    delivery_city: "",
+    delivery_state: "",
+    delivery_zipcode: "",
+    delivery_notes: "",
+    status: "pending_contact",
+    admin_notes: "",
+    tracking_code: "",
   })
 
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -331,6 +433,9 @@ export default function AdminConfigPage() {
       fetchManagerWithdraws()
       fetchSettings()
       fetchStats()
+      fetchPhysicalPrizes()
+      fetchPhysicalPrizeWinners()
+      fetchPhysicalPrizeChance() // Adicionar esta linha
     }
   }, [isAuthenticated])
 
@@ -454,6 +559,75 @@ export default function AdminConfigPage() {
       console.error("Erro ao buscar estatísticas:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchPhysicalPrizes = async () => {
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/physical-prizes/list", {
+        headers: { "X-Admin-Token": adminToken },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPhysicalPrizes(data.prizes || [])
+        setPhysicalPrizesStats(data.stats || null)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar prêmios físicos:", error)
+      toast.error("Erro ao carregar prêmios físicos")
+    }
+  }
+
+  const fetchPhysicalPrizeWinners = async () => {
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/physical-prizes/winners", {
+        headers: { "X-Admin-Token": adminToken },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPhysicalPrizeWinners(data.winners || [])
+      }
+    } catch (error) {
+      console.error("Erro ao buscar ganhadores de prêmios físicos:", error)
+      toast.error("Erro ao carregar ganhadores")
+    }
+  }
+
+  const fetchPhysicalPrizeChance = async () => {
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/physical-prizes/chance", {
+        headers: { "X-Admin-Token": adminToken },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPhysicalPrizeChance(Number.parseFloat(data.percentage))
+        setChanceForm({ percentage: Number.parseFloat(data.percentage) })
+      }
+    } catch (error) {
+      console.error("Erro ao buscar chance de prêmios físicos:", error)
+    }
+  }
+
+  const handleDeletePhysicalPrize = async (id: number, name: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o prêmio "${name}"?`)) return
+
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest(`/api/admin/physical-prizes/${id}/delete`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message)
+        fetchPhysicalPrizes()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao excluir prêmio")
+      }
+    } catch (error) {
+      console.error("Erro ao excluir prêmio:", error)
+      toast.error("Erro interno do servidor")
     }
   }
 
@@ -1135,6 +1309,14 @@ export default function AdminConfigPage() {
                       </TabsTrigger>
                     </>
                   )}
+                  <TabsTrigger
+                    value="physical-prizes"
+                    className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
+                  >
+                    <Gift className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Prêmios Físicos</span>
+                    <span className="sm:hidden">Prêmios</span>
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -2709,10 +2891,999 @@ export default function AdminConfigPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* Physical Prizes Tab */}
+              <TabsContent value="physical-prizes" className="space-y-4 lg:space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <h2 className="text-lg sm:text-xl font-bold text-white">Gerenciar Prêmios Físicos</h2>
+                  <Button
+                    onClick={() => setIsCreatePhysicalPrizeDialogOpen(true)}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-xs sm:text-sm"
+                  >
+                    <Gift className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Novo Prêmio
+                  </Button>
+                </div>
+
+                {/* Estatísticas dos Prêmios */}
+                {physicalPrizesStats && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <Card className="bg-slate-900/50 border-slate-700">
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-400 text-xs sm:text-sm">Total de Prêmios</p>
+                            <p className="text-lg sm:text-xl font-bold text-white">
+                              {physicalPrizesStats.prizes.total_prizes}
+                            </p>
+                          </div>
+                          <Gift className="h-6 w-6 text-purple-400" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-900/50 border-slate-700">
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-400 text-xs sm:text-sm">Em Estoque</p>
+                            <p className="text-lg sm:text-xl font-bold text-green-400">
+                              {physicalPrizesStats.prizes.prizes_in_stock}
+                            </p>
+                          </div>
+                          <Package className="h-6 w-6 text-green-400" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-900/50 border-slate-700">
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-400 text-xs sm:text-sm">Ganhadores</p>
+                            <p className="text-lg sm:text-xl font-bold text-blue-400">
+                              {physicalPrizesStats.winners.total_winners}
+                            </p>
+                          </div>
+                          <Trophy className="h-6 w-6 text-blue-400" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-900/50 border-slate-700">
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-400 text-xs sm:text-sm">Estoque Baixo</p>
+                            <p className="text-lg sm:text-xl font-bold text-yellow-400">
+                              {physicalPrizesStats.prizes.low_stock_alerts}
+                            </p>
+                          </div>
+                          <AlertCircle className="h-6 w-6 text-yellow-400" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-slate-900/50 border-slate-700">
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-400 text-xs sm:text-sm">Chance de Prêmio Físico</p>
+                            <p className="text-lg sm:text-xl font-bold text-cyan-400">
+                              {physicalPrizeChance.toFixed(2)}%
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => setIsChanceDialogOpen(true)}
+                            className="h-6 w-6 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/20"
+                            variant="ghost"
+                            size="icon"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Lista de Prêmios */}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white text-sm sm:text-base">Prêmios Cadastrados</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-slate-700">
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Prêmio</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Valor</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Estoque</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Raridade</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {physicalPrizes.map((prize) => (
+                            <TableRow key={prize.id} className="hover:bg-slate-800 border-slate-700">
+                              <TableCell>
+                                <div className="flex items-center space-x-3">
+                                  {prize.image_url ? (
+                                    <img
+                                      src={prize.image_url || "/placeholder.svg"}
+                                      alt={prize.name}
+                                      className="w-10 h-10 object-contain rounded"
+                                      onError={(e) => {
+                                        e.currentTarget.src = `/placeholder.svg?height=40&width=40&text=${encodeURIComponent(prize.name.charAt(0))}`
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 bg-slate-700 rounded flex items-center justify-center">
+                                      <Gift className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-white font-medium text-xs sm:text-sm">{prize.name}</p>
+                                    {prize.description && (
+                                      <p className="text-gray-400 text-xs truncate max-w-32">{prize.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-green-400 font-medium text-xs sm:text-sm">
+                                  {formatCurrency(prize.estimated_value)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  <span
+                                    className={`text-xs sm:text-sm font-medium ${
+                                      prize.stock_quantity <= prize.min_stock_alert ? "text-red-400" : "text-white"
+                                    }`}
+                                  >
+                                    {prize.stock_quantity}
+                                  </span>
+                                  {prize.stock_quantity <= prize.min_stock_alert && (
+                                    <AlertCircle className="h-4 w-4 text-red-400" />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-purple-400 text-xs sm:text-sm">{prize.rarity_weight}</span>
+                              </TableCell>
+                              <TableCell>{getStatusBadge(prize.is_active ? "active" : "inactive")}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedPrizeForStock(prize)
+                                      setIsAddStockDialogOpen(true)
+                                    }}
+                                    className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                                  >
+                                    <Package className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setEditingPhysicalPrize(prize)
+                                      setEditPhysicalPrizeForm({
+                                        name: prize.name,
+                                        description: prize.description || "",
+                                        image_url: prize.image_url || "",
+                                        estimated_value: prize.estimated_value,
+                                        min_stock_alert: prize.min_stock_alert,
+                                        rarity_weight: prize.rarity_weight,
+                                        is_active: prize.is_active,
+                                      })
+                                      setIsEditPhysicalPrizeDialogOpen(true)
+                                    }}
+                                    className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeletePhysicalPrize(prize.id, prize.name)}
+                                    className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Lista de Ganhadores */}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white text-sm sm:text-base">Ganhadores de Prêmios Físicos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-slate-700">
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ganhador</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Prêmio</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Jogo</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Data</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {physicalPrizeWinners.map((winner) => (
+                            <TableRow key={winner.id} className="hover:bg-slate-800 border-slate-700">
+                              <TableCell>
+                                <div>
+                                  <p className="text-white font-medium text-xs sm:text-sm">{winner.user_name}</p>
+                                  <p className="text-gray-400 text-xs">{winner.user_email}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  {winner.prize_image_url && (
+                                    <img
+                                      src={winner.prize_image_url || "/placeholder.svg"}
+                                      alt={winner.prize_name || ""}
+                                      className="w-8 h-8 object-contain rounded"
+                                    />
+                                  )}
+                                  <div>
+                                    <p className="text-white text-xs sm:text-sm">{winner.prize_name}</p>
+                                    <p className="text-green-400 text-xs">
+                                      {winner.prize_estimated_value ? formatCurrency(winner.prize_estimated_value) : ""}
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-gray-300 text-xs sm:text-sm">{winner.game_name}</span>
+                              </TableCell>
+                              <TableCell>{getStatusBadge(winner.status)}</TableCell>
+                              <TableCell>
+                                <span className="text-gray-400 text-xs">{formatDate(winner.created_at)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingWinner(winner)
+                                    setEditWinnerForm({
+                                      winner_name: winner.winner_name || "",
+                                      winner_phone: winner.winner_phone || "",
+                                      winner_email: winner.winner_email || "",
+                                      delivery_address: winner.delivery_address || "",
+                                      delivery_city: winner.delivery_city || "",
+                                      delivery_state: winner.delivery_state || "",
+                                      delivery_zipcode: winner.delivery_zipcode || "",
+                                      delivery_notes: winner.delivery_notes || "",
+                                      status: winner.status,
+                                      admin_notes: winner.admin_notes || "",
+                                      tracking_code: winner.tracking_code || "",
+                                    })
+                                    setIsEditWinnerDialogOpen(true)
+                                  }}
+                                  className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
         </SidebarInset>
       </div>
-    </SidebarProvider>
-  )
-}
+
+      {/* Create Physical Prize Dialog */}
+      <Dialog open={isCreatePhysicalPrizeDialogOpen} onOpenChange={setIsCreatePhysicalPrizeDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Criar Novo Prêmio Físico</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              try {
+                const response = await AuthClient.makeAuthenticatedRequest("/api/admin/physical-prizes/create", {
+                  method: "POST",
+                  headers: { "X-Admin-Token": adminToken },
+                  body: JSON.stringify(createPhysicalPrizeForm),
+                })
+
+                if (response.ok) {
+                  toast.success("Prêmio físico criado com sucesso!")
+                  setIsCreatePhysicalPrizeDialogOpen(false)
+                  setCreatePhysicalPrizeForm({
+                    name: "",
+                    description: "",
+                    image_url: "",
+                    estimated_value: 0,
+                    stock_quantity: 0,
+                    min_stock_alert: 5,
+                    rarity_weight: 5.0,
+                  })
+                  fetchPhysicalPrizes()
+                } else {
+                  const error = await response.json()
+                  toast.error(error.error || "Erro ao criar prêmio físico")
+                }
+              } catch (error) {
+                console.error("Erro ao criar prêmio físico:", error)
+                toast.error("Erro interno do servidor")
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="prize-name" className="text-white">
+                  Nome do Prêmio
+                </Label>
+                <Input
+                  id="prize-name"
+                  value={createPhysicalPrizeForm.name}
+                  onChange={(e) => setCreatePhysicalPrizeForm({ ...createPhysicalPrizeForm, name: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="prize-description" className="text-white">
+                  Descrição
+                </Label>
+                <Textarea
+                  id="prize-description"
+                  value={createPhysicalPrizeForm.description}
+                  onChange={(e) =>
+                    setCreatePhysicalPrizeForm({ ...createPhysicalPrizeForm, description: e.target.value })
+                  }
+                  className="bg-slate-800 border-slate-700 text-white"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="prize-image" className="text-white">
+                  URL da Imagem
+                </Label>
+                <Input
+                  id="prize-image"
+                  value={createPhysicalPrizeForm.image_url}
+                  onChange={(e) =>
+                    setCreatePhysicalPrizeForm({ ...createPhysicalPrizeForm, image_url: e.target.value })
+                  }
+                  className="bg-slate-800 border-slate-700 text-white"
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="prize-value" className="text-white">
+                    Valor Estimado (R$)
+                  </Label>
+                  <Input
+                    id="prize-value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={createPhysicalPrizeForm.estimated_value}
+                    onChange={(e) =>
+                      setCreatePhysicalPrizeForm({
+                        ...createPhysicalPrizeForm,
+                        estimated_value: Number(e.target.value),
+                      })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="prize-stock" className="text-white">
+                    Quantidade em Estoque
+                  </Label>
+                  <Input
+                    id="prize-stock"
+                    type="number"
+                    min="0"
+                    value={createPhysicalPrizeForm.stock_quantity}
+                    onChange={(e) =>
+                      setCreatePhysicalPrizeForm({ ...createPhysicalPrizeForm, stock_quantity: Number(e.target.value) })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="prize-alert" className="text-white">
+                    Alerta de Estoque Baixo
+                  </Label>
+                  <Input
+                    id="prize-alert"
+                    type="number"
+                    min="0"
+                    value={createPhysicalPrizeForm.min_stock_alert}
+                    onChange={(e) =>
+                      setCreatePhysicalPrizeForm({
+                        ...createPhysicalPrizeForm,
+                        min_stock_alert: Number(e.target.value),
+                      })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="prize-rarity" className="text-white">
+                    Peso de Raridade
+                  </Label>
+                  <Input
+                    id="prize-rarity"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={createPhysicalPrizeForm.rarity_weight}
+                    onChange={(e) =>
+                      setCreatePhysicalPrizeForm({ ...createPhysicalPrizeForm, rarity_weight: Number(e.target.value) })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreatePhysicalPrizeDialogOpen(false)}
+                className="border-slate-600 text-white hover:bg-slate-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                Criar Prêmio
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Physical Prize Dialog */}
+      <Dialog open={isEditPhysicalPrizeDialogOpen} onOpenChange={setIsEditPhysicalPrizeDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Editar Prêmio Físico</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!editingPhysicalPrize) return
+
+              try {
+                const response = await AuthClient.makeAuthenticatedRequest(
+                  `/api/admin/physical-prizes/${editingPhysicalPrize.id}/update`,
+                  {
+                    method: "PUT",
+                    headers: { "X-Admin-Token": adminToken },
+                    body: JSON.stringify(editPhysicalPrizeForm),
+                  },
+                )
+
+                if (response.ok) {
+                  toast.success("Prêmio físico atualizado com sucesso!")
+                  setIsEditPhysicalPrizeDialogOpen(false)
+                  setEditingPhysicalPrize(null)
+                  fetchPhysicalPrizes()
+                } else {
+                  const error = await response.json()
+                  toast.error(error.error || "Erro ao atualizar prêmio físico")
+                }
+              } catch (error) {
+                console.error("Erro ao atualizar prêmio físico:", error)
+                toast.error("Erro interno do servidor")
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="edit-prize-name" className="text-white">
+                  Nome do Prêmio
+                </Label>
+                <Input
+                  id="edit-prize-name"
+                  value={editPhysicalPrizeForm.name}
+                  onChange={(e) => setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, name: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-prize-description" className="text-white">
+                  Descrição
+                </Label>
+                <Textarea
+                  id="edit-prize-description"
+                  value={editPhysicalPrizeForm.description}
+                  onChange={(e) => setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, description: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-prize-image" className="text-white">
+                  URL da Imagem
+                </Label>
+                <Input
+                  id="edit-prize-image"
+                  value={editPhysicalPrizeForm.image_url}
+                  onChange={(e) => setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, image_url: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="edit-prize-value" className="text-white">
+                    Valor Estimado (R$)
+                  </Label>
+                  <Input
+                    id="edit-prize-value"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editPhysicalPrizeForm.estimated_value}
+                    onChange={(e) =>
+                      setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, estimated_value: Number(e.target.value) })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-prize-alert" className="text-white">
+                    Alerta de Estoque Baixo
+                  </Label>
+                  <Input
+                    id="edit-prize-alert"
+                    type="number"
+                    min="0"
+                    value={editPhysicalPrizeForm.min_stock_alert}
+                    onChange={(e) =>
+                      setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, min_stock_alert: Number(e.target.value) })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="edit-prize-rarity" className="text-white">
+                    Peso de Raridade
+                  </Label>
+                  <Input
+                    id="edit-prize-rarity"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={editPhysicalPrizeForm.rarity_weight}
+                    onChange={(e) =>
+                      setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, rarity_weight: Number(e.target.value) })
+                    }
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-prize-status" className="text-white">
+                    Status
+                  </Label>
+                  <Select
+                    value={editPhysicalPrizeForm.is_active ? "active" : "inactive"}
+                    onValueChange={(value) =>
+                      setEditPhysicalPrizeForm({ ...editPhysicalPrizeForm, is_active: value === "active" })
+                    }
+                  >
+                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditPhysicalPrizeDialogOpen(false)}
+                className="border-slate-600 text-white hover:bg-slate-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                Salvar Alterações
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Stock Dialog */}
+      <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Adicionar Estoque</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!selectedPrizeForStock) return
+
+              try {
+                const response = await AuthClient.makeAuthenticatedRequest(
+                  `/api/admin/physical-prizes/${selectedPrizeForStock.id}/stock`,
+                  {
+                    method: "POST",
+                    headers: { "X-Admin-Token": adminToken },
+                    body: JSON.stringify(addStockForm),
+                  },
+                )
+
+                if (response.ok) {
+                  toast.success("Estoque adicionado com sucesso!")
+                  setIsAddStockDialogOpen(false)
+                  setSelectedPrizeForStock(null)
+                  setAddStockForm({
+                    quantity: 0,
+                    reason: "",
+                    admin_user: "admin",
+                  })
+                  fetchPhysicalPrizes()
+                } else {
+                  const error = await response.json()
+                  toast.error(error.error || "Erro ao adicionar estoque")
+                }
+              } catch (error) {
+                console.error("Erro ao adicionar estoque:", error)
+                toast.error("Erro interno do servidor")
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="bg-slate-800 p-3 rounded-md">
+              <p className="text-gray-400 text-xs">Prêmio</p>
+              <p className="text-white font-medium">{selectedPrizeForStock?.name}</p>
+              <p className="text-gray-400 text-xs">Estoque atual: {selectedPrizeForStock?.stock_quantity}</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="stock-quantity" className="text-white">
+                  Quantidade a Adicionar
+                </Label>
+                <Input
+                  id="stock-quantity"
+                  type="number"
+                  min="1"
+                  value={addStockForm.quantity}
+                  onChange={(e) => setAddStockForm({ ...addStockForm, quantity: Number(e.target.value) })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="stock-reason" className="text-white">
+                  Motivo
+                </Label>
+                <Input
+                  id="stock-reason"
+                  value={addStockForm.reason}
+                  onChange={(e) => setAddStockForm({ ...addStockForm, reason: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  placeholder="Ex: Reposição de estoque"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddStockDialogOpen(false)}
+                className="border-slate-600 text-white hover:bg-slate-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+              >
+                Adicionar Estoque
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Winner Dialog */}
+      <Dialog open={isEditWinnerDialogOpen} onOpenChange={setIsEditWinnerDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white">Editar Ganhador</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!editingWinner) return
+
+              try {
+                const response = await AuthClient.makeAuthenticatedRequest(
+                  `/api/admin/physical-prizes/winners/${editingWinner.id}/update`,
+                  {
+                    method: "PUT",
+                    headers: { "X-Admin-Token": adminToken },
+                    body: JSON.stringify(editWinnerForm),
+                  },
+                )
+
+                if (response.ok) {
+                  toast.success("Ganhador atualizado com sucesso!")
+                  setIsEditWinnerDialogOpen(false)
+                  setEditingWinner(null)
+                  fetchPhysicalPrizeWinners()
+                } else {
+                  const error = await response.json()
+                  toast.error(error.error || "Erro ao atualizar ganhador")
+                }
+              } catch (error) {
+                console.error("Erro ao atualizar ganhador:", error)
+                toast.error("Erro interno do servidor")
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="bg-slate-800 p-3 rounded-md">
+              <p className="text-gray-400 text-xs">Prêmio Ganho</p>
+              <p className="text-white font-medium">{editingWinner?.prize_name}</p>
+              <p className="text-green-400 text-xs">
+                {editingWinner?.prize_estimated_value ? formatCurrency(editingWinner.prize_estimated_value) : ""}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="winner-name" className="text-white">
+                    Nome Completo
+                  </Label>
+                  <Input
+                    id="winner-name"
+                    value={editWinnerForm.winner_name}
+                    onChange={(e) => setEditWinnerForm({ ...editWinnerForm, winner_name: e.target.value })}
+                    className="bg-slate-800 border-slate-700 text-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="winner-phone" className="text-white">
+                    Telefone
+                  </Label>
+                  <Input
+                    id="winner-phone"
+                    value={editWinnerForm.winner_phone}
+                    onChange={(e) => setEditWinnerForm({ ...editWinnerForm, winner_phone: e.target.value })}
+                    className="bg-slate-800 border-slate-700 text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="winner-email" className="text-white">
+                  E-mail
+                </Label>
+                <Input
+                  id="winner-email"
+                  type="email"
+                  value={editWinnerForm.winner_email}
+                  onChange={(e) => setEditWinnerForm({ ...editWinnerForm, winner_email: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="delivery-address" className="text-white">
+                  Endereço de Entrega
+                </Label>
+                <Input
+                  id="delivery-address"
+                  value={editWinnerForm.delivery_address}
+                  onChange={(e) => setEditWinnerForm({ ...editWinnerForm, delivery_address: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="delivery-city" className="text-white">
+                    Cidade
+                  </Label>
+                  <Input
+                    id="delivery-city"
+                    value={editWinnerForm.delivery_city}
+                    onChange={(e) => setEditWinnerForm({ ...editWinnerForm, delivery_city: e.target.value })}
+                    className="bg-slate-800 border-slate-700 text-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="delivery-state" className="text-white">
+                    Estado
+                  </Label>
+                  <Input
+                    id="delivery-state"
+                    value={editWinnerForm.delivery_state}
+                    onChange={(e) => setEditWinnerForm({ ...editWinnerForm, delivery_state: e.target.value })}
+                    className="bg-slate-800 border-slate-700 text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="delivery-zipcode" className="text-white">
+                  CEP
+                </Label>
+                <Input
+                  id="delivery-zipcode"
+                  value={editWinnerForm.delivery_zipcode}
+                  onChange={(e) => setEditWinnerForm({ ...editWinnerForm, delivery_zipcode: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="winner-status" className="text-white">
+                  Status
+                </Label>
+                <Select
+                  value={editWinnerForm.status}
+                  onValueChange={(value) => setEditWinnerForm({ ...editWinnerForm, status: value })}
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                    <SelectItem value="pending_contact">Aguardando Contato</SelectItem>
+                    <SelectItem value="contacted">Contatado</SelectItem>
+                    <SelectItem value="address_collected">Endereço Coletado</SelectItem>
+                    <SelectItem value="shipped">Enviado</SelectItem>
+                    <SelectItem value="delivered">Entregue</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="tracking-code" className="text-white">
+                  Código de Rastreamento
+                </Label>
+                <Input
+                  id="tracking-code"
+                  value={editWinnerForm.tracking_code}
+                  onChange={(e) => setEditWinnerForm({ ...editWinnerForm, tracking_code: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="admin-notes" className="text-white">
+                  Observações do Admin
+                </Label>
+                <Textarea
+                  id="admin-notes"
+                  value={editWinnerForm.admin_notes}
+                  onChange={(e) => setEditWinnerForm({ ...editWinnerForm, admin_notes: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditWinnerDialogOpen(false)}
+                className="border-slate-600 text-white hover:bg-slate-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+              >
+                Salvar Alterações
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {/* Configure Physical Prize Chance Dialog */}
+      <Dialog open={isChanceDialogOpen} onOpenChange={setIsChanceDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Configurar Chance de Prêmios Físicos</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              try {
+                const response = await AuthClient.makeAuthenticatedRequest("/api/admin/physical-prizes/chance", {
+                  method: "POST",
+                  headers: { "X-Admin-Token": adminToken },
+                  body: JSON.stringify({ percentage: chanceForm.percentage }),
+                })
+
+                if (response.ok) {
+                  const data = await response.json()
+                  toast.success(data.message)
+                  setIsChanceDialogOpen(false)
+                  fetchPhysicalPrizeChance()
+                } else {
+                  const error = await response.json()
+                  toast.error(error.error || "Erro ao salvar configuração")
+                }
+              } catch (error) {
+                console.error("Erro ao salvar configuração:", error)
+                toast.error("Erro interno do servidor")
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="chance-percentage" className="text-white">
+                Porcentagem de Chance (%)
+              </Label>
+              <Input
+                id="chance-percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={chanceForm.percentage}
+                onChange={(e) => setChanceForm({ percentage: Number.parseFloat(e.target.value) || 0 })}
+                className="bg-slate-800 border-slate-700 text-white"
+                required
+              />
+              <p className="text-gray-400 text-xs">
+                Chance atual: {physicalPrizeChance.toFixed(2)}%
+              </p>
+              <p className="text-gray-400 text-xs">
+                Define a probabilidade de um jogador ganhar um prêmio físico no jogo Raspe da Esperança
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+\
