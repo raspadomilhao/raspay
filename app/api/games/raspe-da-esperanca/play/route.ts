@@ -2,15 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { neon } from "@neondatabase/serverless"
 import { processAffiliateLossCommission } from "@/lib/database"
-import { contributeToCofreSystem, distributeCofrePrize } from "@/lib/cofre-system"
 
 const sql = neon(process.env.DATABASE_URL!)
 const GAME_PRICE = 1.0
-const GAME_NAME = "raspe-da-esperanca"
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🎮 === JOGO RASPE DA ESPERANÇA COM COFRE ===")
+    console.log("🎮 === JOGO RASPE DA ESPERANÇA ===")
 
     // 1. Verificar autenticação
     const auth = await verifyAuth(request)
@@ -105,31 +103,6 @@ export async function POST(request: NextRequest) {
       const netResult = prizeAmount - GAME_PRICE
       console.log(`📊 Resultado líquido: R$ ${netResult.toFixed(2)} (${netResult >= 0 ? "LUCRO" : "PERDA"})`)
 
-      // 🏦 SISTEMA DE COFRE: Contribuir com o valor líquido e verificar sorteio
-      const cofreResult = await contributeToCofreSystem(GAME_NAME, netResult, auth.userId, auth.userType)
-      console.log(
-        `🏦 Cofre - Deve verificar prêmio: ${cofreResult.shouldCheckPrize}, Jogadas: ${cofreResult.gameCount}`,
-      )
-
-      // Verificar se ganhou prêmio do cofre (apenas usuários regulares)
-      let cofrePrize = null
-      if (cofreResult.shouldCheckPrize && auth.userType === "regular") {
-        cofrePrize = await distributeCofrePrize(GAME_NAME, auth.userId, auth.userType)
-
-        if (cofrePrize?.won && cofrePrize.prize > 0) {
-          console.log(`🎰 PRÊMIO DO COFRE: R$ ${cofrePrize.prize.toFixed(2)}`)
-
-          // Creditar prêmio do cofre
-          await sql`
-            INSERT INTO transactions (user_id, type, amount, status, created_at, description)
-            VALUES (${auth.userId}, 'game_prize', ${cofrePrize.prize}, 'completed', NOW(), 'Prêmio do Cofre - Raspe da Esperança')
-          `
-
-          newBalance += cofrePrize.prize
-          console.log(`💰 Saldo após prêmio do cofre: R$ ${newBalance.toFixed(2)}`)
-        }
-      }
-
       // Atualizar carteira
       await sql`
         UPDATE wallets 
@@ -150,54 +123,33 @@ export async function POST(request: NextRequest) {
 
       // 7. Preparar mensagem baseada no resultado
       let message = ""
-      const totalPrize = prizeAmount + (cofrePrize?.prize || 0)
-      const finalNetResult = totalPrize - GAME_PRICE
-
-      if (totalPrize === 0) {
+      if (prizeAmount === 0) {
         message = "Que pena! Você não ganhou nada desta vez."
-      } else if (finalNetResult < 0) {
-        message = `Você ganhou R$ ${totalPrize.toFixed(2)}, mas perdeu R$ ${Math.abs(finalNetResult).toFixed(2)} no total.`
-      } else if (finalNetResult === 0) {
-        message = `Você ganhou R$ ${totalPrize.toFixed(2)} e empatou!`
+      } else if (netResult < 0) {
+        message = `Você ganhou R$ ${prizeAmount.toFixed(2)}, mas perdeu R$ ${Math.abs(netResult).toFixed(2)} no total.`
+      } else if (netResult === 0) {
+        message = `Você ganhou R$ ${prizeAmount.toFixed(2)} e empatou!`
       } else {
-        message = `Parabéns! Você ganhou R$ ${totalPrize.toFixed(2)} e lucrou R$ ${finalNetResult.toFixed(2)}!`
-      }
-
-      // Adicionar informação sobre prêmio do cofre na mensagem
-      if (cofrePrize?.won && cofrePrize.prize > 0) {
-        message += ` 🎰 BÔNUS COFRE: Você ganhou R$ ${cofrePrize.prize.toFixed(2)} do COFRE!`
+        message = `Parabéns! Você ganhou R$ ${prizeAmount.toFixed(2)} e lucrou R$ ${netResult.toFixed(2)}!`
       }
 
       // 8. Retornar resultado no formato esperado pelo frontend
       return NextResponse.json({
         success: true,
         gameResult: {
-          hasWon: totalPrize > 0,
-          prizeAmount: totalPrize,
+          hasWon: prizeAmount > 0,
+          prizeAmount: prizeAmount,
         },
-        cofrePrize: cofrePrize?.won
-          ? {
-              won: true,
-              amount: cofrePrize.prize,
-              cofreBalanceBefore: cofrePrize.cofreBalanceBefore,
-              cofreBalanceAfter: cofrePrize.cofreBalanceAfter,
-            }
-          : null,
         newBalance: newBalance,
         message: message,
         debug: {
           balanceBefore: currentBalance,
           gamePrice: GAME_PRICE,
-          regularPrize: prizeAmount,
-          cofrePrize: cofrePrize?.prize || 0,
-          totalPrize: totalPrize,
-          netResult: finalNetResult,
+          prize: prizeAmount,
+          netResult: netResult,
           balanceAfter: newBalance,
           userType: auth.userType,
           transactionId: gamePlayTransactionId,
-          cofreGameCount: cofreResult.gameCount,
-          cofreTriggered: cofreResult.shouldCheckPrize,
-          cofreEligible: auth.userType === "regular",
         },
       })
     } catch (dbError) {

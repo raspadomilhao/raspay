@@ -42,9 +42,8 @@ import {
   Link,
   Unlink,
   Zap,
-  Vault,
-  Gift,
-  TrendingDown,
+  Upload,
+  ImageIcon,
 } from "lucide-react"
 
 import {
@@ -126,29 +125,16 @@ interface ManagerWithdraw {
 interface SystemSettings {
   min_deposit_amount?: { value: string; description: string; updated_at: string }
   min_withdraw_amount?: { value: string; description: string; updated_at: string }
+  carousel_banner_1?: { value: string; description: string; updated_at: string }
+  carousel_banner_2?: { value: string; description: string; updated_at: string }
+  carousel_banner_3?: { value: string; description: string; updated_at: string }
 }
 
-interface CofreStats {
-  balance: number
-  availableForPrizes: number
-  totalContributed: number
-  totalDistributed: number
-  gameCount: number
-  prizeChance: number
-  nextPrizeValues: number[]
-}
-
-interface CofrePrize {
+interface CarouselImage {
   id: number
-  game_name: string
-  user_id: number
-  prize_amount: number
-  cofre_balance_before: number
-  cofre_balance_after: number
-  game_count_trigger: number
-  created_at: string
-  user_name: string
-  user_username: string
+  name: string
+  url: string
+  active: boolean
 }
 
 interface AdminStats {
@@ -225,6 +211,7 @@ interface AdminStats {
     created_at: string
   }>
   performance: {
+    // Added performance metrics
     avg_deposit_time: number | null
     avg_withdraw_time: number | null
     api_error_rate: string
@@ -246,8 +233,6 @@ export default function AdminConfigPage() {
   const [managerWithdraws, setManagerWithdraws] = useState<ManagerWithdraw[]>([])
   const [settings, setSettings] = useState<SystemSettings>({})
   const [stats, setStats] = useState<AdminStats | null>(null)
-  const [cofreStats, setCofreStats] = useState<CofreStats | null>(null)
-  const [cofrePrizes, setCofrePrizes] = useState<CofrePrize[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingAffiliate, setEditingAffiliate] = useState<Affiliate | null>(null)
   const [editingManager, setEditingManager] = useState<Manager | null>(null)
@@ -259,6 +244,14 @@ export default function AdminConfigPage() {
   const [processingManagerWithdraw, setProcessingManagerWithdraw] = useState<number | null>(null)
   const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] = useState(false)
   const [selectedAffiliateForManager, setSelectedAffiliateForManager] = useState<Affiliate | null>(null)
+
+  // Carousel images state
+  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([
+    { id: 1, name: "Banner 1", url: "/images/carousel-banner-1.png", active: true },
+    { id: 2, name: "Banner 2", url: "/images/carousel-banner-2.png", active: true },
+    { id: 3, name: "Banner 3", url: "/images/carousel-banner-3.png", active: true },
+  ])
+  const [uploadingImage, setUploadingImage] = useState<number | null>(null)
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -358,7 +351,6 @@ export default function AdminConfigPage() {
       fetchManagerWithdraws()
       fetchSettings()
       fetchStats()
-      fetchCofreStats()
     }
   }, [isAuthenticated])
 
@@ -373,7 +365,6 @@ export default function AdminConfigPage() {
           fetchManagerWithdraws(),
           fetchAffiliates(),
           fetchManagers(),
-          fetchCofreStats(),
         ])
         setLastUpdate(new Date())
       } catch (error) {
@@ -483,29 +474,6 @@ export default function AdminConfigPage() {
       console.error("Erro ao buscar estatísticas:", error)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const fetchCofreStats = async () => {
-    try {
-      // Buscar estatísticas de todos os jogos, não apenas raspe-da-esperanca
-      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/cofre/stats", {
-        headers: { "X-Admin-Token": adminToken },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        console.log("📊 Dados do cofre recebidos:", data)
-
-        // Se retornou dados de todos os cofres
-        if (data.cofres && data.cofres.length > 0) {
-          // Pegar o primeiro jogo como exemplo para exibir
-          const firstGame = data.cofres[0]
-          setCofreStats(firstGame.stats)
-          setCofrePrizes(firstGame.recentPrizes || [])
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao buscar estatísticas do cofre:", error)
     }
   }
 
@@ -790,6 +758,52 @@ export default function AdminConfigPage() {
     }
   }
 
+  const handleImageUpload = async (imageId: number, file: File) => {
+    setUploadingImage(imageId)
+
+    try {
+      const formData = new FormData()
+      formData.append("image", file)
+      formData.append("imageId", imageId.toString())
+
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/carousel/upload", {
+        method: "POST",
+        headers: { "X-Admin-Token": adminToken },
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success("Imagem atualizada com sucesso!")
+
+        // Atualizar a URL da imagem no estado
+        setCarouselImages((prev) => prev.map((img) => (img.id === imageId ? { ...img, url: data.url } : img)))
+
+        // Atualizar configuração no banco
+        await handleUpdateSetting(`carousel_banner_${imageId}`, data.url)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao fazer upload da imagem")
+      }
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error)
+      toast.error("Erro interno do servidor")
+    } finally {
+      setUploadingImage(null)
+    }
+  }
+
+  const handleToggleImageActive = async (imageId: number) => {
+    const updatedImages = carouselImages.map((img) => (img.id === imageId ? { ...img, active: !img.active } : img))
+    setCarouselImages(updatedImages)
+
+    const image = updatedImages.find((img) => img.id === imageId)
+    if (image) {
+      await handleUpdateSetting(`carousel_banner_${imageId}_active`, image.active.toString())
+      toast.success(`Banner ${imageId} ${image.active ? "ativado" : "desativado"}`)
+    }
+  }
+
   const openEditDialog = (affiliate: Affiliate) => {
     setEditingAffiliate(affiliate)
     setEditForm({
@@ -884,7 +898,6 @@ export default function AdminConfigPage() {
         fetchAffiliates(),
         fetchManagers(),
         fetchSettings(),
-        fetchCofreStats(),
       ])
       setLastUpdate(new Date())
       toast.success("Dados atualizados com sucesso!")
@@ -1034,15 +1047,6 @@ export default function AdminConfigPage() {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="cofre"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <Vault className="h-4 w-4" />
-                      <span>Cofre</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
                       onClick={() => document.querySelector('[value="settings"]')?.click()}
                       className="w-full justify-start"
                     >
@@ -1178,14 +1182,6 @@ export default function AdminConfigPage() {
                         <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Saques Gerentes</span>
                         <span className="sm:hidden">S.Ger</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="cofre"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <Vault className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Cofre</span>
-                        <span className="sm:hidden">Cofre</span>
                       </TabsTrigger>
                       <TabsTrigger
                         value="settings"
@@ -2505,217 +2501,6 @@ export default function AdminConfigPage() {
                 </Card>
               </TabsContent>
 
-              {/* Cofre Tab - Mobile Optimized */}
-              <TabsContent value="cofre" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Sistema de Cofre</h2>
-
-                {/* Cofre Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Saldo do Cofre</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">
-                            {cofreStats ? formatCurrency(cofreStats.balance) : "R$ 0,00"}
-                          </p>
-                          <p className="text-xs text-gray-500">Valor líquido acumulado</p>
-                        </div>
-                        <Vault className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-green-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Disponível para Prêmios</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">
-                            {cofreStats ? formatCurrency(cofreStats.availableForPrizes) : "R$ 0,00"}
-                          </p>
-                          <p className="text-xs text-gray-500">30% do saldo total</p>
-                        </div>
-                        <Gift className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Total Distribuído</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">
-                            {cofreStats ? formatCurrency(cofreStats.totalDistributed) : "R$ 0,00"}
-                          </p>
-                          <p className="text-xs text-gray-500">Prêmios pagos</p>
-                        </div>
-                        <TrendingDown className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-purple-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Chance de Prêmio</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400">
-                            {cofreStats ? `${cofreStats.prizeChance}%` : "1%"}
-                          </p>
-                          <p className="text-xs text-gray-500">Por jogada</p>
-                        </div>
-                        <Activity className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-yellow-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Cofre Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                        <Vault className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
-                        <span>Estatísticas do Cofre</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 sm:space-y-4 pt-0">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400 text-xs sm:text-sm">Total Contribuído</span>
-                        <span className="text-green-400 font-bold text-sm:text-base">
-                          {cofreStats ? formatCurrency(cofreStats.totalContributed) : "R$ 0,00"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400 text-xs sm:text-sm">Total de Jogadas</span>
-                        <span className="text-blue-400 font-bold text-sm:text-base">
-                          {cofreStats ? cofreStats.gameCount.toLocaleString() : "0"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400 text-xs sm:text-sm">Eficiência</span>
-                        <span className="text-purple-400 font-bold text-sm:text-base">
-                          {cofreStats && cofreStats.totalContributed > 0
-                            ? `${((cofreStats.totalDistributed / cofreStats.totalContributed) * 100).toFixed(1)}%`
-                            : "0%"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
-                        <span className="text-gray-300 font-medium text-xs sm:text-sm">Saldo Líquido</span>
-                        <span className="text-white font-bold text-sm:text-lg">
-                          {cofreStats
-                            ? formatCurrency(cofreStats.totalContributed - cofreStats.totalDistributed)
-                            : "R$ 0,00"}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                        <Gift className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                        <span>Próximos Prêmios Disponíveis</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {cofreStats?.nextPrizeValues?.length > 0 ? (
-                          cofreStats.nextPrizeValues.map((value, index) => (
-                            <div
-                              key={index}
-                              className="bg-slate-800 rounded-lg p-2 text-center border border-slate-600"
-                            >
-                              <span className="text-white font-medium text-xs sm:text-sm">{formatCurrency(value)}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="col-span-3 sm:col-span-4 text-center py-4">
-                            <p className="text-gray-400 text-xs sm:text-sm">Saldo insuficiente para prêmios</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-4 text-center">
-                        <p className="text-gray-400 text-xs">Prêmios baseados em 30% do saldo atual do cofre</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Recent Cofre Prizes */}
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                      <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
-                      <span>Prêmios Recentes do Cofre</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {cofrePrizes.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-slate-700">
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Prêmio</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                                Saldo Antes
-                              </TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                                Saldo Depois
-                              </TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                                Jogada #
-                              </TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Data</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {cofrePrizes.map((prize) => (
-                              <TableRow key={prize.id} className="hover:bg-slate-800 border-slate-700">
-                                <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-xs sm:text-sm font-medium">{prize.user_name}</span>
-                                    <span className="text-gray-500 text-xs">@{prize.user_username}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-green-400 font-bold text-xs sm:text-sm">
-                                    {formatCurrency(prize.prize_amount)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  <span className="text-gray-400 text-xs sm:text-sm">
-                                    {formatCurrency(prize.cofre_balance_before)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  <span className="text-gray-400 text-xs sm:text-sm">
-                                    {formatCurrency(prize.cofre_balance_after)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="hidden lg:table-cell">
-                                  <span className="text-gray-400 text-xs sm:text-sm">#{prize.game_count_trigger}</span>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-gray-400 text-xs">{formatDate(prize.created_at)}</span>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-6">
-                        <p className="text-gray-400">Nenhum prêmio do cofre distribuído ainda</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
               {/* Settings Tab - Mobile Optimized */}
               <TabsContent value="settings" className="space-y-4 lg:space-y-6">
                 <h2 className="text-lg sm:text-xl font-bold text-white">Configurações do Sistema</h2>
@@ -2781,6 +2566,97 @@ export default function AdminConfigPage() {
                           Atual: {settings.min_withdraw_amount?.value || "Não definido"}
                         </p>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Carousel Images Management */}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base lg:text-lg">
+                      <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
+                      <span>Imagens do Carrossel</span>
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Gerencie as imagens exibidas no carrossel da página inicial
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-0">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {carouselImages.map((image) => (
+                        <div key={image.id} className="space-y-3">
+                          <div className="relative group">
+                            <img
+                              src={image.url || "/placeholder.svg"}
+                              alt={image.name}
+                              className="w-full h-32 object-cover rounded-lg border border-slate-600"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                      handleImageUpload(image.id, file)
+                                    }
+                                  }}
+                                  disabled={uploadingImage === image.id}
+                                />
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 flex items-center space-x-2">
+                                  {uploadingImage === image.id ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                      <span className="text-white text-xs">Enviando...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="h-4 w-4 text-white" />
+                                      <span className="text-white text-xs">Alterar</span>
+                                    </>
+                                  )}
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-white text-sm font-medium">{image.name}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleToggleImageActive(image.id)}
+                                className={`h-6 px-2 text-xs ${
+                                  image.active
+                                    ? "text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                                    : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/20"
+                                }`}
+                              >
+                                {image.active ? "Ativo" : "Inativo"}
+                              </Button>
+                            </div>
+
+                            <div className="text-xs text-gray-400 break-all">{image.url}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
+                      <h4 className="text-white font-medium mb-2 flex items-center space-x-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-400" />
+                        <span>Instruções</span>
+                      </h4>
+                      <ul className="text-gray-400 text-xs space-y-1">
+                        <li>• Clique sobre uma imagem para alterá-la</li>
+                        <li>• Use imagens com proporção 16:9 para melhor resultado</li>
+                        <li>• Tamanho recomendado: 1200x675 pixels</li>
+                        <li>• Formatos aceitos: JPG, PNG, WebP</li>
+                        <li>• Tamanho máximo: 5MB por imagem</li>
+                      </ul>
                     </div>
                   </CardContent>
                 </Card>
