@@ -207,19 +207,6 @@ interface AdminStats {
   }
 }
 
-interface User {
-  id: number
-  name: string
-  email: string
-  username?: string
-  phone?: string
-  user_type: string
-  affiliate_id?: number
-  created_at: string
-  balance: number
-  total_transactions: number
-}
-
 export default function AdminConfigPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
@@ -245,11 +232,6 @@ export default function AdminConfigPage() {
   const [processingManagerWithdraw, setProcessingManagerWithdraw] = useState<number | null>(null)
   const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] = useState(false)
   const [selectedAffiliateForManager, setSelectedAffiliateForManager] = useState<Affiliate | null>(null)
-  const [users, setUsers] = useState<User[]>([])
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false)
-  const [isAddBalanceDialogOpen, setIsAddBalanceDialogOpen] = useState(false)
-  const [selectedUserForBalance, setSelectedUserForBalance] = useState<User | null>(null)
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -292,19 +274,6 @@ export default function AdminConfigPage() {
   const [settingsForm, setSettingsForm] = useState({
     min_deposit_amount: "",
     min_withdraw_amount: "",
-  })
-
-  const [editUserForm, setEditUserForm] = useState({
-    name: "",
-    email: "",
-    username: "",
-    phone: "",
-    user_type: "regular",
-  })
-
-  const [addBalanceForm, setAddBalanceForm] = useState({
-    amount: 0,
-    operation: "add" as "add" | "subtract",
   })
 
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -362,7 +331,6 @@ export default function AdminConfigPage() {
       fetchManagerWithdraws()
       fetchSettings()
       fetchStats()
-      fetchUsers() // Adicione esta linha
     }
   }, [isAuthenticated])
 
@@ -377,7 +345,6 @@ export default function AdminConfigPage() {
           fetchManagerWithdraws(),
           fetchAffiliates(),
           fetchManagers(),
-          fetchUsers(), // Adicione esta linha
         ])
         setLastUpdate(new Date())
       } catch (error) {
@@ -865,7 +832,6 @@ export default function AdminConfigPage() {
         fetchAffiliates(),
         fetchManagers(),
         fetchSettings(),
-        fetchUsers(), // Adicione esta linha
       ])
       setLastUpdate(new Date())
       toast.success("Dados atualizados com sucesso!")
@@ -875,121 +841,6 @@ export default function AdminConfigPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const fetchUsers = async () => {
-    try {
-      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/users", {
-        headers: { "X-Admin-Token": adminToken },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data || [])
-      } else {
-        toast.error("Erro ao carregar usuários")
-      }
-    } catch (error) {
-      console.error("Erro ao buscar usuários:", error)
-      toast.error("Erro ao carregar usuários")
-    }
-  }
-
-  const handleEditUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingUser) return
-
-    try {
-      const response = await AuthClient.makeAuthenticatedRequest(`/api/admin/users/${editingUser.id}/update`, {
-        method: "PUT",
-        headers: { "X-Admin-Token": adminToken },
-        body: JSON.stringify(editUserForm),
-      })
-
-      if (response.ok) {
-        toast.success("Usuário atualizado com sucesso!")
-        setIsEditUserDialogOpen(false)
-        setEditingUser(null)
-        fetchUsers()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || "Erro ao atualizar usuário")
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar usuário:", error)
-      toast.error("Erro interno do servidor")
-    }
-  }
-
-  const handleAddBalance = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedUserForBalance) return
-
-    try {
-      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/add-balance", {
-        method: "POST",
-        headers: { "X-Admin-Token": adminToken },
-        body: JSON.stringify({
-          user_id: selectedUserForBalance.id,
-          amount: addBalanceForm.amount,
-          operation: addBalanceForm.operation,
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        toast.success(data.message || "Saldo atualizado com sucesso!")
-        setIsAddBalanceDialogOpen(false)
-        setSelectedUserForBalance(null)
-        setAddBalanceForm({ amount: 0, operation: "add" })
-        fetchUsers()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || "Erro ao atualizar saldo")
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar saldo:", error)
-      toast.error("Erro interno do servidor")
-    }
-  }
-
-  const handleDeleteUser = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.")) return
-
-    try {
-      const response = await AuthClient.makeAuthenticatedRequest(`/api/admin/users/${id}/delete`, {
-        method: "DELETE",
-        headers: { "X-Admin-Token": adminToken },
-      })
-
-      if (response.ok) {
-        toast.success("Usuário excluído com sucesso!")
-        fetchUsers()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || "Erro ao excluir usuário")
-      }
-    } catch (error) {
-      console.error("Erro ao excluir usuário:", error)
-      toast.error("Erro interno do servidor")
-    }
-  }
-
-  const openEditUserDialog = (user: User) => {
-    setEditingUser(user)
-    setEditUserForm({
-      name: user.name,
-      email: user.email,
-      username: user.username || "",
-      phone: user.phone || "",
-      user_type: user.user_type,
-    })
-    setIsEditUserDialogOpen(true)
-  }
-
-  const openAddBalanceDialog = (user: User) => {
-    setSelectedUserForBalance(user)
-    setAddBalanceForm({ amount: 0, operation: "add" })
-    setIsAddBalanceDialogOpen(true)
   }
 
   // Tela de autenticação
@@ -1095,15 +946,6 @@ export default function AdminConfigPage() {
                     >
                       <Users className="h-4 w-4" />
                       <span>Afiliados</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="users"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Usuários</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </>
@@ -1246,14 +1088,6 @@ export default function AdminConfigPage() {
                         <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Afiliados</span>
                         <span className="sm:hidden">Afil</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="users"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Usuários</span>
-                        <span className="sm:hidden">Users</span>
                       </TabsTrigger>
                     </>
                   )}
@@ -2874,283 +2708,6 @@ export default function AdminConfigPage() {
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
-
-              {/* Users Tab - Mobile Optimized */}
-              <TabsContent value="users" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Gerenciar Usuários</h2>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-700">
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden sm:table-cell">
-                              Username
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                              Telefone
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Tipo</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Saldo</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                              Transações
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden sm:table-cell">
-                              Cadastro
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {users.map((user) => (
-                            <TableRow key={user.id} className="hover:bg-slate-800 border-slate-700">
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="text-white text-xs sm:text-sm font-medium">{user.name}</span>
-                                  <span className="text-gray-500 text-xs">{user.email}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                <span className="text-white text-xs sm:text-sm">{user.username || "-"}</span>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                <span className="text-white text-xs sm:text-sm">{user.phone || "-"}</span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={
-                                    user.user_type === "blogger"
-                                      ? "bg-purple-500/20 text-purple-400"
-                                      : "bg-blue-500/20 text-blue-400"
-                                  }
-                                >
-                                  {user.user_type === "blogger" ? "Blogger" : "Regular"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-white text-xs sm:text-sm font-medium">
-                                  {formatCurrency(user.balance)}
-                                </span>
-                              </TableCell>
-                              <TableCell className="hidden lg:table-cell">
-                                <span className="text-white text-xs sm:text-sm">{user.total_transactions}</span>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                <span className="text-gray-400 text-xs">{formatDate(user.created_at)}</span>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openEditUserDialog(user)}
-                                    className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                    <span className="sr-only">Editar</span>
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openAddBalanceDialog(user)}
-                                    className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                                  >
-                                    <DollarSign className="h-3 w-3" />
-                                    <span className="sr-only">Adicionar Saldo</span>
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteUser(user.id)}
-                                    className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                    <span className="sr-only">Excluir</span>
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Edit User Dialog */}
-                <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
-                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Editar Usuário</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleEditUser} className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <Label htmlFor="edit-user-name" className="text-white">
-                            Nome
-                          </Label>
-                          <Input
-                            id="edit-user-name"
-                            value={editUserForm.name}
-                            onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-user-email" className="text-white">
-                            Email
-                          </Label>
-                          <Input
-                            id="edit-user-email"
-                            type="email"
-                            value={editUserForm.email}
-                            onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-user-username" className="text-white">
-                            Username
-                          </Label>
-                          <Input
-                            id="edit-user-username"
-                            value={editUserForm.username}
-                            onChange={(e) => setEditUserForm({ ...editUserForm, username: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-user-phone" className="text-white">
-                            Telefone
-                          </Label>
-                          <Input
-                            id="edit-user-phone"
-                            value={editUserForm.phone}
-                            onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-user-type" className="text-white">
-                            Tipo de Usuário
-                          </Label>
-                          <Select
-                            value={editUserForm.user_type}
-                            onValueChange={(value) => setEditUserForm({ ...editUserForm, user_type: value })}
-                          >
-                            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                              <SelectItem value="regular">Regular</SelectItem>
-                              <SelectItem value="blogger">Blogger</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsEditUserDialogOpen(false)}
-                          className="border-slate-600 text-white hover:bg-slate-700"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="submit"
-                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                        >
-                          Salvar Alterações
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Add Balance Dialog */}
-                <Dialog open={isAddBalanceDialogOpen} onOpenChange={setIsAddBalanceDialogOpen}>
-                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Gerenciar Saldo</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="bg-slate-800 p-3 rounded-md">
-                        <p className="text-gray-400 text-xs">Usuário</p>
-                        <p className="text-white font-medium">{selectedUserForBalance?.name}</p>
-                        <p className="text-gray-400 text-xs">{selectedUserForBalance?.email}</p>
-                        <p className="text-green-400 font-medium">
-                          Saldo atual:{" "}
-                          {selectedUserForBalance ? formatCurrency(selectedUserForBalance.balance) : "R$ 0,00"}
-                        </p>
-                      </div>
-
-                      <form onSubmit={handleAddBalance} className="space-y-4">
-                        <div>
-                          <Label htmlFor="balance-operation" className="text-white">
-                            Operação
-                          </Label>
-                          <Select
-                            value={addBalanceForm.operation}
-                            onValueChange={(value: "add" | "subtract") =>
-                              setAddBalanceForm({ ...addBalanceForm, operation: value })
-                            }
-                          >
-                            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                              <SelectValue placeholder="Selecione a operação" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                              <SelectItem value="add">Adicionar Saldo</SelectItem>
-                              <SelectItem value="subtract">Remover Saldo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="balance-amount" className="text-white">
-                            Valor (R$)
-                          </Label>
-                          <Input
-                            id="balance-amount"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={addBalanceForm.amount}
-                            onChange={(e) => setAddBalanceForm({ ...addBalanceForm, amount: Number(e.target.value) })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsAddBalanceDialogOpen(false)}
-                            className="border-slate-600 text-white hover:bg-slate-700"
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="submit"
-                            className={`${
-                              addBalanceForm.operation === "add"
-                                ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                                : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600"
-                            }`}
-                          >
-                            {addBalanceForm.operation === "add" ? "Adicionar" : "Remover"} Saldo
-                          </Button>
-                        </div>
-                      </form>
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </TabsContent>
             </Tabs>
           </div>

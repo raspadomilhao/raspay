@@ -652,83 +652,23 @@ export default function RaspeDaEsperancaPage() {
 
   const scratchAllCells = () => {
     if (gameStateRef.current.gameEnded) return
+
     const canvas = gameStateRef.current.scratchCanvases[0]
     const ctx = gameStateRef.current.contexts[0]
+
+    // Limpar o canvas imediatamente
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    // Revelar todos os símbolos instantaneamente
+    for (let i = 0; i < NUM_CELLS; i++) {
+      if (gameStateRef.current.scratchedAreas[i] === 0) {
+        gameStateRef.current.scratchedAreas[i] = 1
+        revealSymbol(i)
+      }
+    }
+
+    // Desabilitar interações no canvas
     canvas.style.pointerEvents = "none"
-    const animationDuration = 2000
-    const startTime = Date.now()
-    const scratchRadius = 30
-    const scratchPoints: { x: number; y: number; revealed: boolean }[] = []
-    const numPoints = 150
-    for (let i = 0; i < numPoints; i++) {
-      scratchPoints.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        revealed: false,
-      })
-    }
-    const animateScratch = () => {
-      const currentTime = Date.now()
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / animationDuration, 1)
-      const pointsToReveal = Math.floor(progress * scratchPoints.length)
-      for (let i = 0; i < pointsToReveal; i++) {
-        if (!scratchPoints[i].revealed) {
-          scratchPoints[i].revealed = true
-          ctx.globalCompositeOperation = "destination-out"
-          ctx.beginPath()
-          ctx.arc(scratchPoints[i].x, scratchPoints[i].y, scratchRadius, 0, Math.PI * 2)
-          ctx.fill()
-          if (i % 10 === 0) {
-            playSound(audioScratchRef)
-          }
-        }
-      }
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const pixels = imageData.data
-      const regionWidth = canvas.width / 3
-      const regionHeight = canvas.height / 3
-      for (let region = 0; region < NUM_CELLS; region++) {
-        if (gameStateRef.current.scratchedAreas[region] === 0) {
-          const row = Math.floor(region / 3)
-          const col = region % 3
-          const startX = Math.floor(col * regionWidth)
-          const startY = Math.floor(row * regionHeight)
-          const endX = Math.floor((col + 1) * regionWidth)
-          const endY = Math.floor((row + 1) * regionHeight)
-          let transparentPixels = 0
-          let totalPixels = 0
-          for (let y = startY; y < endY; y++) {
-            for (let x = startX; x < endX; x++) {
-              const pixelIndex = (y * canvas.width + x) * 4
-              if (pixelIndex < pixels.length) {
-                totalPixels++
-                if (pixels[pixelIndex + 3] === 0) {
-                  transparentPixels++
-                }
-              }
-            }
-          }
-          const regionProgress = transparentPixels / totalPixels
-          if (regionProgress > 0.3) {
-            gameStateRef.current.scratchedAreas[region] = 1
-            revealSymbol(region)
-          }
-        }
-      }
-      if (progress < 1) {
-        requestAnimationFrame(animateScratch)
-      } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        for (let i = 0; i < NUM_CELLS; i++) {
-          if (gameStateRef.current.scratchedAreas[i] === 0) {
-            gameStateRef.current.scratchedAreas[i] = 1
-            revealSymbol(i)
-          }
-        }
-      }
-    }
-    animateScratch()
   }
 
   const initGame = async () => {

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { jwtVerify } from "jose"
-import { updateWalletBalance, createTransaction } from "@/lib/database"
+import { getUserByUsername, updateWalletBalance, createTransaction } from "@/lib/database"
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "horsepay-secret-key")
 
@@ -23,52 +23,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 
-    const body = await request.json()
-    const { user_id, amount, operation } = body
+    const { username, amount, reason } = await request.json()
 
-    if (!user_id || !amount || !operation) {
-      return NextResponse.json({ error: "Dados obrigatórios: user_id, amount, operation" }, { status: 400 })
+    if (!username || !amount || amount <= 0) {
+      return NextResponse.json({ error: "Username e valor são obrigatórios" }, { status: 400 })
     }
 
-    if (amount <= 0) {
-      return NextResponse.json({ error: "Valor deve ser maior que zero" }, { status: 400 })
+    // Buscar usuário por username
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
-    if (!["add", "subtract"].includes(operation)) {
-      return NextResponse.json({ error: "Operação deve ser 'add' ou 'subtract'" }, { status: 400 })
-    }
+    // Adicionar saldo à carteira
+    const updatedWallet = await updateWalletBalance(user.id, amount, "add")
 
-    console.log(`💰 Admin ${operation === "add" ? "adicionando" : "removendo"} R$ ${amount} para usuário ${user_id}`)
-
-    // Atualizar saldo na carteira
-    const wallet = await updateWalletBalance(user_id, amount, operation)
-
-    // Criar registro da transação
-    const transactionType = operation === "add" ? "game_prize" : "game_play"
-    const description =
-      operation === "add"
-        ? `Saldo adicionado pelo administrador: R$ ${amount.toFixed(2)}`
-        : `Saldo removido pelo administrador: R$ ${amount.toFixed(2)}`
-
+    // Criar registro de transação administrativa
     await createTransaction({
-      user_id: user_id,
-      type: transactionType,
+      user_id: user.id,
+      type: "deposit",
       amount: amount,
       status: "success",
-      description: description,
+      payer_name: "Administrador",
+      callback_url: null,
+      external_id: null,
+      end_to_end_id: null,
+      pix_key: null,
+      pix_type: null,
+      qr_code: null,
+      copy_paste_code: `ADMIN_CREDIT_${Date.now()}`,
     })
-
-    const actionText = operation === "add" ? "adicionado" : "removido"
-    const message = `Saldo ${actionText} com sucesso! Novo saldo: R$ ${Number(wallet.balance).toFixed(2)}`
-
-    console.log(`✅ ${message}`)
 
     return NextResponse.json({
-      message,
-      new_balance: Number(wallet.balance),
+      success: true,
+      message: `R$ ${amount.toFixed(2)} adicionado ao saldo de ${user.name} (@${username})`,
+      new_balance: updatedWallet.balance,
     })
   } catch (error) {
-    console.error("Erro ao atualizar saldo:", error)
+    console.error("Erro ao adicionar saldo:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
