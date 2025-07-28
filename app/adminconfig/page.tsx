@@ -42,8 +42,6 @@ import {
   Link,
   Unlink,
   Zap,
-  Upload,
-  ImageIcon,
 } from "lucide-react"
 
 import {
@@ -125,16 +123,6 @@ interface ManagerWithdraw {
 interface SystemSettings {
   min_deposit_amount?: { value: string; description: string; updated_at: string }
   min_withdraw_amount?: { value: string; description: string; updated_at: string }
-  carousel_banner_1?: { value: string; description: string; updated_at: string }
-  carousel_banner_2?: { value: string; description: string; updated_at: string }
-  carousel_banner_3?: { value: string; description: string; updated_at: string }
-}
-
-interface CarouselImage {
-  id: number
-  name: string
-  url: string
-  active: boolean
 }
 
 interface AdminStats {
@@ -219,6 +207,19 @@ interface AdminStats {
   }
 }
 
+interface User {
+  id: number
+  name: string
+  email: string
+  username?: string
+  phone?: string
+  user_type: string
+  affiliate_id?: number
+  created_at: string
+  balance: number
+  total_transactions: number
+}
+
 export default function AdminConfigPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
@@ -244,14 +245,11 @@ export default function AdminConfigPage() {
   const [processingManagerWithdraw, setProcessingManagerWithdraw] = useState<number | null>(null)
   const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] = useState(false)
   const [selectedAffiliateForManager, setSelectedAffiliateForManager] = useState<Affiliate | null>(null)
-
-  // Carousel images state
-  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([
-    { id: 1, name: "Banner 1", url: "/images/carousel-banner-1.png", active: true },
-    { id: 2, name: "Banner 2", url: "/images/carousel-banner-2.png", active: true },
-    { id: 3, name: "Banner 3", url: "/images/carousel-banner-3.png", active: true },
-  ])
-  const [uploadingImage, setUploadingImage] = useState<number | null>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false)
+  const [isAddBalanceDialogOpen, setIsAddBalanceDialogOpen] = useState(false)
+  const [selectedUserForBalance, setSelectedUserForBalance] = useState<User | null>(null)
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -294,6 +292,19 @@ export default function AdminConfigPage() {
   const [settingsForm, setSettingsForm] = useState({
     min_deposit_amount: "",
     min_withdraw_amount: "",
+  })
+
+  const [editUserForm, setEditUserForm] = useState({
+    name: "",
+    email: "",
+    username: "",
+    phone: "",
+    user_type: "regular",
+  })
+
+  const [addBalanceForm, setAddBalanceForm] = useState({
+    amount: 0,
+    operation: "add" as "add" | "subtract",
   })
 
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -351,6 +362,7 @@ export default function AdminConfigPage() {
       fetchManagerWithdraws()
       fetchSettings()
       fetchStats()
+      fetchUsers() // Adicione esta linha
     }
   }, [isAuthenticated])
 
@@ -365,6 +377,7 @@ export default function AdminConfigPage() {
           fetchManagerWithdraws(),
           fetchAffiliates(),
           fetchManagers(),
+          fetchUsers(), // Adicione esta linha
         ])
         setLastUpdate(new Date())
       } catch (error) {
@@ -758,52 +771,6 @@ export default function AdminConfigPage() {
     }
   }
 
-  const handleImageUpload = async (imageId: number, file: File) => {
-    setUploadingImage(imageId)
-
-    try {
-      const formData = new FormData()
-      formData.append("image", file)
-      formData.append("imageId", imageId.toString())
-
-      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/carousel/upload", {
-        method: "POST",
-        headers: { "X-Admin-Token": adminToken },
-        body: formData,
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        toast.success("Imagem atualizada com sucesso!")
-
-        // Atualizar a URL da imagem no estado
-        setCarouselImages((prev) => prev.map((img) => (img.id === imageId ? { ...img, url: data.url } : img)))
-
-        // Atualizar configuração no banco
-        await handleUpdateSetting(`carousel_banner_${imageId}`, data.url)
-      } else {
-        const error = await response.json()
-        toast.error(error.error || "Erro ao fazer upload da imagem")
-      }
-    } catch (error) {
-      console.error("Erro ao fazer upload:", error)
-      toast.error("Erro interno do servidor")
-    } finally {
-      setUploadingImage(null)
-    }
-  }
-
-  const handleToggleImageActive = async (imageId: number) => {
-    const updatedImages = carouselImages.map((img) => (img.id === imageId ? { ...img, active: !img.active } : img))
-    setCarouselImages(updatedImages)
-
-    const image = updatedImages.find((img) => img.id === imageId)
-    if (image) {
-      await handleUpdateSetting(`carousel_banner_${imageId}_active`, image.active.toString())
-      toast.success(`Banner ${imageId} ${image.active ? "ativado" : "desativado"}`)
-    }
-  }
-
   const openEditDialog = (affiliate: Affiliate) => {
     setEditingAffiliate(affiliate)
     setEditForm({
@@ -898,6 +865,7 @@ export default function AdminConfigPage() {
         fetchAffiliates(),
         fetchManagers(),
         fetchSettings(),
+        fetchUsers(), // Adicione esta linha
       ])
       setLastUpdate(new Date())
       toast.success("Dados atualizados com sucesso!")
@@ -907,6 +875,121 @@ export default function AdminConfigPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/users", {
+        headers: { "X-Admin-Token": adminToken },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data || [])
+      } else {
+        toast.error("Erro ao carregar usuários")
+      }
+    } catch (error) {
+      console.error("Erro ao buscar usuários:", error)
+      toast.error("Erro ao carregar usuários")
+    }
+  }
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingUser) return
+
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest(`/api/admin/users/${editingUser.id}/update`, {
+        method: "PUT",
+        headers: { "X-Admin-Token": adminToken },
+        body: JSON.stringify(editUserForm),
+      })
+
+      if (response.ok) {
+        toast.success("Usuário atualizado com sucesso!")
+        setIsEditUserDialogOpen(false)
+        setEditingUser(null)
+        fetchUsers()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao atualizar usuário")
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar usuário:", error)
+      toast.error("Erro interno do servidor")
+    }
+  }
+
+  const handleAddBalance = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUserForBalance) return
+
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/admin/add-balance", {
+        method: "POST",
+        headers: { "X-Admin-Token": adminToken },
+        body: JSON.stringify({
+          user_id: selectedUserForBalance.id,
+          amount: addBalanceForm.amount,
+          operation: addBalanceForm.operation,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message || "Saldo atualizado com sucesso!")
+        setIsAddBalanceDialogOpen(false)
+        setSelectedUserForBalance(null)
+        setAddBalanceForm({ amount: 0, operation: "add" })
+        fetchUsers()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao atualizar saldo")
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar saldo:", error)
+      toast.error("Erro interno do servidor")
+    }
+  }
+
+  const handleDeleteUser = async (id: number) => {
+    if (!confirm("Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.")) return
+
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest(`/api/admin/users/${id}/delete`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      })
+
+      if (response.ok) {
+        toast.success("Usuário excluído com sucesso!")
+        fetchUsers()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Erro ao excluir usuário")
+      }
+    } catch (error) {
+      console.error("Erro ao excluir usuário:", error)
+      toast.error("Erro interno do servidor")
+    }
+  }
+
+  const openEditUserDialog = (user: User) => {
+    setEditingUser(user)
+    setEditUserForm({
+      name: user.name,
+      email: user.email,
+      username: user.username || "",
+      phone: user.phone || "",
+      user_type: user.user_type,
+    })
+    setIsEditUserDialogOpen(true)
+  }
+
+  const openAddBalanceDialog = (user: User) => {
+    setSelectedUserForBalance(user)
+    setAddBalanceForm({ amount: 0, operation: "add" })
+    setIsAddBalanceDialogOpen(true)
   }
 
   // Tela de autenticação
@@ -1012,6 +1095,15 @@ export default function AdminConfigPage() {
                     >
                       <Users className="h-4 w-4" />
                       <span>Afiliados</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => document.querySelector('[value="users"]')?.click()}
+                      className="w-full justify-start"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span>Usuários</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </>
@@ -1154,6 +1246,14 @@ export default function AdminConfigPage() {
                         <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Afiliados</span>
                         <span className="sm:hidden">Afil</span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="users"
+                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
+                      >
+                        <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Usuários</span>
+                        <span className="sm:hidden">Users</span>
                       </TabsTrigger>
                     </>
                   )}
@@ -2570,97 +2670,6 @@ export default function AdminConfigPage() {
                   </CardContent>
                 </Card>
 
-                {/* Carousel Images Management */}
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base lg:text-lg">
-                      <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
-                      <span>Imagens do Carrossel</span>
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Gerencie as imagens exibidas no carrossel da página inicial
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {carouselImages.map((image) => (
-                        <div key={image.id} className="space-y-3">
-                          <div className="relative group">
-                            <img
-                              src={image.url || "/placeholder.svg"}
-                              alt={image.name}
-                              className="w-full h-32 object-cover rounded-lg border border-slate-600"
-                            />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                              <label className="cursor-pointer">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) {
-                                      handleImageUpload(image.id, file)
-                                    }
-                                  }}
-                                  disabled={uploadingImage === image.id}
-                                />
-                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 flex items-center space-x-2">
-                                  {uploadingImage === image.id ? (
-                                    <>
-                                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                                      <span className="text-white text-xs">Enviando...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Upload className="h-4 w-4 text-white" />
-                                      <span className="text-white text-xs">Alterar</span>
-                                    </>
-                                  )}
-                                </div>
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-white text-sm font-medium">{image.name}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleToggleImageActive(image.id)}
-                                className={`h-6 px-2 text-xs ${
-                                  image.active
-                                    ? "text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                                    : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/20"
-                                }`}
-                              >
-                                {image.active ? "Ativo" : "Inativo"}
-                              </Button>
-                            </div>
-
-                            <div className="text-xs text-gray-400 break-all">{image.url}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
-                      <h4 className="text-white font-medium mb-2 flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-yellow-400" />
-                        <span>Instruções</span>
-                      </h4>
-                      <ul className="text-gray-400 text-xs space-y-1">
-                        <li>• Clique sobre uma imagem para alterá-la</li>
-                        <li>• Use imagens com proporção 16:9 para melhor resultado</li>
-                        <li>• Tamanho recomendado: 1200x675 pixels</li>
-                        <li>• Formatos aceitos: JPG, PNG, WebP</li>
-                        <li>• Tamanho máximo: 5MB por imagem</li>
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-
                 <Card className="bg-slate-900/50 border-slate-700">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-white text-sm sm:text-base lg:text-lg">Ações Administrativas</CardTitle>
@@ -2865,6 +2874,283 @@ export default function AdminConfigPage() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Users Tab - Mobile Optimized */}
+              <TabsContent value="users" className="space-y-4 lg:space-y-6">
+                <h2 className="text-lg sm:text-xl font-bold text-white">Gerenciar Usuários</h2>
+
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-slate-700">
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden sm:table-cell">
+                              Username
+                            </TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
+                              Telefone
+                            </TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Tipo</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Saldo</TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
+                              Transações
+                            </TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden sm:table-cell">
+                              Cadastro
+                            </TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {users.map((user) => (
+                            <TableRow key={user.id} className="hover:bg-slate-800 border-slate-700">
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="text-white text-xs sm:text-sm font-medium">{user.name}</span>
+                                  <span className="text-gray-500 text-xs">{user.email}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell">
+                                <span className="text-white text-xs sm:text-sm">{user.username || "-"}</span>
+                              </TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                <span className="text-white text-xs sm:text-sm">{user.phone || "-"}</span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={
+                                    user.user_type === "blogger"
+                                      ? "bg-purple-500/20 text-purple-400"
+                                      : "bg-blue-500/20 text-blue-400"
+                                  }
+                                >
+                                  {user.user_type === "blogger" ? "Blogger" : "Regular"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-white text-xs sm:text-sm font-medium">
+                                  {formatCurrency(user.balance)}
+                                </span>
+                              </TableCell>
+                              <TableCell className="hidden lg:table-cell">
+                                <span className="text-white text-xs sm:text-sm">{user.total_transactions}</span>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell">
+                                <span className="text-gray-400 text-xs">{formatDate(user.created_at)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openEditUserDialog(user)}
+                                    className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                    <span className="sr-only">Editar</span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openAddBalanceDialog(user)}
+                                    className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                                  >
+                                    <DollarSign className="h-3 w-3" />
+                                    <span className="sr-only">Adicionar Saldo</span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    <span className="sr-only">Excluir</span>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Edit User Dialog */}
+                <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Editar Usuário</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEditUser} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <Label htmlFor="edit-user-name" className="text-white">
+                            Nome
+                          </Label>
+                          <Input
+                            id="edit-user-name"
+                            value={editUserForm.name}
+                            onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-user-email" className="text-white">
+                            Email
+                          </Label>
+                          <Input
+                            id="edit-user-email"
+                            type="email"
+                            value={editUserForm.email}
+                            onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-user-username" className="text-white">
+                            Username
+                          </Label>
+                          <Input
+                            id="edit-user-username"
+                            value={editUserForm.username}
+                            onChange={(e) => setEditUserForm({ ...editUserForm, username: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-user-phone" className="text-white">
+                            Telefone
+                          </Label>
+                          <Input
+                            id="edit-user-phone"
+                            value={editUserForm.phone}
+                            onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-user-type" className="text-white">
+                            Tipo de Usuário
+                          </Label>
+                          <Select
+                            value={editUserForm.user_type}
+                            onValueChange={(value) => setEditUserForm({ ...editUserForm, user_type: value })}
+                          >
+                            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                              <SelectItem value="regular">Regular</SelectItem>
+                              <SelectItem value="blogger">Blogger</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsEditUserDialogOpen(false)}
+                          className="border-slate-600 text-white hover:bg-slate-700"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                        >
+                          Salvar Alterações
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Add Balance Dialog */}
+                <Dialog open={isAddBalanceDialogOpen} onOpenChange={setIsAddBalanceDialogOpen}>
+                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Gerenciar Saldo</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="bg-slate-800 p-3 rounded-md">
+                        <p className="text-gray-400 text-xs">Usuário</p>
+                        <p className="text-white font-medium">{selectedUserForBalance?.name}</p>
+                        <p className="text-gray-400 text-xs">{selectedUserForBalance?.email}</p>
+                        <p className="text-green-400 font-medium">
+                          Saldo atual:{" "}
+                          {selectedUserForBalance ? formatCurrency(selectedUserForBalance.balance) : "R$ 0,00"}
+                        </p>
+                      </div>
+
+                      <form onSubmit={handleAddBalance} className="space-y-4">
+                        <div>
+                          <Label htmlFor="balance-operation" className="text-white">
+                            Operação
+                          </Label>
+                          <Select
+                            value={addBalanceForm.operation}
+                            onValueChange={(value: "add" | "subtract") =>
+                              setAddBalanceForm({ ...addBalanceForm, operation: value })
+                            }
+                          >
+                            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                              <SelectValue placeholder="Selecione a operação" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                              <SelectItem value="add">Adicionar Saldo</SelectItem>
+                              <SelectItem value="subtract">Remover Saldo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="balance-amount" className="text-white">
+                            Valor (R$)
+                          </Label>
+                          <Input
+                            id="balance-amount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={addBalanceForm.amount}
+                            onChange={(e) => setAddBalanceForm({ ...addBalanceForm, amount: Number(e.target.value) })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsAddBalanceDialogOpen(false)}
+                            className="border-slate-600 text-white hover:bg-slate-700"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="submit"
+                            className={`${
+                              addBalanceForm.operation === "add"
+                                ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                                : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600"
+                            }`}
+                          >
+                            {addBalanceForm.operation === "add" ? "Adicionar" : "Remover"} Saldo
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
             </Tabs>
           </div>
