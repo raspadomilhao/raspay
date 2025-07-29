@@ -41,38 +41,65 @@ const GAME_PRICE = 5.0
 const MAX_REPETITIONS_FOR_NON_WINNING = 2
 const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
-// Configurações para usuários regulares
+// Configuração de prêmios para usuários regulares
+const regularPrizeConfig = [
+  { value: 2, image: "/images/2reais.png", chance: 40 },
+  { value: 3, image: "/images/2reais.png", chance: 25 },
+  { value: 5, image: "/images/5reais.png", chance: 20 },
+  { value: 8, image: "/images/10reais.png", chance: 10 },
+  { value: 10, image: "/images/10reais.png", chance: 3 },
+  { value: 15, image: "/images/20reais.png", chance: 2 },
+  { value: 25, image: "/images/50reais.png", chance: 0 },
+  { value: 50, image: "/images/50reais.png", chance: 0 },
+  { value: 100, image: "/images/100reais.png", chance: 0 },
+]
+
+// Configuração de prêmios para bloggers
+const bloggerPrizeConfig = [
+  { value: 2, image: "/images/2reais.png", chance: 15 },
+  { value: 3, image: "/images/2reais.png", chance: 15 },
+  { value: 5, image: "/images/5reais.png", chance: 15 },
+  { value: 8, image: "/images/10reais.png", chance: 15 },
+  { value: 10, image: "/images/10reais.png", chance: 10 },
+  { value: 15, image: "/images/20reais.png", chance: 10 },
+  { value: 25, image: "/images/50reais.png", chance: 8 },
+  { value: 50, image: "/images/50reais.png", chance: 5 },
+  { value: 150, image: "/images/200reais.png", chance: 4 },
+  { value: 500, image: "/images/500reais.png", chance: 2 },
+  { value: 1000, image: "/images/1mil.png", chance: 1 },
+]
+
+// Configurações gerais
 const regularConfig = {
-  winFrequency: 0.65,
+  winFrequency: 0.65, // 65% de chance de ganhar
   scratchThreshold: 0.7,
-  prizeConfig: {
-    small: { values: [2, 3, 5, 8], frequency: 0.94 },
-    medium: { values: [10, 15], frequency: 0.05 },
-    large: { values: [15], frequency: 0.01 },
-  },
+  prizeConfig: regularPrizeConfig,
 }
 
-// Configurações para bloggers
 const bloggerConfig = {
-  winFrequency: 0.75,
+  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
-  prizeConfig: {
-    small: { values: [2, 3, 5, 8], frequency: 0.6 },
-    medium: { values: [10, 25, 150], frequency: 0.3 },
-    large: { values: [500, 1000], frequency: 0.1 },
-  },
+  prizeConfig: bloggerPrizeConfig,
 }
 
-const winningSymbols = [
-  ...regularConfig.prizeConfig.small.values,
-  ...regularConfig.prizeConfig.medium.values,
-  ...regularConfig.prizeConfig.large.values,
-  ...bloggerConfig.prizeConfig.small.values,
-  ...bloggerConfig.prizeConfig.medium.values,
-  ...bloggerConfig.prizeConfig.large.values,
-].map((val) => `R$${val}`)
+// Símbolos não premiados
 const nonWinningSymbols = ["iPhone", "iPad", "Moto", "R$500", "R$1000", "R$5000", "R$10000"]
-const allSymbols = [...winningSymbols, ...nonWinningSymbols]
+
+// Mapeamento de imagens específicas para cada valor de prêmio
+const prizeImageMap: { [key: string]: string } = {
+  R$2: "/images/2reais.png",
+  R$3: "/images/2reais.png",
+  R$5: "/images/5reais.png",
+  R$8: "/images/10reais.png",
+  R$10: "/images/10reais.png",
+  R$15: "/images/20reais.png",
+  R$25: "/images/50reais.png",
+  R$50: "/images/50reais.png",
+  R$100: "/images/100reais.png",
+  R$150: "/images/200reais.png",
+  R$500: "/images/500reais.png",
+  R$1000: "/images/1mil.png",
+}
 
 const symbolImageMap = {
   Casa: { url: "https://i.imgur.com/jG8STSH.png", legend: "Casa 250 MIL" },
@@ -103,9 +130,16 @@ const formatCurrency = (value: string | number | undefined | null): string => {
   return isNaN(numValue) ? "0.00" : numValue.toFixed(2)
 }
 
+// Função para verificar se é blogger
 const isBlogger = (userProfile: UserProfile | null): boolean => {
   if (!userProfile) return false
-  if (userProfile.user.user_type === "blogger") return true
+
+  // Verificar por tipo de usuário
+  if (userProfile.user.user_type === "blogger") {
+    return true
+  }
+
+  // Verificar por email (fallback)
   const bloggerEmails = [
     "blogueiro@teste.com",
     "influencer@demo.com",
@@ -113,6 +147,7 @@ const isBlogger = (userProfile: UserProfile | null): boolean => {
     "youtuber@test.com",
     "content@creator.com",
   ]
+
   return bloggerEmails.includes(userProfile.user.email.toLowerCase())
 }
 
@@ -145,16 +180,19 @@ export default function MegaSortePage() {
     realPrizeAmount: 0,
   })
 
+  // Audio refs
   const audioScratchRef = useRef<HTMLAudioElement>(null)
   const audioWinRef = useRef<HTMLAudioElement>(null)
   const audioLoseRef = useRef<HTMLAudioElement>(null)
   const audioCoinRef = useRef<HTMLAudioElement>(null)
   const audioAmbientRef = useRef<HTMLAudioElement>(null)
 
+  // Função para obter configuração baseada no tipo de usuário
   const getGameConfig = () => {
     return isBlogger(userProfile) ? bloggerConfig : regularConfig
   }
 
+  // Função para fechar modal
   const handleCloseModal = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
@@ -163,6 +201,7 @@ export default function MegaSortePage() {
     setShowModal(false)
   }
 
+  // Função para lidar com clique no backdrop
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       handleCloseModal(e)
@@ -174,6 +213,8 @@ export default function MegaSortePage() {
     if (token) {
       setIsLoggedIn(true)
       fetchUserProfile()
+
+      // Iniciar som ambiente com mais controle
       setTimeout(() => {
         if (soundEnabled && audioAmbientRef.current) {
           audioAmbientRef.current.volume = 0.1
@@ -184,6 +225,8 @@ export default function MegaSortePage() {
     } else {
       router.push("/auth")
     }
+
+    // Cleanup - parar som ambiente ao sair
     return () => {
       if (audioAmbientRef.current) {
         audioAmbientRef.current.pause()
@@ -227,6 +270,7 @@ export default function MegaSortePage() {
     }
   }
 
+  // Função para controlar som ambiente
   const toggleAmbientSound = () => {
     if (audioAmbientRef.current) {
       if (soundEnabled) {
@@ -239,16 +283,21 @@ export default function MegaSortePage() {
     }
   }
 
+  // Função para gerar prêmio baseado na configuração do tipo de usuário
   const gerarPremioReal = () => {
     const config = getGameConfig()
-    const random = Math.random()
-    if (random < config.prizeConfig.small.frequency) {
-      return config.prizeConfig.small.values[Math.floor(Math.random() * config.prizeConfig.small.values.length)]
-    } else if (random < config.prizeConfig.small.frequency + config.prizeConfig.medium.frequency) {
-      return config.prizeConfig.medium.values[Math.floor(Math.random() * config.prizeConfig.medium.values.length)]
-    } else {
-      return config.prizeConfig.large.values[Math.floor(Math.random() * config.prizeConfig.large.values.length)]
+    const random = Math.random() * 100
+    let cumulativeChance = 0
+
+    for (const prize of config.prizeConfig) {
+      cumulativeChance += prize.chance
+      if (random <= cumulativeChance) {
+        return prize.value
+      }
     }
+
+    // Fallback para o primeiro prêmio se algo der errado
+    return config.prizeConfig[0].value
   }
 
   const shuffleArray = (array: any[]) => {
@@ -262,35 +311,46 @@ export default function MegaSortePage() {
   const createSymbolHtml = (symbolId: string) => {
     let imageUrl = ""
     let legendText = ""
+
     if (symbolId.startsWith("R$")) {
-      imageUrl = symbolImageMap["Dinheiro"].url
+      // Para prêmios em dinheiro - usar a imagem específica do valor
+      imageUrl = prizeImageMap[symbolId] || symbolImageMap["Dinheiro"].url
       legendText = symbolId
     } else if (symbolImageMap[symbolId as keyof typeof symbolImageMap]) {
+      // Para outros símbolos
       const symbol = symbolImageMap[symbolId as keyof typeof symbolImageMap]
       imageUrl = symbol.url
       legendText = symbol.legend
     } else {
       return { imageUrl: "", legendText: symbolId }
     }
+
     return { imageUrl, legendText }
   }
 
   const generateScratchCardSymbols = () => {
     let finalSymbolIds = Array(NUM_CELLS).fill(null)
     const config = getGameConfig()
+
     gameStateRef.current.hasWonRealPrize = Math.random() < config.winFrequency
     gameStateRef.current.realPrizeAmount = 0
+
     if (gameStateRef.current.hasWonRealPrize) {
       const winningPrizeAmount = gerarPremioReal()
       const winningSymbolId = `R$${winningPrizeAmount}`
       gameStateRef.current.realPrizeAmount = winningPrizeAmount
+
+      // Colocar 3 símbolos premiados em posições aleatórias
       const prizePositions = new Set()
       while (prizePositions.size < 3) {
         prizePositions.add(Math.floor(Math.random() * NUM_CELLS))
       }
+
       prizePositions.forEach((pos) => {
         finalSymbolIds[pos] = winningSymbolId
       })
+
+      // Preencher o resto com símbolos não premiados
       const nonWinningFillPool: string[] = []
       nonWinningSymbols.forEach((symbolId) => {
         for (let k = 0; k < MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD; k++) {
@@ -298,6 +358,7 @@ export default function MegaSortePage() {
         }
       })
       shuffleArray(nonWinningFillPool)
+
       let currentFillIndex = 0
       for (let i = 0; i < NUM_CELLS; i++) {
         if (finalSymbolIds[i] === null) {
@@ -307,31 +368,46 @@ export default function MegaSortePage() {
       }
       shuffleArray(finalSymbolIds)
     } else {
+      // Cartela perdedora - garantir que não há 3 símbolos iguais
       let generatedValid = false
       while (!generatedValid) {
         let tempSymbolIds = []
         const counts: { [key: string]: number } = {}
+
+        // Criar pool de símbolos para cartela perdedora
         const symbolPoolForNonWinning: string[] = []
-        allSymbols.forEach((symbolId) => {
+
+        // Adicionar símbolos não premiados
+        nonWinningSymbols.forEach((symbolId) => {
           for (let k = 0; k < MAX_REPETITIONS_FOR_NON_WINNING; k++) {
             symbolPoolForNonWinning.push(symbolId)
           }
         })
+
+        // Adicionar alguns prêmios em dinheiro (mas não 3 iguais)
+        config.prizeConfig.forEach((prize) => {
+          const prizeSymbol = `R$${prize.value}`
+          symbolPoolForNonWinning.push(prizeSymbol)
+          symbolPoolForNonWinning.push(prizeSymbol) // Máximo 2 de cada
+        })
+
         shuffleArray(symbolPoolForNonWinning)
         tempSymbolIds = symbolPoolForNonWinning.slice(0, NUM_CELLS)
         generatedValid = true
+
+        // Contar ocorrências
         tempSymbolIds.forEach((sym) => {
           counts[sym] = (counts[sym] || 0) + 1
         })
-        if (winningSymbols.some((ws) => counts[ws] === 3)) {
-          generatedValid = false
-        }
+
+        // Verificar se há 3 símbolos iguais (não permitido em cartela perdedora)
         for (const sym in counts) {
-          if (counts[sym] > MAX_REPETITIONS_FOR_NON_WINNING) {
+          if (counts[sym] >= 3) {
             generatedValid = false
             break
           }
         }
+
         if (generatedValid) {
           finalSymbolIds = tempSymbolIds
         }
@@ -348,7 +424,6 @@ export default function MegaSortePage() {
     img.crossOrigin = "anonymous"
     img.src = overlayImageSrc
     img.onload = () => {
-      ctx.clearRect(0, 0, width, height)
       ctx.drawImage(img, 0, 0, width, height)
       ctx.globalCompositeOperation = "destination-out"
     }
@@ -375,11 +450,15 @@ export default function MegaSortePage() {
       clientX = event.clientX
       clientY = event.clientY
     }
-    return { x: clientX - rect.left, y: clientY - rect.top }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    }
   }
 
   const checkScratchProgress = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
     if (canvas.width === 0 || canvas.height === 0) return
+
     const config = getGameConfig()
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const pixels = imageData.data
@@ -391,6 +470,7 @@ export default function MegaSortePage() {
     }
     const totalPixels = canvas.width * canvas.height
     const percentageScratched = (transparentPixels / totalPixels) * 100
+
     if (percentageScratched > config.scratchThreshold * 100 && !gameStateRef.current.gameEnded) {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       for (let i = 0; i < NUM_CELLS; i++) {
@@ -757,6 +837,19 @@ export default function MegaSortePage() {
           >
             {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
+        </div>
+
+        {/* Tabela de Prêmios */}
+        <div className="mt-8 bg-gray-800/50 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-blue-400 mb-3 text-center">Tabela de Prêmios</h3>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {getGameConfig().prizeConfig.map((prize, index) => (
+              <div key={index} className="flex items-center space-x-2 text-sm">
+                <img src={prize.image || "/placeholder.svg"} alt="Prêmio" className="w-6 h-6 object-contain" />
+                <span className="text-green-400 font-semibold">R$ {prize.value.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </main>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -137,26 +137,35 @@ export default function HomePage() {
     {
       id: "raspe-da-esperanca",
       name: "Raspe da Esperança",
-      description: "Prêmios de até R$ 1.000",
+      description: "Prêmios de até R$ 1.000!",
       minBet: 1,
-      image: "/images/game-raspe-esperanca.png",
+      maxPrize: 1000,
+      icon: Zap,
       gradient: "from-cyan-500 to-blue-500",
+      bgGradient: "from-cyan-500/20 to-blue-500/20",
+      image: "/images/banner1real.png",
     },
     {
       id: "fortuna-dourada",
       name: "Fortuna Dourada",
-      description: "Prêmios de até R$ 5.000",
+      description: "Tesouros escondidos com prêmios de até R$ 5.000!",
       minBet: 3,
-      image: "/images/game-fortuna-dourada.png",
+      maxPrize: 5000,
+      icon: Trophy,
       gradient: "from-yellow-500 to-orange-500",
+      bgGradient: "from-yellow-500/20 to-orange-500/20",
+      image: "/images/banner3reais.png",
     },
     {
       id: "mega-sorte",
       name: "Mega Sorte",
-      description: "Prêmios de até R$ 10.000",
+      description: "Os maiores prêmios! Ganhe até R$ 10.000!",
       minBet: 5,
-      image: "/images/game-mega-sorte.png",
+      maxPrize: 10000,
+      icon: Sparkles,
       gradient: "from-purple-500 to-pink-500",
+      bgGradient: "from-purple-500/20 to-pink-500/20",
+      image: "/images/banner5reais.png",
     },
   ]
 
@@ -452,29 +461,30 @@ export default function HomePage() {
               {games.map((game) => (
                 <Card
                   key={game.id}
-                  className="bg-card border-border hover:border-primary/50 transition-all group overflow-hidden shadow-lg hover:shadow-primary/20 hover:-translate-y-1 duration-300"
+                  className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
                 >
-                  <CardHeader className="p-0">
-                    <div className="relative aspect-video overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
+                      {/* Background Image */}
                       <img
                         src={game.image || "/placeholder.svg"}
                         alt={game.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+                      {/* Text Overlay - Only R$ value in top right corner */}
+                      <div className="absolute top-3 right-3">
+                        <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
+                          R$ {game.minBet}
+                        </Badge>
+                      </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <CardTitle className="text-foreground mb-2">{game.name}</CardTitle>
-                    <CardDescription>{game.description}</CardDescription>
-                    <div className="flex items-center justify-between mt-4">
-                      <Badge
-                        variant="secondary"
-                        className="bg-green-500/10 text-green-400 border-green-500/20"
-                      >{`Aposta Mín. R$ ${game.minBet}`}</Badge>
+
+                    {/* Button Section */}
+                    <div className="p-3">
                       <Button
                         onClick={() => handleGameClick(game.id)}
-                        className="gradient-primary text-white font-semibold group-hover:animate-glow"
+                        className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
                       >
                         <Play className="h-4 w-4 mr-2" />
                         Jogar Agora

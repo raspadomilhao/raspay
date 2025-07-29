@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -103,35 +103,35 @@ export default function JogosPage() {
     {
       id: "raspe-da-esperanca",
       name: "Raspe da Esperança",
-      description: "O clássico jogo de raspadinha com prêmios de até R$ 1.000!",
+      description: "Prêmios de até R$ 1.000!",
       minBet: 1,
       maxPrize: 1000,
       icon: Zap,
       gradient: "from-cyan-500 to-blue-500",
       bgGradient: "from-cyan-500/20 to-blue-500/20",
-      image: "/images/game-raspe-esperanca.png",
+      image: "/images/banner1real.png",
     },
     {
       id: "fortuna-dourada",
       name: "Fortuna Dourada",
-      description: "Busque o ouro e encontre tesouros escondidos com prêmios de até R$ 5.000!",
+      description: "Tesouros escondidos com prêmios de até R$ 5.000!",
       minBet: 3,
       maxPrize: 5000,
       icon: Star,
       gradient: "from-yellow-500 to-orange-500",
       bgGradient: "from-yellow-500/20 to-orange-500/20",
-      image: "/images/game-fortuna-dourada.png",
+      image: "/images/banner3reais.png",
     },
     {
       id: "mega-sorte",
       name: "Mega Sorte",
-      description: "O jogo com os maiores prêmios! Ganhe até R$ 10.000 em uma única jogada!",
+      description: "Os maiores prêmios! Ganhe até R$ 10.000!",
       minBet: 5,
       maxPrize: 10000,
       icon: Gift,
       gradient: "from-purple-500 to-pink-500",
       bgGradient: "from-purple-500/20 to-pink-500/20",
-      image: "/images/game-mega-sorte.png",
+      image: "/images/banner5reais.png",
     },
   ]
 
@@ -307,9 +307,9 @@ export default function JogosPage() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="w-full px-2 py-6">
           {/* Page Header */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h2 className="text-4xl font-bold text-white mb-4">
               Nossos{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">Jogos</span>
@@ -320,42 +320,37 @@ export default function JogosPage() {
           </div>
 
           {/* Games Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {games.map((game) => (
               <Card
                 key={game.id}
                 className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
               >
-                <CardHeader className="p-0">
-                  <div className="relative aspect-video overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
+                    {/* Background Image */}
                     <img
                       src={game.image || "/placeholder.svg"}
                       alt={game.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                  </div>
-                  <div className="p-6 pb-4">
-                    <CardTitle className="text-white mb-2">{game.name}</CardTitle>
-                    <CardDescription className="text-gray-400">{game.description}</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-6 pb-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="secondary" className="bg-green-500/20 text-green-400">
-                        A partir de R$ {game.minBet}
-                      </Badge>
-                      <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400">
-                        Até R$ {game.maxPrize.toLocaleString()}
+
+                    {/* Text Overlay - Only R$ 1 in top right corner */}
+                    <div className="absolute top-3 right-3">
+                      <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
+                        R$ {game.minBet}
                       </Badge>
                     </div>
+                  </div>
+
+                  {/* Button Section */}
+                  <div className="p-3">
                     <Button
                       onClick={() => {
                         setSelectedGame(game.id)
                         setIsGameModalOpen(true)
                       }}
-                      className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white`}
+                      className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
                     >
                       <Play className="h-4 w-4 mr-2" />
                       Jogar Agora
@@ -367,9 +362,9 @@ export default function JogosPage() {
           </div>
 
           {/* Info Section */}
-          <div className="mt-16">
+          <div className="mt-12 px-2">
             <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
-              <CardContent className="p-8 text-center">
+              <CardContent className="p-6 text-center">
                 <h3 className="text-2xl font-bold text-white mb-4">Como Jogar</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                   <div className="space-y-2">

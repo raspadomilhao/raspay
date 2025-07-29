@@ -43,28 +43,32 @@ const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
 // Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-  { value: 0.5, image: "/images/50centavos.png", chance: 30 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 58 },
   { value: 1, image: "/images/1real.png", chance: 25 },
-  { value: 2, image: "/images/2reais.png", chance: 20 },
-  { value: 5, image: "/images/5reais.png", chance: 10 },
- // { value: 10, image: "/images/10reais.png", chance: 8 },
- // { value: 20, image: "/images/20reais.png", chance: 5 },
- // { value: 50, image: "/images/50reais.png", chance: 1.5 },
-  //{ value: 100, image: "/images/100reais.png", chance: 0.4 },
- // { value: 200, image: "/images/200reais.png", chance: 0.1 },
+  { value: 2, image: "/images/2reais.png", chance: 10 },
+  { value: 5, image: "/images/5reais.png", chance: 4 },
+  { value: 10, image: "/images/10reais.png", chance: 1.5 },
+  { value: 20, image: "/images/20reais.png", chance: 0.4 },
+  { value: 50, image: "/images/50reais.png", chance: 0.1 },
+  { value: 100, image: "/images/100reais.png", chance: 0 },
+  { value: 200, image: "/images/200reais.png", chance: 0 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
 const bloggerPrizeConfig = [
-  { value: 0.5, image: "/images/50centavos.png", chance: 30 },
-  { value: 1, image: "/images/1real.png", chance: 25 },
-  { value: 2, image: "/images/2reais.png", chance: 20 },
-  { value: 5, image: "/images/5reais.png", chance: 10 },
-  { value: 10, image: "/images/10reais.png", chance: 8 },
-  { value: 20, image: "/images/20reais.png", chance: 5 },
-  { value: 50, image: "/images/50reais.png", chance: 1.5 },
-  { value: 100, image: "/images/100reais.png", chance: 0.4 },
-  { value: 200, image: "/images/200reais.png", chance: 0.1 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 10 },
+  { value: 1, image: "/images/1real.png", chance: 10 },
+  { value: 2, image: "/images/2reais.png", chance: 15 },
+  { value: 5, image: "/images/5reais.png", chance: 17 },
+  { value: 10, image: "/images/10reais.png", chance: 18 },
+  { value: 20, image: "/images/20reais.png", chance: 12 },
+  { value: 50, image: "/images/50reais.png", chance: 8 },
+  { value: 100, image: "/images/100reais.png", chance: 5 },
+  { value: 200, image: "/images/200reais.png", chance: 5 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
 ]
 
 // Configurações gerais
@@ -75,7 +79,7 @@ const regularConfig = {
 }
 
 const bloggerConfig = {
-  winFrequency: 0.60, // 75% de chance de ganhar para bloggers
+  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
@@ -864,25 +868,14 @@ export default function RaspeDaEsperancaPage() {
 
         {/* Tabela de Prêmios */}
         <div className="mt-8 bg-gray-800/50 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-blue-400 mb-3 text-center">
-            Tabela de Prêmios {isBlogger(userProfile) ? "(Blogger)" : "(Regular)"}
-          </h3>
+          <h3 className="text-lg font-bold text-blue-400 mb-3 text-center">Tabela de Prêmios</h3>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {getGameConfig().prizeConfig.map((prize, index) => (
-              <div key={index} className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  <img src={prize.image || "/placeholder.svg"} alt="Prêmio" className="w-6 h-6 object-contain" />
-                  <span className="text-green-400 font-semibold">R$ {prize.value.toFixed(2)}</span>
-                </div>
-                <span className="text-gray-400">{prize.chance}%</span>
+              <div key={index} className="flex items-center space-x-2 text-sm">
+                <img src={prize.image || "/placeholder.svg"} alt="Prêmio" className="w-6 h-6 object-contain" />
+                <span className="text-green-400 font-semibold">R$ {prize.value.toFixed(2)}</span>
               </div>
             ))}
-          </div>
-          <div className="mt-3 pt-3 border-t border-gray-700">
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-400">Chance de Ganhar:</span>
-              <span className="text-green-400 font-semibold">{(getGameConfig().winFrequency * 100).toFixed(0)}%</span>
-            </div>
           </div>
         </div>
       </main>
