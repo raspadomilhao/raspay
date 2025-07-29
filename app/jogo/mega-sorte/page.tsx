@@ -54,10 +54,6 @@ const regularPrizeConfig = [
   { value: 200, image: "/images/200reais.png", chance: 0 },
   { value: 500, image: "/images/500reais.png", chance: 0 },
   { value: 1000, image: "/images/1mil.png", chance: 0 },
-  { value: 2000, image: "/images/2mil.png", chance: 0 },
-  { value: 5000, image: "/images/5mil.png", chance: 0 },
-  { value: 10000, image: "/images/10mil.png", chance: 0 },
-  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
@@ -73,10 +69,6 @@ const bloggerPrizeConfig = [
   { value: 200, image: "/images/200reais.png", chance: 5 },
   { value: 500, image: "/images/500reais.png", chance: 0 },
   { value: 1000, image: "/images/1mil.png", chance: 0 },
-  { value: 2000, image: "/images/2mil.png", chance: 0 },
-  { value: 5000, image: "/images/5mil.png", chance: 0 },
-  { value: 10000, image: "/images/10mil.png", chance: 0 },
-  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configurações gerais
@@ -87,7 +79,7 @@ const regularConfig = {
 }
 
 const bloggerConfig = {
-  winFrequency: 0.65, // 65% de chance de ganhar para bloggers
+  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
@@ -108,10 +100,6 @@ const prizeImageMap: { [key: string]: string } = {
   R$200: "/images/200reais.png",
   R$500: "/images/500reais.png",
   R$1000: "/images/1mil.png",
-  R$2000: "/images/2mil.png",
-  R$5000: "/images/5mil.png",
-  R$10000: "/images/10mil.png",
-  R$25000: "/images/25mil.png",
 }
 
 const symbolImageMap = {
