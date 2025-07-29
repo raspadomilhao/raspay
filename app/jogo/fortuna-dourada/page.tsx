@@ -45,13 +45,16 @@ const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 const regularPrizeConfig = [
   { value: 1, image: "/images/1real.png", chance: 45 },
   { value: 2, image: "/images/2reais.png", chance: 25 },
-  { value: 3, image: "/images/2reais.png", chance: 15 },
-  { value: 4, image: "/images/5reais.png", chance: 8 },
-  { value: 6, image: "/images/5reais.png", chance: 4 },
-  { value: 7, image: "/images/10reais.png", chance: 2 },
-  { value: 9, image: "/images/10reais.png", chance: 1 },
-  { value: 15, image: "/images/20reais.png", chance: 0 },
-  { value: 30, image: "/images/50reais.png", chance: 0 },
+  { value: 5, image: "/images/2reais.png", chance: 15 },
+  { value: 10, image: "/images/5reais.png", chance: 8 },
+  { value: 20, image: "/images/5reais.png", chance: 4 },
+  { value: 50, image: "/images/10reais.png", chance: 2 },
+  { value: 100, image: "/images/10reais.png", chance: 1 },
+  { value: 200, image: "/images/20reais.png", chance: 0 },
+  { value: 500, image: "/images/50reais.png", chance: 0 },
+  { value: 1000, image: "/images/10reais.png", chance: 1 },
+  { value: 2000, image: "/images/20reais.png", chance: 0 },
+  { value: 5000, image: "/images/50reais.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
@@ -84,7 +87,7 @@ const bloggerConfig = {
 }
 
 // Símbolos não premiados
-const nonWinningSymbols = ["iPhone", "iPad", "Moto", "R$100", "R$500", "R$1000", "R$5000"]
+const nonWinningSymbols = ["iPhone", "iPad", "Moto"]
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {

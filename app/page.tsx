@@ -446,18 +446,55 @@ export default function HomePage() {
           </div>
         </div>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
           <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">Jogos em Destaque</h2>
-              <Link href="/jogos">
-                <Button variant="ghost" className="text-primary hover:text-primary/80">
-                  Ver todos
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+            <div className="mb-3">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="relative">
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: true,
+                }}
+                plugins={[Autoplay({ delay: 3000 })]}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-1 md:-ml-2">
+                  {winners.map((winner) => (
+                    <CarouselItem key={winner.id} className="pl-1 md:pl-2 basis-full sm:basis-1/2 lg:basis-1/4">
+                      <Card className="bg-card/50 border-border">
+                        <CardContent className="p-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                                <Trophy className="h-4 w-4 text-white" />
+                              </div>
+                              <div>
+                                <p className="text-foreground font-semibold text-xs">{winner.user_name}</p>
+                                <p className="text-muted-foreground text-xs">{winner.game_name}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-green-400 font-bold text-xs">
+                                R$ {formatCurrency(winner.prize_amount)}
+                              </p>
+                              <p className="text-muted-foreground text-xs">
+                                {new Date(winner.created_at).toLocaleDateString("pt-BR")}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
+          </section>
+
+          <section>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {games.map((game) => (
                 <Card
                   key={game.id}
@@ -497,57 +534,17 @@ export default function HomePage() {
           </section>
 
           <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
-              <Link href="/vencedores">
-                <Button variant="ghost" className="text-primary hover:text-primary/80">
-                  Ver todos
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-            <Card className="bg-card/50 border-border">
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  {winners.map((winner) => (
-                    <div
-                      key={winner.id}
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                          <Trophy className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-foreground font-semibold">{winner.user_name}</p>
-                          <p className="text-muted-foreground text-sm">{winner.game_name}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-green-400 font-bold text-lg">R$ {formatCurrency(winner.prize_amount)}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {new Date(winner.created_at).toLocaleDateString("pt-BR")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section>
             <Card className="bg-gradient-to-r from-primary/10 to-blue-500/10 border-primary/20">
-              <CardContent className="p-10 text-center">
-                <Sparkles className="h-10 w-10 text-primary mx-auto mb-4" />
-                <h3 className="text-3xl font-bold text-foreground mb-3">Pronto para a Sorte Grande?</h3>
-                <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+              <CardContent className="p-6 text-center">
+                <Sparkles className="h-8 w-8 text-primary mx-auto mb-3" />
+                <h3 className="text-2xl font-bold text-foreground mb-2">Pronto para a Sorte Grande?</h3>
+                <p className="text-muted-foreground mb-4 max-w-2xl mx-auto text-sm">
                   {isLoggedIn
                     ? "Seu próximo prêmio está a uma raspadinha de distância. Faça um depósito e continue a diversão!"
                     : "Cadastre-se em segundos e comece a ganhar. A sorte favorece os audazes!"}
                 </p>
                 <Link href={isLoggedIn ? "/deposito" : "/auth"}>
-                  <Button size="lg" className="gradient-primary text-white font-bold px-10 py-6 text-base animate-glow">
+                  <Button size="lg" className="gradient-primary text-white font-bold px-8 py-4 text-base animate-glow">
                     {isLoggedIn ? "Depositar Agora" : "Criar Conta Grátis"}
                   </Button>
                 </Link>
