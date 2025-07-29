@@ -79,13 +79,13 @@ const regularConfig = {
 }
 
 const bloggerConfig = {
-  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
+  winFrequency: 0.65, // 65% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
 
 // Símbolos não premiados
-const nonWinningSymbols = ["iPhone", "iPad", "Moto", "R$200", "R$500", "R$1000"]
+const nonWinningSymbols = ["iPhone", "iPad", "Moto"]
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {

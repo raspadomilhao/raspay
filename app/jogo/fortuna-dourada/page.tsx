@@ -43,45 +43,49 @@ const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
 // Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-  { value: 1, image: "/images/1real.png", chance: 45 },
-  { value: 2, image: "/images/2reais.png", chance: 25 },
-  { value: 5, image: "/images/2reais.png", chance: 15 },
-  { value: 10, image: "/images/5reais.png", chance: 8 },
-  { value: 20, image: "/images/5reais.png", chance: 4 },
-  { value: 50, image: "/images/10reais.png", chance: 2 },
-  { value: 100, image: "/images/10reais.png", chance: 1 },
-  { value: 200, image: "/images/20reais.png", chance: 0 },
-  { value: 500, image: "/images/50reais.png", chance: 0 },
-  { value: 1000, image: "/images/10reais.png", chance: 1 },
-  { value: 2000, image: "/images/20reais.png", chance: 0 },
-  { value: 5000, image: "/images/50reais.png", chance: 0 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 55 },
+  { value: 1, image: "/images/1real.png", chance: 20.1 },
+  { value: 2, image: "/images/2reais.png", chance: 12 },
+  { value: 5, image: "/images/5reais.png", chance: 6 },
+  { value: 10, image: "/images/10reais.png", chance: 3 },
+  { value: 20, image: "/images/20reais.png", chance: 1.5 },
+  { value: 50, image: "/images/50reais.png", chance: 0.4 },
+  { value: 100, image: "/images/100reais.png", chance: 0 },
+  { value: 200, image: "/images/200reais.png", chance: 0 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
+  { value: 2000, image: "/images/2mil.png", chance: 0 },
+  { value: 5000, image: "/images/5mil.png", chance: 0 },
+  { value: 10000, image: "/images/10mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
 const bloggerPrizeConfig = [
-  { value: 1, image: "/images/1real.png", chance: 15 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 10 },
+  { value: 1, image: "/images/1real.png", chance: 10 },
   { value: 2, image: "/images/2reais.png", chance: 15 },
-  { value: 3, image: "/images/2reais.png", chance: 15 },
-  { value: 4, image: "/images/5reais.png", chance: 15 },
-  { value: 6, image: "/images/5reais.png", chance: 10 },
-  { value: 7, image: "/images/10reais.png", chance: 10 },
-  { value: 9, image: "/images/10reais.png", chance: 8 },
-  { value: 10, image: "/images/10reais.png", chance: 5 },
-  { value: 25, image: "/images/50reais.png", chance: 4 },
-  { value: 150, image: "/images/200reais.png", chance: 2 },
-  { value: 500, image: "/images/500reais.png", chance: 1 },
+  { value: 5, image: "/images/5reais.png", chance: 17 },
+  { value: 10, image: "/images/10reais.png", chance: 18 },
+  { value: 20, image: "/images/20reais.png", chance: 12 },
+  { value: 50, image: "/images/50reais.png", chance: 8 },
+  { value: 100, image: "/images/100reais.png", chance: 5 },
+  { value: 200, image: "/images/200reais.png", chance: 5 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
   { value: 1000, image: "/images/1mil.png", chance: 0 },
+  { value: 2000, image: "/images/2mil.png", chance: 0 },
+  { value: 5000, image: "/images/5mil.png", chance: 0 },
+  { value: 10000, image: "/images/10mil.png", chance: 0 },
 ]
 
 // Configurações gerais
 const regularConfig = {
-  winFrequency: 0.65, // 65% de chance de ganhar
+  winFrequency: 0.5, // 50% de chance de ganhar
   scratchThreshold: 0.7,
   prizeConfig: regularPrizeConfig,
 }
 
 const bloggerConfig = {
-  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
+  winFrequency: 0.65, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
@@ -91,20 +95,20 @@ const nonWinningSymbols = ["iPhone", "iPad", "Moto"]
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
+  "R$0.5": "/images/50centavos.png",
   R$1: "/images/1real.png",
   R$2: "/images/2reais.png",
-  R$3: "/images/2reais.png",
-  R$4: "/images/5reais.png",
-  R$6: "/images/5reais.png",
-  R$7: "/images/10reais.png",
-  R$9: "/images/10reais.png",
+  R$5: "/images/5reais.png",
   R$10: "/images/10reais.png",
-  R$15: "/images/20reais.png",
-  R$25: "/images/50reais.png",
-  R$30: "/images/50reais.png",
-  R$150: "/images/200reais.png",
+  R$20: "/images/20reais.png",
+  R$50: "/images/50reais.png",
+  R$100: "/images/100reais.png",
+  R$200: "/images/200reais.png",
   R$500: "/images/500reais.png",
   R$1000: "/images/1mil.png",
+  R$2000: "/images/2mil.png",
+  R$5000: "/images/5mil.png",
+  R$10000: "/images/10mil.png",
 }
 
 const symbolImageMap = {
@@ -708,7 +712,7 @@ export default function FortunaDouradaPage() {
           const img = document.createElement("img")
           img.src = symbol.imageUrl
           img.alt = symbol.legendText
-          img.className = "w-full h-auto max-w-[40px] max-h-[40px] object-contain mb-1"
+          img.className = "w-full h-auto max-w-[60px] max-h-[60px] object-contain mb-1"
           img.onerror = () => {
             img.src = `https://placehold.co/40x40/B8860B/FFD700?text=${encodeURIComponent(symbolIds[i])}`
           }

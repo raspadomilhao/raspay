@@ -37,68 +37,81 @@ interface GameState {
 }
 
 const NUM_CELLS = 9
-const GAME_PRICE = 5.0
+const GAME_PRICE = 1.0
 const MAX_REPETITIONS_FOR_NON_WINNING = 2
 const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
 // Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-  { value: 2, image: "/images/2reais.png", chance: 40 },
-  { value: 3, image: "/images/2reais.png", chance: 25 },
-  { value: 5, image: "/images/5reais.png", chance: 20 },
-  { value: 8, image: "/images/10reais.png", chance: 10 },
-  { value: 10, image: "/images/10reais.png", chance: 3 },
-  { value: 15, image: "/images/20reais.png", chance: 2 },
-  { value: 25, image: "/images/50reais.png", chance: 0 },
-  { value: 50, image: "/images/50reais.png", chance: 0 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 58 },
+  { value: 1, image: "/images/1real.png", chance: 25 },
+  { value: 2, image: "/images/2reais.png", chance: 10 },
+  { value: 5, image: "/images/5reais.png", chance: 4 },
+  { value: 10, image: "/images/10reais.png", chance: 1.5 },
+  { value: 20, image: "/images/20reais.png", chance: 0.4 },
+  { value: 50, image: "/images/50reais.png", chance: 0.1 },
   { value: 100, image: "/images/100reais.png", chance: 0 },
+  { value: 200, image: "/images/200reais.png", chance: 0 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
+  { value: 2000, image: "/images/2mil.png", chance: 0 },
+  { value: 5000, image: "/images/5mil.png", chance: 0 },
+  { value: 10000, image: "/images/10mil.png", chance: 0 },
+  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
 const bloggerPrizeConfig = [
+  { value: 0.5, image: "/images/50centavos.png", chance: 10 },
+  { value: 1, image: "/images/1real.png", chance: 10 },
   { value: 2, image: "/images/2reais.png", chance: 15 },
-  { value: 3, image: "/images/2reais.png", chance: 15 },
-  { value: 5, image: "/images/5reais.png", chance: 15 },
-  { value: 8, image: "/images/10reais.png", chance: 15 },
-  { value: 10, image: "/images/10reais.png", chance: 10 },
-  { value: 15, image: "/images/20reais.png", chance: 10 },
-  { value: 25, image: "/images/50reais.png", chance: 8 },
-  { value: 50, image: "/images/50reais.png", chance: 5 },
-  { value: 150, image: "/images/200reais.png", chance: 4 },
-  { value: 500, image: "/images/500reais.png", chance: 2 },
-  { value: 1000, image: "/images/1mil.png", chance: 1 },
+  { value: 5, image: "/images/5reais.png", chance: 17 },
+  { value: 10, image: "/images/10reais.png", chance: 18 },
+  { value: 20, image: "/images/20reais.png", chance: 12 },
+  { value: 50, image: "/images/50reais.png", chance: 8 },
+  { value: 100, image: "/images/100reais.png", chance: 5 },
+  { value: 200, image: "/images/200reais.png", chance: 5 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
+  { value: 2000, image: "/images/2mil.png", chance: 0 },
+  { value: 5000, image: "/images/5mil.png", chance: 0 },
+  { value: 10000, image: "/images/10mil.png", chance: 0 },
+  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configurações gerais
 const regularConfig = {
-  winFrequency: 0.65, // 65% de chance de ganhar
+  winFrequency: 0.5, // 50% de chance de ganhar
   scratchThreshold: 0.7,
   prizeConfig: regularPrizeConfig,
 }
 
 const bloggerConfig = {
-  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
+  winFrequency: 0.65, // 65% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
 
 // Símbolos não premiados
-const nonWinningSymbols = ["iPhone", "iPad", "Moto", "R$500", "R$1000", "R$5000", "R$10000"]
+const nonWinningSymbols = ["iPhone", "iPad", "Moto"]
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
+  "R$0.5": "/images/50centavos.png",
+  R$1: "/images/1real.png",
   R$2: "/images/2reais.png",
-  R$3: "/images/2reais.png",
   R$5: "/images/5reais.png",
-  R$8: "/images/10reais.png",
   R$10: "/images/10reais.png",
-  R$15: "/images/20reais.png",
-  R$25: "/images/50reais.png",
+  R$20: "/images/20reais.png",
   R$50: "/images/50reais.png",
   R$100: "/images/100reais.png",
-  R$150: "/images/200reais.png",
+  R$200: "/images/200reais.png",
   R$500: "/images/500reais.png",
   R$1000: "/images/1mil.png",
+  R$2000: "/images/2mil.png",
+  R$5000: "/images/5mil.png",
+  R$10000: "/images/10mil.png",
+  R$25000: "/images/25mil.png",
 }
 
 const symbolImageMap = {
@@ -113,15 +126,15 @@ const symbolImageMap = {
 }
 
 const winMessages = [
-  "Mega sorte! Ganhou R$@valor@!",
-  "Parabéns! A mega sorte te premiou com R$@valor@!",
-  "Que sorte incrível! R$@valor@ na sua conta!",
+  "Esperança premiada! Ganhou R$@valor@!",
+  "Parabéns! A esperança te trouxe R$@valor@!",
+  "Que alegria! R$@valor@ na sua conta!",
 ]
 
 const loseMessages = [
-  "Não foi desta vez, mas a mega sorte está chegando!",
-  "Continue tentando, a sorte grande está próxima!",
-  "A próxima pode ser a mega sorte da sua vida!",
+  "Não foi desta vez, mas a esperança nunca morre!",
+  "Continue tentando, a sorte está chegando!",
+  "A próxima raspadinha pode ser a sua!",
 ]
 
 const formatCurrency = (value: string | number | undefined | null): string => {
@@ -151,7 +164,7 @@ const isBlogger = (userProfile: UserProfile | null): boolean => {
   return bloggerEmails.includes(userProfile.user.email.toLowerCase())
 }
 
-export default function MegaSortePage() {
+export default function RaspeDaEsperancaPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -417,27 +430,32 @@ export default function MegaSortePage() {
     return finalSymbolIds
   }
 
-  const drawScratchLayer = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const drawScratchLayer = async (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     if (width === 0 || height === 0) return
+
     const overlayImageSrc = getRandomOverlayImage()
-    const img = new Image()
-    img.crossOrigin = "anonymous"
-    img.src = overlayImageSrc
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, width, height)
-      ctx.globalCompositeOperation = "destination-out"
-    }
-    img.onerror = () => {
-      ctx.fillStyle = "#1E40AF"
+
+    try {
+      const overlayImg = new Image()
+      overlayImg.crossOrigin = "anonymous"
+      await new Promise((resolve, reject) => {
+        overlayImg.onload = resolve
+        overlayImg.onerror = reject
+        overlayImg.src = overlayImageSrc
+      })
+      ctx.drawImage(overlayImg, 0, 0, width, height)
+    } catch (overlayError) {
+      // Fallback para cor sólida se a imagem não carregar
+      ctx.fillStyle = "#DC2626"
       ctx.fillRect(0, 0, width, height)
       const gradient = ctx.createLinearGradient(0, 0, width, height)
-      gradient.addColorStop(0, "#3B82F6")
-      gradient.addColorStop(0.5, "#2563EB")
-      gradient.addColorStop(1, "#1E40AF")
+      gradient.addColorStop(0, "#F87171")
+      gradient.addColorStop(0.5, "#EF4444")
+      gradient.addColorStop(1, "#DC2626")
       ctx.fillStyle = gradient
       ctx.fillRect(0, 0, width, height)
-      ctx.globalCompositeOperation = "destination-out"
     }
+    ctx.globalCompositeOperation = "destination-out"
   }
 
   const getEventPos = (canvas: HTMLCanvasElement, event: MouseEvent | TouchEvent) => {
@@ -517,7 +535,7 @@ export default function MegaSortePage() {
 
   const processGameResult = async () => {
     try {
-      const response = await AuthClient.makeAuthenticatedRequest("/api/games/mega-sorte/play", {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/games/raspe-da-esperanca/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -557,7 +575,7 @@ export default function MegaSortePage() {
         playSound(audioWinRef)
         playSound(audioCoinRef)
         setModalType("win")
-        setModalTitle("Mega Sorte!")
+        setModalTitle("Esperança Premiada!")
         setModalMessage(messageText)
         setShowModal(true)
       } else {
@@ -677,7 +695,7 @@ export default function MegaSortePage() {
         hasWonRealPrize: false,
         realPrizeAmount: 0,
       }
-      setMessage("Clique ou arraste para raspar a mega sorte!")
+      setMessage("Clique ou arraste para raspar a esperança!")
       setShowModal(false)
       if (scratchGridRef.current) {
         scratchGridRef.current.innerHTML = ""
@@ -691,16 +709,16 @@ export default function MegaSortePage() {
       for (let i = 0; i < NUM_CELLS; i++) {
         const cellContent = document.createElement("div")
         cellContent.className =
-          "flex flex-col justify-center items-center text-blue-300 font-bold bg-gray-800/70 rounded-lg p-2 opacity-0 scale-75 transition-all duration-300"
+          "flex flex-col justify-center items-center text-blue-300 font-bold bg-gray-800/70 rounded-lg p-1 opacity-0 scale-75 transition-all duration-300"
         cellContent.id = `symbol-${i}`
         const symbol = createSymbolHtml(symbolIds[i])
         if (symbol.imageUrl) {
           const img = document.createElement("img")
           img.src = symbol.imageUrl
           img.alt = symbol.legendText
-          img.className = "w-full h-auto max-w-[40px] max-h-[40px] object-contain mb-1"
+          img.className = "w-full h-auto max-w-[60px] max-h-[60px] object-contain mb-1"
           img.onerror = () => {
-            img.src = `https://placehold.co/40x40/4338CA/6366F1?text=${encodeURIComponent(symbolIds[i])}`
+            img.src = `https://placehold.co/40x40/DC2626/F87171?text=${encodeURIComponent(symbolIds[i])}`
           }
           cellContent.appendChild(img)
           const legend = document.createElement("span")
@@ -724,13 +742,13 @@ export default function MegaSortePage() {
       gameStateRef.current.contexts = [ctx]
       gameStateRef.current.scratchCanvases = [canvas]
       gameStateRef.current.scratchedAreas = Array(NUM_CELLS).fill(0)
-      setTimeout(() => {
+      setTimeout(async () => {
         const canvas = gameStateRef.current.scratchCanvases[0]
         const container = canvas.parentElement!
         canvas.width = container.offsetWidth
         canvas.height = container.offsetHeight
         const ctx = gameStateRef.current.contexts[0]
-        drawScratchLayer(ctx, canvas.width, canvas.height)
+        await drawScratchLayer(ctx, canvas.width, canvas.height)
         const handleMouseDown = (e: MouseEvent) => handleStartScratch(e, canvas, ctx)
         const handleMouseMove = (e: MouseEvent) => handleScratch(e, canvas, ctx)
         const handleTouchStart = (e: TouchEvent) => handleStartScratch(e, canvas, ctx)
@@ -755,7 +773,7 @@ export default function MegaSortePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-400 mx-auto mb-4"></div>
           <p className="text-white">Carregando Jogo...</p>
         </div>
       </div>
@@ -778,7 +796,7 @@ export default function MegaSortePage() {
       <main className="relative z-10 max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col justify-center">
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-            Mega Sorte
+            Raspe da Esperança
           </h1>
           <p className="text-blue-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
         </div>
