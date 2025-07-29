@@ -41,56 +41,65 @@ const GAME_PRICE = 1.0
 const MAX_REPETITIONS_FOR_NON_WINNING = 2
 const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
-// Configurações para usuários regulares
+// Configuração de prêmios para usuários regulares
+const regularPrizeConfig = [
+  { value: 0.5, image: "/images/50centavos.png", chance: 30 },
+  { value: 1, image: "/images/1real.png", chance: 25 },
+  { value: 2, image: "/images/2reais.png", chance: 20 },
+  { value: 5, image: "/images/5reais.png", chance: 10 },
+ // { value: 10, image: "/images/10reais.png", chance: 8 },
+ // { value: 20, image: "/images/20reais.png", chance: 5 },
+ // { value: 50, image: "/images/50reais.png", chance: 1.5 },
+  //{ value: 100, image: "/images/100reais.png", chance: 0.4 },
+ // { value: 200, image: "/images/200reais.png", chance: 0.1 },
+]
+
+// Configuração de prêmios para bloggers
+const bloggerPrizeConfig = [
+  { value: 0.5, image: "/images/50centavos.png", chance: 30 },
+  { value: 1, image: "/images/1real.png", chance: 25 },
+  { value: 2, image: "/images/2reais.png", chance: 20 },
+  { value: 5, image: "/images/5reais.png", chance: 10 },
+  { value: 10, image: "/images/10reais.png", chance: 8 },
+  { value: 20, image: "/images/20reais.png", chance: 5 },
+  { value: 50, image: "/images/50reais.png", chance: 1.5 },
+  { value: 100, image: "/images/100reais.png", chance: 0.4 },
+  { value: 200, image: "/images/200reais.png", chance: 0.1 },
+]
+
+// Configurações gerais
 const regularConfig = {
-  winFrequency: 0.5, // 65% de chance de ganhar
+  winFrequency: 0.5, // 50% de chance de ganhar
   scratchThreshold: 0.7,
-  prizeConfig: {
-    small: {
-      values: [0.5, 0.75, 1, 2],
-      frequency: 0.94,
-    },
-    medium: {
-      values: [3, 4],
-      frequency: 0.05,
-    },
-    large: {
-      values: [5, 10],
-      frequency: 0.01,
-    },
-  },
+  prizeConfig: regularPrizeConfig,
 }
 
-// Configurações para bloggers - CONFIGURE AQUI OS PRÊMIOS PARA BLOGGERS
 const bloggerConfig = {
-  winFrequency: 0.75, // 65% de chance de ganhar para bloggers
+  winFrequency: 0.60, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
-  prizeConfig: {
-    small: {
-      values: [0.5, 0.75, 1, 2], // Prêmios pequenos para bloggers
-      frequency: 0.6, // 60% dos ganhos são prêmios pequenos
-    },
-    medium: {
-      values: [10, 25, 150], // Prêmios médios para bloggers
-      frequency: 0.3, // 30% dos ganhos são prêmios médios
-    },
-    large: {
-      values: [200], // Prêmios grandes para bloggers
-      frequency: 0.1, // 10% dos ganhos são prêmios grandes
-    },
-  },
+  prizeConfig: bloggerPrizeConfig,
 }
 
-const winningSymbols = [
-  ...regularConfig.prizeConfig.small.values,
-  ...regularConfig.prizeConfig.medium.values,
-  ...regularConfig.prizeConfig.large.values,
-  ...bloggerConfig.prizeConfig.small.values,
-  ...bloggerConfig.prizeConfig.medium.values,
-  ...bloggerConfig.prizeConfig.large.values,
-].map((val) => `R$${val}`)
-const nonWinningSymbols = ["iPhone", "iPad", "Moto", "R$20", "R$50", "R$100", "R$1000"]
-const allSymbols = [...winningSymbols, ...nonWinningSymbols]
+// Símbolos não premiados
+const nonWinningSymbols = ["iPhone", "iPad", "Moto", "R$200", "R$500", "R$1000"]
+
+// Mapeamento de imagens específicas para cada valor de prêmio
+const prizeImageMap: { [key: string]: string } = {
+  "R$0.5": "/images/50centavos.png",
+  R$1: "/images/1real.png",
+  R$2: "/images/2reais.png",
+  R$5: "/images/5reais.png",
+  R$10: "/images/10reais.png",
+  R$20: "/images/20reais.png",
+  R$50: "/images/50reais.png",
+  R$100: "/images/100reais.png",
+  R$200: "/images/200reais.png",
+  R$500: "/images/500reais.png",
+  R$1000: "/images/1mil.png",
+  R$2000: "/images/2mil.png",
+  R$5000: "/images/5mil.png",
+  R$10000: "/images/10mil.png",
+}
 
 const symbolImageMap = {
   Casa: { url: "https://i.imgur.com/jG8STSH.png", legend: "Casa 250 MIL" },
@@ -121,11 +130,11 @@ const formatCurrency = (value: string | number | undefined | null): string => {
   return isNaN(numValue) ? "0.00" : numValue.toFixed(2)
 }
 
-// Função para verificar se é blogger - CORRIGIDA
+// Função para verificar se é blogger
 const isBlogger = (userProfile: UserProfile | null): boolean => {
   if (!userProfile) return false
 
-  // Verificar por tipo de usuário (campo correto é user_type)
+  // Verificar por tipo de usuário
   if (userProfile.user.user_type === "blogger") {
     return true
   }
@@ -261,7 +270,7 @@ export default function RaspeDaEsperancaPage() {
     }
   }
 
-  // Adicionar função para controlar som ambiente
+  // Função para controlar som ambiente
   const toggleAmbientSound = () => {
     if (audioAmbientRef.current) {
       if (soundEnabled) {
@@ -277,18 +286,18 @@ export default function RaspeDaEsperancaPage() {
   // Função para gerar prêmio baseado na configuração do tipo de usuário
   const gerarPremioReal = () => {
     const config = getGameConfig()
-    const random = Math.random()
+    const random = Math.random() * 100
+    let cumulativeChance = 0
 
-    if (random < config.prizeConfig.small.frequency) {
-      const randomIndex = Math.floor(Math.random() * config.prizeConfig.small.values.length)
-      return config.prizeConfig.small.values[randomIndex]
-    } else if (random < config.prizeConfig.small.frequency + config.prizeConfig.medium.frequency) {
-      const randomIndex = Math.floor(Math.random() * config.prizeConfig.medium.values.length)
-      return config.prizeConfig.medium.values[randomIndex]
-    } else {
-      const randomIndex = Math.floor(Math.random() * config.prizeConfig.large.values.length)
-      return config.prizeConfig.large.values[randomIndex]
+    for (const prize of config.prizeConfig) {
+      cumulativeChance += prize.chance
+      if (random <= cumulativeChance) {
+        return prize.value
+      }
     }
+
+    // Fallback para o primeiro prêmio se algo der errado
+    return config.prizeConfig[0].value
   }
 
   const shuffleArray = (array: any[]) => {
@@ -304,22 +313,11 @@ export default function RaspeDaEsperancaPage() {
     let legendText = ""
 
     if (symbolId.startsWith("R$")) {
-      const value = Number.parseFloat(symbolId.substring(2))
-      const config = getGameConfig()
-      const allPrizeValues = [
-        ...config.prizeConfig.small.values,
-        ...config.prizeConfig.medium.values,
-        ...config.prizeConfig.large.values,
-      ]
-
-      if (allPrizeValues.includes(value)) {
-        imageUrl = symbolImageMap["Dinheiro"].url
-        legendText = symbolId
-      } else {
-        imageUrl = symbolImageMap["Dinheiro"].url
-        legendText = symbolId
-      }
+      // Para prêmios em dinheiro - usar a imagem específica do valor
+      imageUrl = prizeImageMap[symbolId] || symbolImageMap["Dinheiro"].url
+      legendText = symbolId
     } else if (symbolImageMap[symbolId as keyof typeof symbolImageMap]) {
+      // Para outros símbolos
       const symbol = symbolImageMap[symbolId as keyof typeof symbolImageMap]
       imageUrl = symbol.url
       legendText = symbol.legend
@@ -342,6 +340,7 @@ export default function RaspeDaEsperancaPage() {
       const winningSymbolId = `R$${winningPrizeAmount}`
       gameStateRef.current.realPrizeAmount = winningPrizeAmount
 
+      // Colocar 3 símbolos premiados em posições aleatórias
       const prizePositions = new Set()
       while (prizePositions.size < 3) {
         prizePositions.add(Math.floor(Math.random() * NUM_CELLS))
@@ -351,6 +350,7 @@ export default function RaspeDaEsperancaPage() {
         finalSymbolIds[pos] = winningSymbolId
       })
 
+      // Preencher o resto com símbolos não premiados
       const nonWinningFillPool: string[] = []
       nonWinningSymbols.forEach((symbolId) => {
         for (let k = 0; k < MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD; k++) {
@@ -368,32 +368,41 @@ export default function RaspeDaEsperancaPage() {
       }
       shuffleArray(finalSymbolIds)
     } else {
+      // Cartela perdedora - garantir que não há 3 símbolos iguais
       let generatedValid = false
       while (!generatedValid) {
         let tempSymbolIds = []
         const counts: { [key: string]: number } = {}
 
+        // Criar pool de símbolos para cartela perdedora
         const symbolPoolForNonWinning: string[] = []
-        allSymbols.forEach((symbolId) => {
+
+        // Adicionar símbolos não premiados
+        nonWinningSymbols.forEach((symbolId) => {
           for (let k = 0; k < MAX_REPETITIONS_FOR_NON_WINNING; k++) {
             symbolPoolForNonWinning.push(symbolId)
           }
         })
-        shuffleArray(symbolPoolForNonWinning)
 
+        // Adicionar alguns prêmios em dinheiro (mas não 3 iguais)
+        config.prizeConfig.forEach((prize) => {
+          const prizeSymbol = `R$${prize.value}`
+          symbolPoolForNonWinning.push(prizeSymbol)
+          symbolPoolForNonWinning.push(prizeSymbol) // Máximo 2 de cada
+        })
+
+        shuffleArray(symbolPoolForNonWinning)
         tempSymbolIds = symbolPoolForNonWinning.slice(0, NUM_CELLS)
         generatedValid = true
 
+        // Contar ocorrências
         tempSymbolIds.forEach((sym) => {
           counts[sym] = (counts[sym] || 0) + 1
         })
 
-        if (winningSymbols.some((ws) => counts[ws] === 3)) {
-          generatedValid = false
-        }
-
+        // Verificar se há 3 símbolos iguais (não permitido em cartela perdedora)
         for (const sym in counts) {
-          if (counts[sym] > MAX_REPETITIONS_FOR_NON_WINNING) {
+          if (counts[sym] >= 3) {
             generatedValid = false
             break
           }
@@ -705,14 +714,14 @@ export default function RaspeDaEsperancaPage() {
       for (let i = 0; i < NUM_CELLS; i++) {
         const cellContent = document.createElement("div")
         cellContent.className =
-          "flex flex-col justify-center items-center text-blue-300 font-bold bg-gray-800/70 rounded-lg p-2 opacity-0 scale-75 transition-all duration-300"
+          "flex flex-col justify-center items-center text-blue-300 font-bold bg-gray-800/70 rounded-lg p-1 opacity-0 scale-75 transition-all duration-300"
         cellContent.id = `symbol-${i}`
         const symbol = createSymbolHtml(symbolIds[i])
         if (symbol.imageUrl) {
           const img = document.createElement("img")
           img.src = symbol.imageUrl
           img.alt = symbol.legendText
-          img.className = "w-full h-auto max-w-[40px] max-h-[40px] object-contain mb-1"
+          img.className = "w-full h-auto max-w-[60px] max-h-[60px] object-contain mb-1"
           img.onerror = () => {
             img.src = `https://placehold.co/40x40/DC2626/F87171?text=${encodeURIComponent(symbolIds[i])}`
           }
@@ -851,6 +860,30 @@ export default function RaspeDaEsperancaPage() {
           >
             {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
+        </div>
+
+        {/* Tabela de Prêmios */}
+        <div className="mt-8 bg-gray-800/50 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-blue-400 mb-3 text-center">
+            Tabela de Prêmios {isBlogger(userProfile) ? "(Blogger)" : "(Regular)"}
+          </h3>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {getGameConfig().prizeConfig.map((prize, index) => (
+              <div key={index} className="flex items-center justify-between text-sm">
+                <div className="flex items-center space-x-2">
+                  <img src={prize.image || "/placeholder.svg"} alt="Prêmio" className="w-6 h-6 object-contain" />
+                  <span className="text-green-400 font-semibold">R$ {prize.value.toFixed(2)}</span>
+                </div>
+                <span className="text-gray-400">{prize.chance}%</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-700">
+            <div className="flex justify-between text-sm">
+              <span className="text-blue-400">Chance de Ganhar:</span>
+              <span className="text-green-400 font-semibold">{(getGameConfig().winFrequency * 100).toFixed(0)}%</span>
+            </div>
+          </div>
         </div>
       </main>
 

@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         throw new Error("Não foi possível gerar código único")
       }
 
-      console.log("✅ Código de afiliado gerado:", affiliateCode)
+      console.log("✅ C��digo de afiliado gerado:", affiliateCode)
     } catch (error) {
       console.error("❌ Erro ao gerar código:", error)
       return NextResponse.json({ success: false, error: "Erro ao gerar código de afiliado" }, { status: 500 })
