@@ -57,6 +57,7 @@ const regularPrizeConfig = [
   { value: 2000, image: "/images/2mil.png", chance: 0 },
   { value: 5000, image: "/images/5mil.png", chance: 0 },
   { value: 10000, image: "/images/10mil.png", chance: 0 },
+  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers - MEGA SORTE
@@ -73,11 +74,12 @@ const bloggerPrizeConfig = [
   { value: 2000, image: "/images/2mil.png", chance: 2 },
   { value: 5000, image: "/images/5mil.png", chance: 1 },
   { value: 10000, image: "/images/10mil.png", chance: 0 },
+  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configurações gerais
 const regularConfig = {
-  winFrequency: 0.6, // 60% de chance de ganhar
+  winFrequency: 0.5, // 60% de chance de ganhar
   scratchThreshold: 0.7,
   prizeConfig: regularPrizeConfig,
 }
@@ -89,11 +91,13 @@ const bloggerConfig = {
 }
 
 // Símbolos não premiados para Mega Sorte
-const nonWinningSymbols = ["Diamante", "Ouro", "Carro"]
+const nonWinningSymbols = ["iPhone", "iPad", "Moto"]
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
-  "R$2.5": "/images/2reais.png",
+  "R$0.5": "/images/50centavos.png",
+  R$1: "/images/1real.png",
+  R$2: "/images/2reais.png",
   R$5: "/images/5reais.png",
   R$10: "/images/10reais.png",
   R$20: "/images/20reais.png",
@@ -105,6 +109,7 @@ const prizeImageMap: { [key: string]: string } = {
   R$2000: "/images/2mil.png",
   R$5000: "/images/5mil.png",
   R$10000: "/images/10mil.png",
+  R$25000: "/images/25mil.png",
 }
 
 const symbolImageMap = {
