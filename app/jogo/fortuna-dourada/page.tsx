@@ -43,13 +43,13 @@ const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
 // Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-  { value: 0.5, image: "/images/50centavos.png", chance: 55 },
-  { value: 1, image: "/images/1real.png", chance: 20.1 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 57 },
+  { value: 1, image: "/images/1real.png", chance: 20.5 },
   { value: 2, image: "/images/2reais.png", chance: 12 },
   { value: 5, image: "/images/5reais.png", chance: 6 },
   { value: 10, image: "/images/10reais.png", chance: 3 },
   { value: 20, image: "/images/20reais.png", chance: 1.5 },
-  { value: 50, image: "/images/50reais.png", chance: 0.4 },
+  { value: 50, image: "/images/50reais.png", chance: 0.0 },
   { value: 100, image: "/images/100reais.png", chance: 0 },
   { value: 200, image: "/images/200reais.png", chance: 0 },
   { value: 500, image: "/images/500reais.png", chance: 0 },
