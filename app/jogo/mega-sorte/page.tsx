@@ -43,16 +43,18 @@ const MAX_REPETITIONS_FOR_NON_WINNING_IN_WINNING_CARD = 2
 
 // Configuração de prêmios para usuários regulares - MEGA SORTE
 const regularPrizeConfig = [
-  { value: 2.5, image: "/images/2reais.png", chance: 45 },
-  { value: 5, image: "/images/5reais.png", chance: 25 },
-  { value: 10, image: "/images/10reais.png", chance: 15 },
-  { value: 20, image: "/images/20reais.png", chance: 8 },
-  { value: 50, image: "/images/50reais.png", chance: 4 },
-  { value: 100, image: "/images/100reais.png", chance: 2 },
-  { value: 200, image: "/images/200reais.png", chance: 0.8 },
-  { value: 500, image: "/images/500reais.png", chance: 0.15 },
-  { value: 1000, image: "/images/1mil.png", chance: 0.04 },
-  { value: 2000, image: "/images/2mil.png", chance: 0.01 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 57 },
+  { value: 1, image: "/images/1real.png", chance: 20.5 },
+  { value: 2, image: "/images/2reais.png", chance: 12 },
+  { value: 5, image: "/images/5reais.png", chance: 6 },
+  { value: 10, image: "/images/10reais.png", chance: 3 },
+  { value: 20, image: "/images/20reais.png", chance: 1.5 },
+  { value: 50, image: "/images/50reais.png", chance: 0.0 },
+  { value: 100, image: "/images/100reais.png", chance: 0 },
+  { value: 200, image: "/images/200reais.png", chance: 0 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
+  { value: 2000, image: "/images/2mil.png", chance: 0 },
   { value: 5000, image: "/images/5mil.png", chance: 0 },
   { value: 10000, image: "/images/10mil.png", chance: 0 },
 ]
