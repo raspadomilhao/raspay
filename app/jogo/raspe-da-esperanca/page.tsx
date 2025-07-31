@@ -10,7 +10,6 @@ import { Zap, Volume2, VolumeX, Sparkles } from "lucide-react"
 import { AuthClient } from "@/lib/auth-client"
 import { FloatingBalance } from "@/components/floating-balance"
 import { getRandomOverlayImage } from "@/lib/game-overlays"
-import { TreasureChestAnimation } from "@/components/treasure-chest-animation"
 
 interface UserProfile {
   user: {
@@ -80,7 +79,7 @@ const regularConfig = {
 }
 
 const bloggerConfig = {
-  winFrequency: 0.6, // 75% de chance de ganhar para bloggers
+  winFrequency: 0.75, // 75% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
@@ -169,7 +168,6 @@ export default function RaspeDaEsperancaPage() {
   const [message, setMessage] = useState("Clique ou arraste para raspar!")
   const [canPlay, setCanPlay] = useState(false)
   const [gameActive, setGameActive] = useState(false)
-  const [showTreasureChest, setShowTreasureChest] = useState(false)
 
   const router = useRouter()
   const scratchGridRef = useRef<HTMLDivElement>(null)
@@ -578,11 +576,17 @@ export default function RaspeDaEsperancaPage() {
       processGameResult()
       if (gameStateRef.current.hasWonRealPrize) {
         setTimeout(highlightWinningCells, 500)
-
-        // Show treasure chest animation
-        setShowTreasureChest(true)
+        const messageText = winMessages[Math.floor(Math.random() * winMessages.length)].replace(
+          "@valor@",
+          `${gameStateRef.current.realPrizeAmount}`,
+        )
+        setMessage(messageText)
         playSound(audioWinRef)
         playSound(audioCoinRef)
+        setModalType("win")
+        setModalTitle("Esperança Premiada!")
+        setModalMessage(messageText)
+        setShowModal(true)
       } else {
         const messageText = loseMessages[Math.floor(Math.random() * loseMessages.length)]
         setMessage(messageText)
@@ -593,19 +597,6 @@ export default function RaspeDaEsperancaPage() {
         setShowModal(true)
       }
     }
-  }
-
-  const handleTreasureChestComplete = () => {
-    setShowTreasureChest(false)
-    const messageText = winMessages[Math.floor(Math.random() * winMessages.length)].replace(
-      "@valor@",
-      `${gameStateRef.current.realPrizeAmount}`,
-    )
-    setMessage(messageText)
-    setModalType("win")
-    setModalTitle("Esperança Premiada!")
-    setModalMessage(messageText)
-    setShowModal(true)
   }
 
   const handleStartScratch = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
@@ -888,15 +879,6 @@ export default function RaspeDaEsperancaPage() {
           </div>
         </div>
       </main>
-
-      {/* Treasure Chest Animation */}
-      {showTreasureChest && (
-        <TreasureChestAnimation
-          prizeAmount={gameStateRef.current.realPrizeAmount}
-          gameType="esperanca"
-          onComplete={handleTreasureChestComplete}
-        />
-      )}
 
       {showModal && (
         <div
