@@ -17,10 +17,12 @@ export async function GET(request: NextRequest) {
         a.*,
         m.name as manager_name,
         m.username as manager_username,
-        COUNT(DISTINCT u.id) as total_referrals
+        COUNT(DISTINCT u.id) as total_referrals,
+        COUNT(DISTINCT CASE WHEN t.type = 'deposit' AND t.status = 'success' AND t.external_id IS NOT NULL THEN t.id END) as deposits_count
       FROM affiliates a
       LEFT JOIN managers m ON a.manager_id = m.id
       LEFT JOIN users u ON a.id = u.affiliate_id
+      LEFT JOIN transactions t ON u.id = t.user_id
       GROUP BY a.id, a.name, a.email, a.username, a.affiliate_code, a.password_hash, 
                a.commission_rate, a.loss_commission_rate, a.total_earnings, a.balance, 
                a.status, a.created_at, a.updated_at, a.manager_id, m.name, m.username
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest) {
         manager_name: affiliate.manager_name,
         manager_username: affiliate.manager_username,
         total_referrals: Number(affiliate.total_referrals),
+        deposits_count: Number(affiliate.deposits_count), // Adicionar esta linha
       })),
     })
   } catch (error) {

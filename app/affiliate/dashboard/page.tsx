@@ -317,8 +317,8 @@ export default function AffiliateDashboardPage() {
       return
     }
 
-    if (amount < 200) {
-      alert("Valor mínimo para saque é R$ 200,00")
+    if (amount < 50) {
+      alert("Valor mínimo para saque é R$ 50,00")
       return
     }
 
@@ -643,16 +643,16 @@ export default function AffiliateDashboardPage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="amount" className="text-white">
-                  Valor do Saque (R$) - Mínimo: R$ 200,00
+                  Valor do Saque (R$) - Mínimo: R$ 50,00
                 </Label>
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
-                  min="200"
+                  min="50"
                   value={withdrawForm.amount}
                   onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
-                  placeholder="200.00"
+                  placeholder="50.00"
                   max={affiliate?.balance || 0}
                   className="bg-gray-800 border-gray-600 text-white"
                 />
@@ -1258,8 +1258,7 @@ export default function AffiliateDashboardPage() {
                   💰 <span className="ml-2">Saques</span>
                 </h4>
                 <p className="text-sm text-gray-400">
-                  Valor mínimo: R$ 200,00. Processamento em até 24h úteis. Você será notificado sobre
-                  aprovação/rejeição.
+                  Valor mínimo: R$ 50,00. Processamento em até 24h úteis. Você será notificado sobre aprovação/rejeição.
                 </p>
               </div>
               <div className="p-4 bg-gray-800/30 rounded-lg">

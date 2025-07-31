@@ -73,6 +73,7 @@ interface Affiliate {
   manager_id?: number
   manager_name?: string
   balance: number
+  deposits_count: number // Adicionar esta linha
 }
 
 interface Manager {
@@ -1640,6 +1641,9 @@ export default function AdminConfigPage() {
                             <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
                               Referidos
                             </TableHead>
+                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
+                              Depósitos
+                            </TableHead>
                             <TableHead className="text-gray-400 text-xs sm:text-sm">Ganhos</TableHead>
                             <TableHead className="text-gray-400 text-xs sm:text-sm">Saldo</TableHead>
                             <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
@@ -1677,6 +1681,11 @@ export default function AdminConfigPage() {
                               </TableCell>
                               <TableCell className="hidden lg:table-cell">
                                 <span className="text-white text-xs sm:text-sm">{affiliate.total_referrals}</span>
+                              </TableCell>
+                              <TableCell className="hidden lg:table-cell">
+                                <span className="text-green-400 text-xs sm:text-sm font-medium">
+                                  {affiliate.deposits_count}
+                                </span>
                               </TableCell>
                               <TableCell>
                                 <span className="text-white text-xs sm:text-sm">
