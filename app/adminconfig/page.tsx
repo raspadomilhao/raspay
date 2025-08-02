@@ -1407,6 +1407,202 @@ export default function AdminConfigPage() {
                 )}
               </TabsContent>
 
+              {/* Transactions Tab - Mobile Optimized */}
+              <TabsContent value="transactions" className="space-y-4 lg:space-y-6">
+                <h2 className="text-lg sm:text-xl font-bold text-white">Transações do Sistema</h2>
+
+                {stats && (
+                  <>
+                    {/* Transaction Stats Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardContent className="p-3 sm:p-4 lg:p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-400 text-xs sm:text-sm">Total de Transações</p>
+                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">
+                                {stats.transactions.total}
+                              </p>
+                              <p className="text-xs text-gray-500">Todas as transações</p>
+                            </div>
+                            <CreditCard className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardContent className="p-3 sm:p-4 lg:p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-400 text-xs sm:text-sm">Bem-sucedidas</p>
+                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">
+                                {stats.transactions.successful}
+                              </p>
+                              <p className="text-xs text-gray-500">Concluídas</p>
+                            </div>
+                            <CheckCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-green-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardContent className="p-3 sm:p-4 lg:p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-400 text-xs sm:text-sm">Pendentes</p>
+                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400">
+                                {stats.transactions.pending}
+                              </p>
+                              <p className="text-xs text-gray-500">Aguardando</p>
+                            </div>
+                            <Clock className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-yellow-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardContent className="p-3 sm:p-4 lg:p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-400 text-xs sm:text-sm">Falharam</p>
+                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-400">
+                                {stats.transactions.failed}
+                              </p>
+                              <p className="text-xs text-gray-500">Com erro</p>
+                            </div>
+                            <XCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-red-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Volume Cards */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
+                            <span>Volume Total</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <p className="text-2xl font-bold text-white">
+                            {formatCurrency(stats.transactions.total_volume)}
+                          </p>
+                          <p className="text-gray-400 text-sm">Todas as transações</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                            <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                            <span>Volume de Depósitos</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <p className="text-2xl font-bold text-white">
+                            {formatCurrency(stats.transactions.deposits_volume)}
+                          </p>
+                          <p className="text-gray-400 text-sm">Entradas na plataforma</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-slate-900/50 border-slate-700">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                            <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
+                            <span>Volume de Saques</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <p className="text-2xl font-bold text-white">
+                            {formatCurrency(stats.transactions.withdraws_volume)}
+                          </p>
+                          <p className="text-gray-400 text-sm">Saídas da plataforma</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Detailed Transactions Table */}
+                    <Card className="bg-slate-900/50 border-slate-700">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
+                          <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
+                          <span>Transações Recentes</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-slate-700">
+                                <TableHead className="text-gray-400 text-xs sm:text-sm">ID</TableHead>
+                                <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
+                                <TableHead className="text-gray-400 text-xs sm:text-sm">Tipo</TableHead>
+                                <TableHead className="text-gray-400 text-xs sm:text-sm">Valor</TableHead>
+                                <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
+                                <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
+                                  PIX
+                                </TableHead>
+                                <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
+                                  Data
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {stats.transactions.detailed_list?.slice(0, 20).map((transaction) => (
+                                <TableRow key={transaction.id} className="hover:bg-slate-800 border-slate-700">
+                                  <TableCell>
+                                    <span className="text-white text-xs sm:text-sm font-mono">#{transaction.id}</span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col">
+                                      <span className="text-white text-xs sm:text-sm font-medium">
+                                        {transaction.user.name}
+                                      </span>
+                                      <span className="text-gray-500 text-xs">{transaction.user.email}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{getTypeBadge(transaction.type)}</TableCell>
+                                  <TableCell>
+                                    <span className="text-white text-xs sm:text-sm font-medium">
+                                      {formatCurrency(transaction.amount)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                                  <TableCell className="hidden md:table-cell">
+                                    {transaction.pix_key ? (
+                                      <div className="flex flex-col">
+                                        <span className="text-white text-xs truncate max-w-32">
+                                          {transaction.pix_key}
+                                        </span>
+                                        <span className="text-gray-500 text-xs">{transaction.pix_type}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-500 text-xs">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="hidden lg:table-cell">
+                                    <span className="text-gray-400 text-xs">{formatDate(transaction.created_at)}</span>
+                                  </TableCell>
+                                </TableRow>
+                              )) || (
+                                <TableRow>
+                                  <TableCell colSpan={7} className="text-center py-4 text-gray-400">
+                                    Nenhuma transação encontrada
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </TabsContent>
+
               {/* Affiliates Tab - Mobile Optimized */}
               <TabsContent value="affiliates" className="space-y-4 lg:space-y-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
