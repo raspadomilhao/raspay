@@ -37,8 +37,6 @@ import {
   TrendingUp,
   TrendingDown,
   Info,
-  ChevronLeft,
-  ChevronRight,
   Calendar,
   BarChart3,
 } from "lucide-react"
@@ -589,10 +587,6 @@ export default function AffiliateDashboardPage() {
             <p className="text-gray-400 mt-1">
               Código: <span className="font-mono font-semibold text-white">{affiliate?.affiliate_code}</span>
             </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Comissão por depósito: {Number(affiliate?.commission_rate || 0).toFixed(2)}% • Comissão por perda/ganho:{" "}
-              {Number(affiliate?.loss_commission_rate || 0).toFixed(2)}%
-            </p>
           </div>
           <div className="flex items-center space-x-4">
             <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
@@ -744,7 +738,7 @@ export default function AffiliateDashboardPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-900/50 border border-gray-700">
+          <TabsList className="grid w-full grid-cols-3 bg-gray-900/50 border border-gray-700">
             <TabsTrigger value="overview" className="data-[state=active]:bg-gray-700 text-white">
               <BarChart3 className="h-4 w-4 mr-2" />
               Visão Geral
@@ -752,10 +746,6 @@ export default function AffiliateDashboardPage() {
             <TabsTrigger value="deposits" className="data-[state=active]:bg-gray-700 text-white">
               <CreditCard className="h-4 w-4 mr-2" />
               Depósitos PIX
-            </TabsTrigger>
-            <TabsTrigger value="commissions" className="data-[state=active]:bg-gray-700 text-white">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Comissões
             </TabsTrigger>
             <TabsTrigger value="withdraws" className="data-[state=active]:bg-gray-700 text-white">
               <ArrowUpRight className="h-4 w-4 mr-2" />
@@ -889,17 +879,6 @@ export default function AffiliateDashboardPage() {
 
                   <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-xs font-medium text-gray-300">Volume Total PIX</CardTitle>
-                      <DollarSign className="h-4 w-4 text-green-400" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-xl font-bold text-green-400">R$ {depositStats.total_volume.toFixed(2)}</div>
-                      <p className="text-xs text-gray-400">Valor total depositado via PIX</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-xs font-medium text-gray-300">Comissões PIX</CardTitle>
                       <Award className="h-4 w-4 text-yellow-400" />
                     </CardHeader>
@@ -942,197 +921,6 @@ export default function AffiliateDashboardPage() {
                 )}
               </>
             )}
-
-            {/* Lista de Depósitos PIX */}
-            <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center text-white">
-                  <CreditCard className="h-5 w-5 mr-2 text-blue-400" />
-                  Depósitos PIX dos Referidos
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Apenas depósitos reais feitos via PIX e confirmados pelo sistema de pagamento
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {depositsLoading ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
-                    <p className="text-gray-300">Carregando depósitos PIX...</p>
-                  </div>
-                ) : deposits.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CreditCard className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-500">Nenhum depósito PIX encontrado ainda.</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Compartilhe seu link para que seus referidos façam depósitos via PIX!
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-3">
-                      {deposits.map((deposit) => (
-                        <div key={deposit.id} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="font-medium text-white">{deposit.user_name}</span>
-                                {getStatusBadge(deposit.status)}
-                                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                  PIX ID: {deposit.external_id}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-400">{deposit.user_email}</p>
-                              {deposit.user_username && (
-                                <p className="text-sm text-gray-500">@{deposit.user_username}</p>
-                              )}
-                              <p className="text-xs text-gray-500">
-                                Depósito PIX:{" "}
-                                {new Date(deposit.created_at).toLocaleDateString("pt-BR", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
-                              {deposit.payer_name && (
-                                <p className="text-xs text-gray-500">Pagador: {deposit.payer_name}</p>
-                              )}
-                              {deposit.pix_key && (
-                                <p className="text-xs text-gray-500">
-                                  PIX: {getPixTypeName(deposit.pix_type || "")} • {deposit.pix_key}
-                                </p>
-                              )}
-                              {deposit.end_to_end_id && (
-                                <p className="text-xs text-gray-500 font-mono">E2E: {deposit.end_to_end_id}</p>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <div className="text-lg font-bold text-green-400">R$ {deposit.amount.toFixed(2)}</div>
-                              {deposit.commission_amount > 0 && (
-                                <div className="text-sm text-yellow-400">
-                                  Comissão: +R$ {deposit.commission_amount.toFixed(2)}
-                                </div>
-                              )}
-                              {deposit.commission_created_at && (
-                                <div className="text-xs text-gray-500">
-                                  Comissão em: {new Date(deposit.commission_created_at).toLocaleDateString("pt-BR")}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Paginação */}
-                    {depositPagination && depositPagination.total_pages > 1 && (
-                      <div className="flex items-center justify-between mt-6">
-                        <div className="text-sm text-gray-400">
-                          Página {depositPagination.current_page} de {depositPagination.total_pages} (
-                          {depositPagination.total_items} depósitos PIX)
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => loadDeposits(currentDepositPage - 1)}
-                            disabled={!depositPagination.has_prev || depositsLoading}
-                            className="border-gray-600 text-white hover:bg-gray-800"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                            Anterior
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => loadDeposits(currentDepositPage + 1)}
-                            disabled={!depositPagination.has_next || depositsLoading}
-                            className="border-gray-600 text-white hover:bg-gray-800"
-                          >
-                            Próxima
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Commissions Tab */}
-          <TabsContent value="commissions" className="space-y-6">
-            <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center text-white">
-                  <DollarSign className="h-5 w-5 mr-2 text-green-400" />
-                  Comissões Recentes
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Suas últimas comissões recebidas (depósitos PIX + perda/ganho)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {commissions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <DollarSign className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-500">Nenhuma comissão encontrada ainda.</p>
-                    <p className="text-sm text-gray-600 mt-1">Compartilhe seu link para começar a ganhar!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {commissions.map((commission) => (
-                      <div key={commission.id} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="font-medium text-white">{commission.user_name}</span>
-                              {getCommissionTypeBadge(commission.commission_type)}
-                              <Badge
-                                variant={commission.status === "paid" ? "default" : "secondary"}
-                                className={
-                                  commission.status === "paid"
-                                    ? "bg-green-500/20 text-green-400 border-green-500/30"
-                                    : "bg-gray-700 text-gray-300"
-                                }
-                              >
-                                {commission.status === "paid" ? "Pago" : "Pendente"}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-400">{commission.user_email}</p>
-                            <p className="text-xs text-gray-500">
-                              {commission.commission_type === "deposit"
-                                ? "Depósito PIX"
-                                : commission.transaction_type === "game_play"
-                                  ? "Jogada"
-                                  : commission.transaction_type === "game_prize"
-                                    ? "Prêmio"
-                                    : "Transação"}
-                              : R$ {Number(commission.transaction_amount).toFixed(2)} •{" "}
-                              {new Date(commission.created_at).toLocaleDateString("pt-BR")}
-                            </p>
-                            {commission.description && (
-                              <p className="text-xs text-gray-500 mt-1">{commission.description}</p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <div
-                              className={`text-lg font-bold ${Number(commission.commission_amount) >= 0 ? "text-green-400" : "text-red-400"}`}
-                            >
-                              {Number(commission.commission_amount) >= 0 ? "+" : ""}R${" "}
-                              {Number(commission.commission_amount).toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Withdraws Tab */}
@@ -1227,51 +1015,6 @@ export default function AffiliateDashboardPage() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Informações Importantes */}
-        <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-white">ℹ️ Como Funciona o Sistema de Afiliados</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-800/30 rounded-lg">
-                <h4 className="font-semibold mb-2 text-white flex items-center">
-                  🎯 <span className="ml-2">Comissão por Depósitos PIX</span>
-                </h4>
-                <p className="text-sm text-gray-400">
-                  Você ganha R$ {Number(affiliate?.commission_rate || 0).toFixed(2)} por CADA depósito PIX real que seus
-                  referidos fazem, incluindo redepósitos. Não é apenas o primeiro!
-                </p>
-              </div>
-              <div className="p-4 bg-gray-800/30 rounded-lg">
-                <h4 className="font-semibold mb-2 text-white flex items-center">
-                  🎮 <span className="ml-2">Comissão por Perda/Ganho</span>
-                </h4>
-                <p className="text-sm text-gray-400">
-                  Você ganha {Number(affiliate?.loss_commission_rate || 0).toFixed(2)}% quando seus referidos perdem nos
-                  jogos, e perde quando eles ganham. Sistema de risco compartilhado.
-                </p>
-              </div>
-              <div className="p-4 bg-gray-800/30 rounded-lg">
-                <h4 className="font-semibold mb-2 text-white flex items-center">
-                  💰 <span className="ml-2">Saques</span>
-                </h4>
-                <p className="text-sm text-gray-400">
-                  Valor mínimo: R$ 50,00. Processamento em até 24h úteis. Você será notificado sobre aprovação/rejeição.
-                </p>
-              </div>
-              <div className="p-4 bg-gray-800/30 rounded-lg">
-                <h4 className="font-semibold mb-2 text-white flex items-center">
-                  📊 <span className="ml-2">Acompanhamento</span>
-                </h4>
-                <p className="text-sm text-gray-400">
-                  Monitore seus referidos ativos, depósitos PIX reais vs jogadas, e todas as comissões em tempo real.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

@@ -31,8 +31,6 @@ import {
   CreditCard,
   CheckCircle,
   XCircle,
-  Hash,
-  Key,
   Lock,
   AlertCircle,
   Check,
@@ -234,6 +232,14 @@ export default function AdminConfigPage() {
   const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] = useState(false)
   const [selectedAffiliateForManager, setSelectedAffiliateForManager] = useState<Affiliate | null>(null)
 
+  const [users, setUsers] = useState<any[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([])
+  const [isAddBalanceDialogOpen, setIsAddBalanceDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [balanceToAdd, setBalanceToAdd] = useState("")
+  const [balanceNote, setBalanceNote] = useState("")
+
   // Form states
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -252,6 +258,7 @@ export default function AdminConfigPage() {
     commission_rate: 10,
     loss_commission_rate: 0,
     status: "active",
+    password: "", // Add password field
   })
 
   // Manager form states
@@ -748,6 +755,7 @@ export default function AdminConfigPage() {
       commission_rate: affiliate.commission_rate,
       loss_commission_rate: affiliate.loss_commission_rate,
       status: affiliate.status,
+      password: "", // Clear password field
     })
     setIsEditDialogOpen(true)
   }
@@ -1086,7 +1094,7 @@ export default function AdminConfigPage() {
                         value="affiliates"
                         className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
                       >
-                        <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <Users className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Afiliados</span>
                         <span className="sm:hidden">Afil</span>
                       </TabsTrigger>
@@ -1096,7 +1104,7 @@ export default function AdminConfigPage() {
                     value="managers"
                     className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
                   >
-                    <UserCog className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <UserCog className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Gerentes</span>
                     <span className="sm:hidden">Ger</span>
                   </TabsTrigger>
@@ -1106,7 +1114,7 @@ export default function AdminConfigPage() {
                         value="affiliate-withdraws"
                         className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
                       >
-                        <Wallet className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <Wallet className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Saques Afiliados</span>
                         <span className="sm:hidden">S.Afil</span>
                       </TabsTrigger>
@@ -1114,7 +1122,7 @@ export default function AdminConfigPage() {
                         value="manager-withdraws"
                         className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
                       >
-                        <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <DollarSign className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Saques Gerentes</span>
                         <span className="sm:hidden">S.Ger</span>
                       </TabsTrigger>
@@ -1122,7 +1130,7 @@ export default function AdminConfigPage() {
                         value="settings"
                         className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
                       >
-                        <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <Settings className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Configurações</span>
                         <span className="sm:hidden">Config</span>
                       </TabsTrigger>
@@ -1130,7 +1138,7 @@ export default function AdminConfigPage() {
                         value="performance"
                         className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
                       >
-                        <Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <Zap className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Desempenho</span>
                         <span className="sm:hidden">Perf</span>
                       </TabsTrigger>
@@ -1399,99 +1407,6 @@ export default function AdminConfigPage() {
                 )}
               </TabsContent>
 
-              {/* Transactions Tab - Mobile Optimized */}
-              <TabsContent value="transactions" className="space-y-4 lg:space-y-6">
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-white text-sm sm:text-base lg:text-lg">Transações Recentes</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Lista das últimas transações do sistema
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {stats?.transactions?.detailed_list ? (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-slate-700">
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">ID</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Tipo</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Valor</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                                PIX
-                              </TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm">Saldo</TableHead>
-                              <TableHead className="text-gray-400 text-xs sm:text-sm hidden sm:table-cell">
-                                Data
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {stats.transactions.detailed_list.map((transaction) => (
-                              <TableRow key={transaction.id} className="hover:bg-slate-800 border-slate-700">
-                                <TableCell className="font-mono text-xs">
-                                  <div className="flex items-center gap-1">
-                                    <Hash className="h-3 w-3 text-gray-500" />
-                                    <span className="text-white">{transaction.id}</span>
-                                  </div>
-                                  {transaction.external_id && (
-                                    <div className="flex items-center gap-1 text-gray-500 mt-1">
-                                      <Key className="h-3 w-3" />
-                                      <span className="text-xs">{transaction.external_id}</span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-xs">{transaction.user.name}</span>
-                                    <span className="text-gray-500 text-xs">{transaction.user.email}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{getTypeBadge(transaction.type)}</TableCell>
-                                <TableCell
-                                  className={`font-medium ${
-                                    transaction.type === "deposit" || transaction.type === "game_prize"
-                                      ? "text-green-400"
-                                      : "text-red-400"
-                                  }`}
-                                >
-                                  {formatCurrency(transaction.amount)}
-                                </TableCell>
-                                <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                                <TableCell className="hidden lg:table-cell">
-                                  {transaction.pix_key ? (
-                                    <div className="flex flex-col">
-                                      <span className="text-white text-xs truncate max-w-32">
-                                        {transaction.pix_key}
-                                      </span>
-                                      <span className="text-gray-500 text-xs">{transaction.pix_type}</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-500 text-xs">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="font-medium text-white">
-                                  {formatCurrency(transaction.user.balance)}
-                                </TableCell>
-                                <TableCell className="hidden sm:table-cell text-gray-400 text-xs">
-                                  {formatDate(transaction.created_at)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-6">
-                        <p className="text-gray-400">Carregando transações...</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
               {/* Affiliates Tab - Mobile Optimized */}
               <TabsContent value="affiliates" className="space-y-4 lg:space-y-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
@@ -1499,7 +1414,7 @@ export default function AdminConfigPage() {
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-xs sm:text-sm">
-                        <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <UserPlus className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         Novo Afiliado
                       </Button>
                     </DialogTrigger>
@@ -1848,6 +1763,19 @@ export default function AdminConfigPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div>
+                          <Label htmlFor="edit-password" className="text-white">
+                            Nova Senha
+                          </Label>
+                          <Input
+                            id="edit-password"
+                            type="password"
+                            value={editForm.password}
+                            onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            placeholder="Deixe em branco para não alterar"
+                          />
+                        </div>
                       </div>
                       <div className="flex justify-end space-x-2">
                         <Button
@@ -1971,7 +1899,7 @@ export default function AdminConfigPage() {
                   <Dialog open={isCreateManagerDialogOpen} onOpenChange={setIsCreateManagerDialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-xs sm:text-sm">
-                        <UserCog className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <UserCog className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
                         Novo Gerente
                       </Button>
                     </DialogTrigger>

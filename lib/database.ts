@@ -436,6 +436,7 @@ export async function updateAffiliate(id: number, data: Partial<Affiliate>): Pro
         commission_rate = COALESCE(${data.commission_rate}, commission_rate),
         loss_commission_rate = COALESCE(${data.loss_commission_rate}, loss_commission_rate),
         status = COALESCE(${data.status}, status),
+        ${data.password_hash ? sql`password_hash = ${data.password_hash},` : sql``}
         updated_at = NOW()
     WHERE id = ${id}
     RETURNING *
