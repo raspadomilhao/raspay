@@ -1,135 +1,91 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/database"
-import { AuthClient } from "@/lib/auth-client"
+import { jwtVerify } from "jose"
+import { createManagerWithdraw, getManagerById } from "@/lib/database-managers"
 
-// Função para enviar notificação
-async function sendAdminNotification(payload: {
-  type: "withdraw" | "deposit"
-  title: string
-  body: string
-  data?: any
-}) {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/admin/notifications/send`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-    )
-
-    if (response.ok) {
-      console.log("🔔 Notificação admin enviada:", payload.title)
-    } else {
-      console.error("❌ Erro ao enviar notificação admin:", response.status)
-    }
-  } catch (error) {
-    console.error("❌ Erro ao enviar notificação admin:", error)
-  }
-}
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key")
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await AuthClient.getCurrentUser(request)
-    if (!user || user.user_type !== "manager") {
+    console.log("💸 API: Solicitando saque do gerente")
+
+    // Verificar token JWT
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Token não fornecido" }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+
+    if (payload.type !== "manager") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 
-    const { amount, pix_key, pix_type } = await request.json()
+    const body = await request.json()
+    const { amount, pix_key, pix_type } = body
 
-    console.log(`💸 Solicitação de saque do gerente ${user.id}:`, { amount, pix_key, pix_type })
+    console.log("📝 Dados do saque:", { amount, pix_key, pix_type, managerId: payload.managerId })
 
-    // Validações
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: "Valor inválido" }, { status: 400 })
+    // Validações básicas
+    if (!amount || !pix_key || !pix_type) {
+      return NextResponse.json({ error: "Valor, chave PIX e tipo são obrigatórios" }, { status: 400 })
     }
 
-    if (!pix_key || !pix_type) {
-      return NextResponse.json({ error: "Chave PIX é obrigatória" }, { status: 400 })
+    const withdrawAmount = Number.parseFloat(amount)
+
+    if (isNaN(withdrawAmount) || withdrawAmount < 10) {
+      return NextResponse.json({ error: "Valor mínimo para saque é R$ 10,00" }, { status: 400 })
     }
 
-    // Verificar saldo do gerente
-    const [manager] = await sql`
-      SELECT balance FROM managers WHERE id = ${user.id}
-    `
-
+    // 🔒 VALIDAÇÃO CRÍTICA: Verificar saldo atual do gerente
+    const manager = await getManagerById(payload.managerId as number)
     if (!manager) {
       return NextResponse.json({ error: "Gerente não encontrado" }, { status: 404 })
     }
 
-    const currentBalance = Number.parseFloat(manager.balance.toString()) || 0
+    const currentBalance = Number.parseFloat(manager.balance.toString())
+    console.log(`💰 Saldo atual do gerente: R$ ${currentBalance.toFixed(2)}`)
+    console.log(`💸 Valor solicitado: R$ ${withdrawAmount.toFixed(2)}`)
 
-    if (currentBalance < amount) {
+    if (currentBalance < withdrawAmount) {
       return NextResponse.json(
         {
-          error: "Saldo insuficiente",
-          current_balance: currentBalance,
-          requested_amount: amount,
+          error: `Saldo insuficiente. Saldo disponível: R$ ${currentBalance.toFixed(2)}`,
         },
         { status: 400 },
       )
     }
 
-    // Verificar valor mínimo de saque
-    const minWithdrawAmount = 20.0 // R$ 20,00 mínimo para gerentes
-    if (amount < minWithdrawAmount) {
-      return NextResponse.json(
-        { error: `Valor mínimo para saque é R$ ${minWithdrawAmount.toFixed(2)}` },
-        { status: 400 },
-      )
-    }
-
-    // Criar solicitação de saque
-    const [withdraw] = await sql`
-      INSERT INTO manager_withdraws (manager_id, amount, pix_key, pix_type, status)
-      VALUES (${user.id}, ${amount}, ${pix_key}, ${pix_type}, 'pending')
-      RETURNING *
-    `
-
-    console.log(`✅ Solicitação de saque criada:`, withdraw)
-
-    // Buscar dados do gerente para a notificação
-    const [managerData] = await sql`
-      SELECT name, email, username FROM managers WHERE id = ${user.id}
-    `
-
-    // 🔔 ENVIAR NOTIFICAÇÃO DE NOVO SAQUE PENDENTE
-    await sendAdminNotification({
-      type: "withdraw",
-      title: "💸 Novo Saque de Gerente",
-      body: `${managerData.name} solicitou saque de R$ ${amount.toFixed(2)}`,
-      data: {
-        type: "withdraw",
-        withdrawType: "manager",
-        withdrawId: withdraw.id,
-        managerId: user.id,
-        managerName: managerData.name,
-        managerEmail: managerData.email,
-        managerUsername: managerData.username,
-        amount: amount,
-        pixKey: pix_key,
-        pixType: pix_type,
-        timestamp: Date.now(),
-      },
+    // ✅ Criar saque (já deduz automaticamente do saldo)
+    const withdraw = await createManagerWithdraw({
+      manager_id: payload.managerId as number,
+      amount: withdrawAmount,
+      pix_key,
+      pix_type,
     })
+
+    // Buscar o saldo atualizado
+    const updatedManager = await getManagerById(payload.managerId as number)
+    const newBalance = updatedManager ? Number.parseFloat(updatedManager.balance.toString()) : 0
+
+    console.log(`✅ Solicitação de saque criada e valor deduzido do saldo`)
+    console.log(`💰 Novo saldo: R$ ${newBalance.toFixed(2)}`)
 
     return NextResponse.json({
       success: true,
-      message: "Solicitação de saque enviada com sucesso",
-      withdraw: {
-        id: withdraw.id,
-        amount: withdraw.amount,
-        pix_key: withdraw.pix_key,
-        pix_type: withdraw.pix_type,
-        status: withdraw.status,
-        created_at: withdraw.created_at,
-      },
+      message: `Solicitação de saque de R$ ${withdrawAmount.toFixed(2)} criada com sucesso! O valor foi deduzido do seu saldo.`,
+      withdraw,
+      old_balance: currentBalance,
+      new_balance: newBalance,
     })
   } catch (error) {
-    console.error("❌ Erro ao processar solicitação de saque:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    console.error("❌ Erro ao solicitar saque:", error)
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Erro ao solicitar saque",
+        details: error instanceof Error ? error.message : "Erro desconhecido",
+      },
+      { status: 500 },
+    )
   }
 }
