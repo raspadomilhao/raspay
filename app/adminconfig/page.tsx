@@ -21,6 +21,7 @@ import {
   Wallet,
   Clock,
   Eye,
+  Gamepad2,
   BarChart3,
   CreditCard,
   CheckCircle,
@@ -36,6 +37,8 @@ import {
   ChevronRight,
   Bell,
   BellOff,
+  Smartphone,
+  Info,
 } from "lucide-react"
 
 import { AuthClient } from "@/lib/auth-client"
@@ -264,6 +267,8 @@ export default function AdminConfigPage() {
     sendNotification,
     isEnabled: notificationsEnabled,
     setIsEnabled: setNotificationsEnabled,
+    isIOS,
+    canUseNotifications,
   } = usePushNotifications()
 
   // Refs para controlar notificações duplicadas
@@ -582,10 +587,14 @@ export default function AdminConfigPage() {
 
   const handleRequestNotificationPermission = async () => {
     console.log("🔔 Iniciando processo de ativação de notificações...")
-    console.log("🔔 Estado atual - isSupported:", isSupported, "permission:", permission)
+    console.log("🔔 Estado atual - isSupported:", isSupported, "permission:", permission, "isIOS:", isIOS)
 
     if (!isSupported) {
-      toast.error("Seu navegador não suporta notificações")
+      if (isIOS) {
+        toast.error("Notificações web não são suportadas no iOS Safari. Use o Chrome ou Firefox no iOS 16.4+")
+      } else {
+        toast.error("Seu navegador não suporta notificações")
+      }
       return
     }
 
@@ -610,7 +619,11 @@ export default function AdminConfigPage() {
           })
         }, 500)
       } else if (result === "denied") {
-        toast.error("Permissão para notificações negada. Verifique as configurações do seu navegador.")
+        if (isIOS) {
+          toast.error("Permissão negada. No iOS, verifique as configurações do Safari > Notificações")
+        } else {
+          toast.error("Permissão para notificações negada. Verifique as configurações do seu navegador.")
+        }
       } else {
         toast.warning("Permissão para notificações não concedida")
       }
@@ -1435,7 +1448,10 @@ export default function AdminConfigPage() {
             <CardContent className="p-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-white font-medium">Notificações Push</span>
+                  <span className="text-white font-medium flex items-center space-x-2">
+                    <span>Notificações Push</span>
+                    {isIOS && <Smartphone className="h-4 w-4 text-orange-400" />}
+                  </span>
                   {isSupported && permission === "granted" ? (
                     <div className="flex items-center space-x-2">
                       <Switch
@@ -1455,9 +1471,10 @@ export default function AdminConfigPage() {
                       size="sm"
                       onClick={handleRequestNotificationPermission}
                       className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
+                      disabled={!canUseNotifications}
                     >
                       <Bell className="h-4 w-4 mr-2" />
-                      Ativar
+                      {canUseNotifications ? "Ativar" : "Não Suportado"}
                     </Button>
                   )}
                 </div>
@@ -1473,11 +1490,18 @@ export default function AdminConfigPage() {
                   </Button>
                 )}
                 <div className="text-xs text-gray-400">
-                  {permission === "granted" && notificationsEnabled
-                    ? "Você será notificado sobre saques e depósitos"
-                    : permission === "denied"
-                      ? "Notificações bloqueadas - ative nas configurações do navegador"
-                      : "Clique para ativar notificações"}
+                  {isIOS && !canUseNotifications ? (
+                    <div className="flex items-start space-x-2">
+                      <Info className="h-3 w-3 text-orange-400 mt-0.5 flex-shrink-0" />
+                      <span>iOS detectado - Notificações web requerem iOS 16.4+ no Safari ou use Chrome/Firefox</span>
+                    </div>
+                  ) : permission === "granted" && notificationsEnabled ? (
+                    "Você será notificado sobre saques e depósitos"
+                  ) : permission === "denied" ? (
+                    "Notificações bloqueadas - ative nas configurações do navegador"
+                  ) : (
+                    "Clique para ativar notificações"
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -1497,8 +1521,9 @@ export default function AdminConfigPage() {
                 <div
                   className={`w-2 h-2 rounded-full ${notificationsEnabled && permission === "granted" ? "bg-blue-400" : "bg-gray-400"}`}
                 />
-                <span className="text-sm text-gray-400">
-                  Notificações: {notificationsEnabled && permission === "granted" ? "Ativas" : "Inativas"}
+                <span className="text-sm text-gray-400 flex items-center space-x-1">
+                  <span>Notificações: {notificationsEnabled && permission === "granted" ? "Ativas" : "Inativas"}</span>
+                  {isIOS && <Smartphone className="h-3 w-3 text-orange-400" />}
                 </span>
               </div>
             </div>
@@ -1536,9 +1561,10 @@ export default function AdminConfigPage() {
                       size="sm"
                       onClick={handleRequestNotificationPermission}
                       className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none bg-transparent"
+                      disabled={!canUseNotifications}
                     >
                       <Bell className="h-4 w-4 mr-2" />
-                      Ativar Notificações
+                      {canUseNotifications ? "Ativar Notificações" : "Não Suportado"}
                     </Button>
                   )}
                 </div>
@@ -1593,6 +1619,24 @@ export default function AdminConfigPage() {
               </Button>
             </div>
           </div>
+
+          {/* iOS Warning Card */}
+          {isIOS && !canUseNotifications && (
+            <Card className="bg-orange-900/20 border-orange-500/30">
+              <CardContent className="p-4">
+                <div className="flex items-start space-x-3">
+                  <Smartphone className="h-5 w-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-orange-400 font-medium mb-1">iOS Detectado</h3>
+                    <p className="text-orange-300 text-sm">
+                      Notificações web no iOS Safari requerem iOS 16.4 ou superior. Para melhor compatibilidade, use
+                      Chrome ou Firefox no iOS.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -1672,15 +1716,184 @@ export default function AdminConfigPage() {
                   </Card>
                 </div>
 
-                {/* Resto do conteúdo do dashboard... */}
-                <div className="text-center text-gray-400 py-8">
-                  <p>Resto do conteúdo do dashboard será renderizado aqui...</p>
+                {/* Financial and Revenue Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Wallet className="h-5 w-5 text-green-400" />
+                        <span>Situação Financeira</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Saldo da Plataforma</span>
+                        <span className="text-green-400 font-bold">
+                          {formatCurrency(stats.financial.platform_balance)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Saldo dos Usuários</span>
+                        <span className="text-blue-400 font-bold">
+                          {formatCurrency(stats.financial.total_user_balance)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Saques Pendentes</span>
+                        <span className="text-yellow-400 font-bold">
+                          {formatCurrency(stats.financial.pending_withdraws)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium">Saldo Disponível</span>
+                        <span className="text-white font-bold text-lg">
+                          {formatCurrency(stats.financial.available_balance)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <BarChart3 className="h-5 w-5 text-purple-400" />
+                        <span>Receitas por Período</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Hoje</span>
+                        <span className="text-green-400 font-bold">
+                          {formatCurrency(stats.financial.daily_revenue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Esta Semana</span>
+                        <span className="text-blue-400 font-bold">
+                          {formatCurrency(stats.financial.weekly_revenue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Este Mês</span>
+                        <span className="text-purple-400 font-bold">
+                          {formatCurrency(stats.financial.monthly_revenue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium">Margem de Lucro</span>
+                        <span className="text-white font-bold text-lg">{stats.games.profit_margin.toFixed(1)}%</span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
+
+                {/* Users and Games Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Users className="h-5 w-5 text-blue-400" />
+                        <span>Usuários</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Total de Usuários</span>
+                        <span className="text-blue-400 font-bold">{stats.users.total}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Ativos Hoje</span>
+                        <span className="text-green-400 font-bold">{stats.users.active_today}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Novos esta Semana</span>
+                        <span className="text-purple-400 font-bold">{stats.users.new_this_week}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Bloggers</span>
+                        <span className="text-yellow-400 font-bold">{stats.users.blogger_count}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Gamepad2 className="h-5 w-5 text-green-400" />
+                        <span>Jogos Hoje</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Jogadas</span>
+                        <span className="text-green-400 font-bold">{stats.games.today_plays}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Apostado</span>
+                        <span className="text-red-400 font-bold">{formatCurrency(stats.games.today_spent)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Pago em Prêmios</span>
+                        <span className="text-yellow-400 font-bold">{formatCurrency(stats.games.today_won)}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium">Lucro Hoje</span>
+                        <span className="text-white font-bold text-lg">
+                          {formatCurrency(stats.games.today_spent - stats.games.today_won)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Recent Activities */}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center space-x-2">
+                      <Activity className="h-5 w-5 text-cyan-400" />
+                      <span>Atividades Recentes (24h)</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {stats.recent_activities.map((activity) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center justify-between p-3 bg-slate-800 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <div
+                              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                activity.type === "deposit"
+                                  ? "bg-green-400"
+                                  : activity.type === "withdraw"
+                                    ? "bg-red-400"
+                                    : activity.type === "game"
+                                      ? "bg-blue-400"
+                                      : "bg-gray-400"
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-sm truncate">{activity.description}</p>
+                              <p className="text-gray-400 text-xs truncate">{activity.user_email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            {activity.amount && (
+                              <p className="text-white font-medium text-sm">{formatCurrency(activity.amount)}</p>
+                            )}
+                            <p className="text-gray-400 text-xs">{formatDate(activity.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </>
             )}
           </TabsContent>
 
-          {/* Outras tabs... */}
+          {/* Outras tabs seriam renderizadas aqui... */}
           <TabsContent value="settings" className="space-y-6">
             <div className="text-center text-gray-400 py-8">
               <p>Conteúdo das outras tabs será renderizado aqui...</p>
