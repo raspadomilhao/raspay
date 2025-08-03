@@ -1,129 +1,135 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { jwtVerify } from "jose"
-import { neon } from "@neondatabase/serverless"
+import { sql } from "@/lib/database"
+import { AuthClient } from "@/lib/auth-client"
 
-const sql = neon(process.env.DATABASE_URL!)
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "horsepay-secret-key")
+// Função para enviar notificação
+async function sendAdminNotification(payload: {
+  type: "withdraw" | "deposit"
+  title: string
+  body: string
+  data?: any
+}) {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/admin/notifications/send`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+    )
+
+    if (response.ok) {
+      console.log("🔔 Notificação admin enviada:", payload.title)
+    } else {
+      console.error("❌ Erro ao enviar notificação admin:", response.status)
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar notificação admin:", error)
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔍 Processando solicitação de saque de afiliado...")
-
-    // Verificar token no header Authorization
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("❌ Token não encontrado no header")
-      return NextResponse.json({ success: false, error: "Token não encontrado" }, { status: 401 })
+    const user = await AuthClient.getCurrentUser(request)
+    if (!user || user.user_type !== "affiliate") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 
-    const token = authHeader.substring(7) // Remove "Bearer "
+    const { amount, pix_key, pix_type } = await request.json()
 
-    // Verificar e decodificar token
-    let payload: any
-    try {
-      const { payload: jwtPayload } = await jwtVerify(token, secret)
-      payload = jwtPayload
-      console.log("✅ Token válido para afiliado:", payload.affiliateId)
-    } catch (error) {
-      console.log("❌ Token inválido:", error)
-      return NextResponse.json({ success: false, error: "Token inválido" }, { status: 401 })
+    console.log(`💸 Solicitação de saque do afiliado ${user.id}:`, { amount, pix_key, pix_type })
+
+    // Validações
+    if (!amount || amount <= 0) {
+      return NextResponse.json({ error: "Valor inválido" }, { status: 400 })
     }
 
-    const affiliateId = payload.affiliateId
+    if (!pix_key || !pix_type) {
+      return NextResponse.json({ error: "Chave PIX é obrigatória" }, { status: 400 })
+    }
 
-    // Verificar se o afiliado existe e está ativo
+    // Verificar saldo do afiliado
     const [affiliate] = await sql`
-      SELECT id, name, balance FROM affiliates 
-      WHERE id = ${affiliateId} AND status = 'active'
+      SELECT balance FROM affiliates WHERE id = ${user.id}
     `
 
     if (!affiliate) {
-      console.log("❌ Afiliado não encontrado ou inativo")
-      return NextResponse.json({ success: false, error: "Afiliado não encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Afiliado não encontrado" }, { status: 404 })
     }
 
-    // Obter dados do corpo da requisição
-    const { amount, pix_key, pix_type } = await request.json()
+    const currentBalance = Number.parseFloat(affiliate.balance.toString()) || 0
 
-    // Validações
-    if (!amount || !pix_key || !pix_type) {
-      return NextResponse.json({ success: false, error: "Dados obrigatórios não fornecidos" }, { status: 400 })
-    }
-
-    const withdrawAmount = Number.parseFloat(amount)
-    if (withdrawAmount <= 0) {
-      return NextResponse.json({ success: false, error: "Valor deve ser maior que zero" }, { status: 400 })
-    }
-
-    if (withdrawAmount < 10) {
-      return NextResponse.json({ success: false, error: "Valor mínimo para saque é R$ 10,00" }, { status: 400 })
-    }
-
-    const availableBalance = Number(affiliate.balance) || 0
-    console.log(`💰 Saldo disponível: R$ ${availableBalance.toFixed(2)}`)
-    console.log(`💸 Valor solicitado: R$ ${withdrawAmount.toFixed(2)}`)
-
-    if (withdrawAmount > availableBalance) {
+    if (currentBalance < amount) {
       return NextResponse.json(
         {
-          success: false,
-          error: `Saldo insuficiente. Disponível: R$ ${availableBalance.toFixed(2)}`,
+          error: "Saldo insuficiente",
+          current_balance: currentBalance,
+          requested_amount: amount,
         },
         { status: 400 },
       )
     }
 
-    // Iniciar transação
-    await sql`BEGIN`
-
-    try {
-      // Debitar saldo imediatamente
-      const newBalance = availableBalance - withdrawAmount
-      console.log(`🔄 Debitando saldo: ${availableBalance} - ${withdrawAmount} = ${newBalance}`)
-
-      await sql`
-        UPDATE affiliates 
-        SET balance = ${newBalance}
-        WHERE id = ${affiliateId}
-      `
-
-      // Criar solicitação de saque
-      const [withdrawRequest] = await sql`
-        INSERT INTO affiliate_withdraws (
-          affiliate_id, 
-          amount, 
-          pix_key, 
-          pix_type, 
-          status, 
-          created_at
-        ) VALUES (
-          ${affiliateId}, 
-          ${withdrawAmount}, 
-          ${pix_key}, 
-          ${pix_type}, 
-          'pending', 
-          NOW()
-        )
-        RETURNING *
-      `
-
-      await sql`COMMIT`
-
-      console.log("✅ Saque solicitado com sucesso!")
-      console.log(`💰 Novo saldo: R$ ${newBalance.toFixed(2)}`)
-
-      return NextResponse.json({
-        success: true,
-        message: "Solicitação de saque enviada com sucesso",
-        withdraw_request: withdrawRequest,
-        new_balance: newBalance,
-      })
-    } catch (error) {
-      await sql`ROLLBACK`
-      throw error
+    // Verificar valor mínimo de saque
+    const minWithdrawAmount = 10.0 // R$ 10,00 mínimo
+    if (amount < minWithdrawAmount) {
+      return NextResponse.json(
+        { error: `Valor mínimo para saque é R$ ${minWithdrawAmount.toFixed(2)}` },
+        { status: 400 },
+      )
     }
+
+    // Criar solicitação de saque
+    const [withdraw] = await sql`
+      INSERT INTO affiliate_withdraws (affiliate_id, amount, pix_key, pix_type, status)
+      VALUES (${user.id}, ${amount}, ${pix_key}, ${pix_type}, 'pending')
+      RETURNING *
+    `
+
+    console.log(`✅ Solicitação de saque criada:`, withdraw)
+
+    // Buscar dados do afiliado para a notificação
+    const [affiliateData] = await sql`
+      SELECT name, email, username, affiliate_code FROM affiliates WHERE id = ${user.id}
+    `
+
+    // 🔔 ENVIAR NOTIFICAÇÃO DE NOVO SAQUE PENDENTE
+    await sendAdminNotification({
+      type: "withdraw",
+      title: "💸 Novo Saque de Afiliado",
+      body: `${affiliateData.name} solicitou saque de R$ ${amount.toFixed(2)}`,
+      data: {
+        type: "withdraw",
+        withdrawType: "affiliate",
+        withdrawId: withdraw.id,
+        affiliateId: user.id,
+        affiliateName: affiliateData.name,
+        affiliateEmail: affiliateData.email,
+        affiliateCode: affiliateData.affiliate_code,
+        amount: amount,
+        pixKey: pix_key,
+        pixType: pix_type,
+        timestamp: Date.now(),
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: "Solicitação de saque enviada com sucesso",
+      withdraw: {
+        id: withdraw.id,
+        amount: withdraw.amount,
+        pix_key: withdraw.pix_key,
+        pix_type: withdraw.pix_type,
+        status: withdraw.status,
+        created_at: withdraw.created_at,
+      },
+    })
   } catch (error) {
-    console.error("❌ Erro na API de solicitação de saque:", error)
-    return NextResponse.json({ success: false, error: "Erro interno do servidor" }, { status: 500 })
+    console.error("❌ Erro ao processar solicitação de saque:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

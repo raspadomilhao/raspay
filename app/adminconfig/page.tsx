@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,15 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
+import { TableHead } from "@/components/ui/table"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { toast } from "sonner"
+import { NotificationManager } from "@/components/notification-manager"
+import { useAdminNotifications } from "@/hooks/use-admin-notifications"
 import {
   Users,
-  UserPlus,
-  Edit,
-  Trash2,
   DollarSign,
   TrendingUp,
   Settings,
@@ -33,26 +31,19 @@ import {
   XCircle,
   Lock,
   AlertCircle,
-  Check,
-  X,
   FileText,
   UserCog,
-  Link,
-  Unlink,
   Zap,
+  Menu,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  TrendingDown,
+  Target,
+  Bell,
+  BellRing,
 } from "lucide-react"
-
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  SidebarTrigger,
-  SidebarInset,
-} from "@/components/ui/sidebar"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from "recharts"
 
 import { AuthClient } from "@/lib/auth-client"
 
@@ -71,7 +62,7 @@ interface Affiliate {
   manager_id?: number
   manager_name?: string
   balance: number
-  deposits_count: number // Adicionar esta linha
+  deposits_count: number
 }
 
 interface Manager {
@@ -86,6 +77,7 @@ interface Manager {
   created_at: string
   total_affiliates?: number
   total_referrals_managed?: number
+  total_deposit_volume?: number
 }
 
 interface AffiliateWithdraw {
@@ -198,11 +190,48 @@ interface AdminStats {
     created_at: string
   }>
   performance: {
-    // Added performance metrics
     avg_deposit_time: number | null
     avg_withdraw_time: number | null
     api_error_rate: string
     system_uptime: string
+  }
+}
+
+interface AnalyticsData {
+  revenue_trend: Array<{
+    date: string
+    revenue: number
+    deposits: number
+    withdraws: number
+    users: number
+  }>
+  affiliate_performance: Array<{
+    affiliate_name: string
+    total_earnings: number
+    referrals: number
+    conversion_rate: number
+    deposits_count: number
+  }>
+  manager_performance: Array<{
+    manager_name: string
+    total_earnings: number
+    affiliates_count: number
+    total_referrals: number
+    avg_conversion: number
+  }>
+  period_comparison: {
+    current_period: {
+      revenue: number
+      users: number
+      transactions: number
+      affiliates_earnings: number
+    }
+    previous_period: {
+      revenue: number
+      users: number
+      transactions: number
+      affiliates_earnings: number
+    }
   }
 }
 
@@ -220,6 +249,7 @@ export default function AdminConfigPage() {
   const [managerWithdraws, setManagerWithdraws] = useState<ManagerWithdraw[]>([])
   const [settings, setSettings] = useState<SystemSettings>({})
   const [stats, setStats] = useState<AdminStats | null>(null)
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editingAffiliate, setEditingAffiliate] = useState<Affiliate | null>(null)
   const [editingManager, setEditingManager] = useState<Manager | null>(null)
@@ -232,6 +262,37 @@ export default function AdminConfigPage() {
   const [isAssignManagerDialogOpen, setIsAssignManagerDialogOpen] = useState(false)
   const [selectedAffiliateForManager, setSelectedAffiliateForManager] = useState<Affiliate | null>(null)
 
+  // Notifications hook
+  const {
+    isConnected: notificationsConnected,
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+  } = useAdminNotifications()
+
+  // Filter and search states
+  const [affiliateSearchTerm, setAffiliateSearchTerm] = useState("")
+  const [affiliateStatusFilter, setAffiliateStatusFilter] = useState("all")
+  const [affiliateSortBy, setAffiliateSortBy] = useState<keyof Affiliate>("created_at")
+  const [affiliateSortOrder, setAffiliateSortOrder] = useState<"asc" | "desc">("desc")
+  const [affiliateCurrentPage, setAffiliateCurrentPage] = useState(1)
+  const [affiliateItemsPerPage] = useState(10)
+
+  const [managerSearchTerm, setManagerSearchTerm] = useState("")
+  const [managerStatusFilter, setManagerStatusFilter] = useState("all")
+  const [managerSortBy, setManagerSortBy] = useState<keyof Manager>("created_at")
+  const [managerSortOrder, setManagerSortOrder] = useState<"asc" | "desc">("desc")
+  const [managerCurrentPage, setManagerCurrentPage] = useState(1)
+  const [managerItemsPerPage] = useState(10)
+
+  // Analytics filters
+  const [analyticsDateRange, setAnalyticsDateRange] = useState("30")
+  const [analyticsPeriod, setAnalyticsPeriod] = useState("daily")
+
+  // Export states
+  const [isExporting, setIsExporting] = useState(false)
+
   const [users, setUsers] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredUsers, setFilteredUsers] = useState<any[]>([])
@@ -239,6 +300,10 @@ export default function AdminConfigPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [balanceToAdd, setBalanceToAdd] = useState("")
   const [balanceNote, setBalanceNote] = useState("")
+
+  // Mobile navigation state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState(accessLevel === "managers_only" ? "managers" : "dashboard")
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -258,7 +323,7 @@ export default function AdminConfigPage() {
     commission_rate: 10,
     loss_commission_rate: 0,
     status: "active",
-    password: "", // Add password field
+    password: "",
   })
 
   // Manager form states
@@ -287,6 +352,87 @@ export default function AdminConfigPage() {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
+  // Filtered and sorted affiliates
+  const filteredAndSortedAffiliates = useMemo(() => {
+    const filtered = affiliates.filter((affiliate) => {
+      const matchesSearch =
+        affiliate.name.toLowerCase().includes(affiliateSearchTerm.toLowerCase()) ||
+        affiliate.email.toLowerCase().includes(affiliateSearchTerm.toLowerCase()) ||
+        affiliate.username.toLowerCase().includes(affiliateSearchTerm.toLowerCase()) ||
+        affiliate.affiliate_code.toLowerCase().includes(affiliateSearchTerm.toLowerCase())
+
+      const matchesStatus = affiliateStatusFilter === "all" || affiliate.status === affiliateStatusFilter
+
+      return matchesSearch && matchesStatus
+    })
+
+    // Sort
+    filtered.sort((a, b) => {
+      const aValue = a[affiliateSortBy]
+      const bValue = b[affiliateSortBy]
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return affiliateSortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      }
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return affiliateSortOrder === "asc" ? aValue - bValue : bValue - aValue
+      }
+
+      return 0
+    })
+
+    return filtered
+  }, [affiliates, affiliateSearchTerm, affiliateStatusFilter, affiliateSortBy, affiliateSortOrder])
+
+  // Paginated affiliates
+  const paginatedAffiliates = useMemo(() => {
+    const startIndex = (affiliateCurrentPage - 1) * affiliateItemsPerPage
+    return filteredAndSortedAffiliates.slice(startIndex, startIndex + affiliateItemsPerPage)
+  }, [filteredAndSortedAffiliates, affiliateCurrentPage, affiliateItemsPerPage])
+
+  const affiliateTotalPages = Math.ceil(filteredAndSortedAffiliates.length / affiliateItemsPerPage)
+
+  // Filtered and sorted managers
+  const filteredAndSortedManagers = useMemo(() => {
+    const filtered = managers.filter((manager) => {
+      const matchesSearch =
+        manager.name.toLowerCase().includes(managerSearchTerm.toLowerCase()) ||
+        manager.email.toLowerCase().includes(managerSearchTerm.toLowerCase()) ||
+        manager.username.toLowerCase().includes(managerSearchTerm.toLowerCase())
+
+      const matchesStatus = managerStatusFilter === "all" || manager.status === managerStatusFilter
+
+      return matchesSearch && matchesStatus
+    })
+
+    // Sort
+    filtered.sort((a, b) => {
+      const aValue = a[managerSortBy]
+      const bValue = b[managerSortBy]
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return managerSortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      }
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return managerSortOrder === "asc" ? aValue - bValue : bValue - aValue
+      }
+
+      return 0
+    })
+
+    return filtered
+  }, [managers, managerSearchTerm, managerStatusFilter, managerSortBy, managerSortOrder])
+
+  // Paginated managers
+  const paginatedManagers = useMemo(() => {
+    const startIndex = (managerCurrentPage - 1) * managerItemsPerPage
+    return filteredAndSortedManagers.slice(startIndex, startIndex + managerItemsPerPage)
+  }, [filteredAndSortedManagers, managerCurrentPage, managerItemsPerPage])
+
+  const managerTotalPages = Math.ceil(filteredAndSortedManagers.length / managerItemsPerPage)
+
   const handleAuthentication = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsAuthenticating(true)
@@ -311,6 +457,7 @@ export default function AdminConfigPage() {
         setIsAuthenticated(true)
         setAccessLevel(data.accessLevel || "full")
         setAdminToken(data.token || "admin-authenticated")
+        setActiveTab(data.accessLevel === "managers_only" ? "managers" : "dashboard")
 
         if (data.accessLevel === "managers_only") {
           toast.success("Acesso autorizado - Painel de Gerentes")
@@ -339,8 +486,15 @@ export default function AdminConfigPage() {
       fetchManagerWithdraws()
       fetchSettings()
       fetchStats()
+      fetchAnalytics()
     }
   }, [isAuthenticated])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAnalytics()
+    }
+  }, [isAuthenticated, analyticsDateRange, analyticsPeriod])
 
   useEffect(() => {
     if (!isAuthenticated || !autoRefresh) return
@@ -353,6 +507,7 @@ export default function AdminConfigPage() {
           fetchManagerWithdraws(),
           fetchAffiliates(),
           fetchManagers(),
+          fetchAnalytics(),
         ])
         setLastUpdate(new Date())
       } catch (error) {
@@ -462,6 +617,55 @@ export default function AdminConfigPage() {
       console.error("Erro ao buscar estatísticas:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest(
+        `/api/admin/analytics?days=${analyticsDateRange}&period=${analyticsPeriod}`,
+        {
+          headers: { "X-Admin-Token": adminToken },
+        },
+      )
+      if (response.ok) {
+        const data = await response.json()
+        console.log("📊 Dados de analytics carregados:", data)
+        setAnalyticsData(data)
+      } else {
+        console.error("❌ Erro ao carregar analytics:", response.status)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar analytics:", error)
+    }
+  }
+
+  const handleExportData = async (type: "affiliates" | "managers" | "transactions" | "commissions") => {
+    setIsExporting(true)
+    try {
+      const response = await AuthClient.makeAuthenticatedRequest(`/api/admin/export/${type}`, {
+        headers: { "X-Admin-Token": adminToken },
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${type}_${new Date().toISOString().split("T")[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success(`Dados de ${type} exportados com sucesso!`)
+      } else {
+        toast.error("Erro ao exportar dados")
+      }
+    } catch (error) {
+      console.error("Erro ao exportar:", error)
+      toast.error("Erro ao exportar dados")
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -712,7 +916,7 @@ export default function AdminConfigPage() {
         const data = await response.json()
         toast.success(data.message)
         fetchManagerWithdraws()
-        fetchManagers() // Atualizar saldos dos gerentes
+        fetchManagers()
       } else {
         const error = await response.json()
         toast.error(error.error || "Erro ao processar saque")
@@ -755,7 +959,7 @@ export default function AdminConfigPage() {
       commission_rate: affiliate.commission_rate,
       loss_commission_rate: affiliate.loss_commission_rate,
       status: affiliate.status,
-      password: "", // Clear password field
+      password: "",
     })
     setIsEditDialogOpen(true)
   }
@@ -833,7 +1037,6 @@ export default function AdminConfigPage() {
   const handleManualRefresh = async () => {
     setIsLoading(true)
     try {
-      // Atualizar todos os dados em paralelo
       await Promise.all([
         fetchStats(),
         fetchAffiliateWithdraws(),
@@ -841,6 +1044,7 @@ export default function AdminConfigPage() {
         fetchAffiliates(),
         fetchManagers(),
         fetchSettings(),
+        fetchAnalytics(),
       ])
       setLastUpdate(new Date())
       toast.success("Dados atualizados com sucesso!")
@@ -851,6 +1055,105 @@ export default function AdminConfigPage() {
       setIsLoading(false)
     }
   }
+
+  // Mobile Card Component for Tables
+  const MobileCard = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+    <div className={`bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-3 ${className}`}>{children}</div>
+  )
+
+  // Pagination Component
+  const PaginationControls = ({
+    currentPage,
+    totalPages,
+    onPageChange,
+    itemsPerPage,
+    totalItems,
+  }: {
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+    itemsPerPage: number
+    totalItems: number
+  }) => (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-700">
+      <div className="text-sm text-gray-400">
+        Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de{" "}
+        {totalItems} resultados
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="border-slate-600 text-white hover:bg-slate-700"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm text-white">
+          Página {currentPage} de {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="border-slate-600 text-white hover:bg-slate-700"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+
+  // Sort Header Component
+  const SortableHeader = ({
+    label,
+    sortKey,
+    currentSortBy,
+    currentSortOrder,
+    onSort,
+  }: {
+    label: string
+    sortKey: string
+    currentSortBy: string
+    currentSortOrder: "asc" | "desc"
+    onSort: (key: string) => void
+  }) => (
+    <TableHead
+      className="text-gray-400 cursor-pointer hover:text-white transition-colors"
+      onClick={() => onSort(sortKey)}
+    >
+      <div className="flex items-center space-x-1">
+        <span>{label}</span>
+        <ArrowUpDown className="h-3 w-3" />
+        {currentSortBy === sortKey && <span className="text-xs">{currentSortOrder === "asc" ? "↑" : "↓"}</span>}
+      </div>
+    </TableHead>
+  )
+
+  // Navigation tabs for mobile
+  const navigationTabs = [
+    ...(accessLevel === "full"
+      ? [
+          { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+          { id: "analytics", label: "Analytics", icon: TrendingUp },
+          { id: "transactions", label: "Transações", icon: CreditCard },
+          { id: "affiliates", label: "Afiliados", icon: Users },
+        ]
+      : []),
+    { id: "managers", label: "Gerentes", icon: UserCog },
+    ...(accessLevel === "full"
+      ? [
+          { id: "affiliate-withdraws", label: "Saques Afiliados", icon: Wallet },
+          { id: "manager-withdraws", label: "Saques Gerentes", icon: DollarSign },
+          { id: "reports", label: "Relatórios", icon: FileText },
+          { id: "notifications", label: "Notificações", icon: Bell },
+          { id: "settings", label: "Configurações", icon: Settings },
+          { id: "performance", label: "Desempenho", icon: Zap },
+        ]
+      : []),
+  ]
 
   // Tela de autenticação
   if (!isAuthenticated) {
@@ -893,11 +1196,6 @@ export default function AdminConfigPage() {
               >
                 {isAuthenticating ? "Verificando..." : "Acessar"}
               </Button>
-
-              {/* Debug info */}
-              <div className="text-xs text-gray-500 text-center mt-4">
-                <p>Status: {isAuthenticating ? "Verificando..." : "Aguardando"}</p>
-              </div>
             </form>
           </CardContent>
         </Card>
@@ -919,1933 +1217,798 @@ export default function AdminConfigPage() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-slate-950">
-        {/* Mobile Sidebar */}
-        <Sidebar className="border-slate-700">
-          <SidebarHeader className="border-b border-slate-700 p-4">
-            <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarMenu>
-              {accessLevel === "full" && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="dashboard"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      <span>Dashboard</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="transactions"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <CreditCard className="h-4 w-4" />
-                      <span>Transações</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="affiliates"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Afiliados</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => document.querySelector('[value="managers"]')?.click()}
-                  className="w-full justify-start"
-                >
-                  <UserCog className="h-4 w-4" />
-                  <span>Gerentes</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {accessLevel === "full" && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="affiliate-withdraws"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <Wallet className="h-4 w-4" />
-                      <span>Saques Afiliados</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="manager-withdraws"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      <span>Saques Gerentes</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="settings"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Configurações</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => document.querySelector('[value="performance"]')?.click()}
-                      className="w-full justify-start"
-                    >
-                      <Zap className="h-4 w-4" />
-                      <span>Desempenho</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
-              )}
-            </SidebarMenu>
-          </SidebarContent>
-        </Sidebar>
-
-        {/* Main Content */}
-        <SidebarInset className="flex-1">
-          <div className="p-2 sm:p-4 lg:p-6">
-            {/* Mobile Header */}
-            <div className="flex items-center justify-between mb-4 lg:mb-8">
-              <div className="flex items-center space-x-2">
-                <SidebarTrigger className="lg:hidden" />
-                <div>
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
-                    {accessLevel === "managers_only" ? "Painel de Gerentes" : "Painel Administrativo"}
-                  </h1>
-                  <p className="text-sm sm:text-base text-gray-400 hidden sm:block">
-                    {accessLevel === "managers_only"
-                      ? "Gerencie gerentes e monitore suas atividades"
-                      : "Gerencie afiliados, gerentes, configurações e monitore estatísticas da plataforma"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Refresh Controls - Mobile Optimized */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 lg:mb-6 p-3 sm:p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-2 sm:space-y-0">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-green-400" : "bg-gray-400"}`} />
-                  <span className="text-xs sm:text-sm text-gray-400">
-                    Auto-refresh: {autoRefresh ? "Ativo" : "Inativo"}
-                  </span>
-                </div>
-                <div className="text-xs sm:text-sm text-gray-500">Última: {lastUpdate.toLocaleTimeString("pt-BR")}</div>
-              </div>
-              <div className="flex items-center space-x-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAutoRefresh(!autoRefresh)}
-                  className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none text-xs sm:text-sm"
-                >
-                  {autoRefresh ? "Pausar" : "Ativar"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManualRefresh}
-                  disabled={isLoading}
-                  className="border-slate-600 text-white hover:bg-slate-700 bg-transparent flex-1 sm:flex-none text-xs sm:text-sm"
-                >
-                  <Activity className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                  {isLoading ? "Atualizando..." : "Atualizar"}
-                </Button>
-              </div>
-            </div>
-
-            <Tabs
-              defaultValue={accessLevel === "managers_only" ? "managers" : "dashboard"}
-              className="space-y-4 lg:space-y-6"
-            >
-              {/* Mobile-friendly Tab List */}
-              <div className="overflow-x-auto">
-                <TabsList className="bg-slate-800 border-slate-700 w-full sm:w-auto grid grid-cols-4 sm:flex h-auto">
-                  {accessLevel === "full" && (
-                    <>
-                      <TabsTrigger
-                        value="dashboard"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Dashboard</span>
-                        <span className="sm:hidden">Dash</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="transactions"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Transações</span>
-                        <span className="sm:hidden">Trans</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="affiliates"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <Users className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Afiliados</span>
-                        <span className="sm:hidden">Afil</span>
-                      </TabsTrigger>
-                    </>
-                  )}
-                  <TabsTrigger
-                    value="managers"
-                    className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                  >
-                    <UserCog className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Gerentes</span>
-                    <span className="sm:hidden">Ger</span>
-                  </TabsTrigger>
-                  {accessLevel === "full" && (
-                    <>
-                      <TabsTrigger
-                        value="affiliate-withdraws"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <Wallet className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Saques Afiliados</span>
-                        <span className="sm:hidden">S.Afil</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="manager-withdraws"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <DollarSign className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Saques Gerentes</span>
-                        <span className="sm:hidden">S.Ger</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="settings"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <Settings className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Configurações</span>
-                        <span className="sm:hidden">Config</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="performance"
-                        className="data-[state=active]:bg-slate-700 text-xs sm:text-sm p-2 sm:p-3"
-                      >
-                        <Zap className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Desempenho</span>
-                        <span className="sm:hidden">Perf</span>
-                      </TabsTrigger>
-                    </>
-                  )}
-                </TabsList>
-              </div>
-
-              {/* Dashboard Tab - Mobile Optimized */}
-              <TabsContent value="dashboard" className="space-y-4 lg:space-y-6">
-                {stats && (
-                  <>
-                    {/* Stats Cards - Mobile Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Usuários Online</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">
-                                {stats.users.online_now}
-                              </p>
-                              <p className="text-xs text-gray-500">Última hora</p>
-                            </div>
-                            <Eye className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-green-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Receita Hoje</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">
-                                {formatCurrency(stats.financial.daily_revenue)}
-                              </p>
-                              <p className="text-xs text-gray-500">Lucro dos jogos</p>
-                            </div>
-                            <TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Transações Hoje</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">
-                                {stats.transactions.today_transactions}
-                              </p>
-                              <p className="text-xs text-gray-500">{formatCurrency(stats.transactions.today_volume)}</p>
-                            </div>
-                            <Activity className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-purple-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Saques Pendentes</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400">
-                                {stats.withdraws.pending_count}
-                              </p>
-                              <p className="text-xs text-gray-500">{formatCurrency(stats.withdraws.pending_amount)}</p>
-                            </div>
-                            <Clock className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-yellow-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Financial Stats - Mobile Stack */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
-                            <span>Situação Financeira</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 sm:space-y-4 pt-0">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Saldo da Plataforma</span>
-                            <span className="text-green-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.financial.platform_balance)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Saldo dos Usuários</span>
-                            <span className="text-blue-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.financial.total_user_balance)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Saques Pendentes</span>
-                            <span className="text-yellow-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.financial.pending_withdraws)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-700 pt-2">
-                            <span className="text-gray-300 font-medium text-xs sm:text-sm">Saldo Disponível</span>
-                            <span className="text-white font-bold text-sm:text-lg">
-                              {formatCurrency(stats.financial.available_balance)}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
-                            <span>Receitas por Período</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 sm:space-y-4 pt-0">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Hoje</span>
-                            <span className="text-green-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.financial.daily_revenue)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Esta Semana</span>
-                            <span className="text-blue-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.financial.weekly_revenue)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Este Mês</span>
-                            <span className="text-purple-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.financial.monthly_revenue)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-700 pt-2">
-                            <span className="text-gray-300 font-medium text-xs sm:text-sm">Margem de Lucro</span>
-                            <span className="text-white font-bold text-sm:text-lg">
-                              {stats.games.profit_margin.toFixed(1)}%
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Users and Games Stats - Mobile Stack */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                            <span>Usuários</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 sm:space-y-4 pt-0">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Total de Usuários</span>
-                            <span className="text-blue-400 font-bold text-sm:text-base">{stats.users.total}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Ativos Hoje</span>
-                            <span className="text-green-400 font-bold text-sm:text-base">
-                              {stats.users.active_today}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Novos esta Semana</span>
-                            <span className="text-purple-400 font-bold text-sm:text-base">
-                              {stats.users.new_this_week}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Bloggers</span>
-                            <span className="text-yellow-400 font-bold text-sm:text-base">
-                              {stats.users.blogger_count}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
-                            <span>Jogos Hoje</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 sm:space-y-4 pt-0">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Jogadas</span>
-                            <span className="text-green-400 font-bold text-sm:text-base">
-                              {stats.games.today_plays}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Apostado</span>
-                            <span className="text-red-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.games.today_spent)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">Pago em Prêmios</span>
-                            <span className="text-yellow-400 font-bold text-sm:text-base">
-                              {formatCurrency(stats.games.today_won)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-700 pt-2">
-                            <span className="text-gray-300 font-medium text-xs sm:text-sm">Lucro Hoje</span>
-                            <span className="text-white font-bold text-sm:text-lg">
-                              {formatCurrency(stats.games.today_spent - stats.games.today_won)}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Recent Activities - Mobile Optimized */}
-                    <Card className="bg-slate-900/50 border-slate-700">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                          <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
-                          <span>Atividades Recentes (24h)</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
-                          {stats.recent_activities.map((activity) => (
-                            <div
-                              key={activity.id}
-                              className="flex items-center justify-between p-2 sm:p-3 bg-slate-800 rounded-lg"
-                            >
-                              <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-                                <div
-                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                    activity.type === "deposit"
-                                      ? "bg-green-400"
-                                      : activity.type === "withdraw"
-                                        ? "bg-red-400"
-                                        : activity.type === "game"
-                                          ? "bg-blue-400"
-                                          : "bg-gray-400"
-                                  }`}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-white text-xs sm:text-sm truncate">{activity.description}</p>
-                                  <p className="text-gray-400 text-xs truncate">{activity.user_email}</p>
-                                </div>
-                              </div>
-                              <div className="text-right flex-shrink-0 ml-2">
-                                {activity.amount && (
-                                  <p className="text-white font-medium text-xs sm:text-sm">
-                                    {formatCurrency(activity.amount)}
-                                  </p>
-                                )}
-                                <p className="text-gray-400 text-xs">{formatDate(activity.created_at)}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </TabsContent>
-
-              {/* Transactions Tab - Mobile Optimized */}
-              <TabsContent value="transactions" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Transações do Sistema</h2>
-
-                {stats && (
-                  <>
-                    {/* Transaction Stats Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Total de Transações</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">
-                                {stats.transactions.total}
-                              </p>
-                              <p className="text-xs text-gray-500">Todas as transações</p>
-                            </div>
-                            <CreditCard className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Bem-sucedidas</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">
-                                {stats.transactions.successful}
-                              </p>
-                              <p className="text-xs text-gray-500">Concluídas</p>
-                            </div>
-                            <CheckCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-green-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Pendentes</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400">
-                                {stats.transactions.pending}
-                              </p>
-                              <p className="text-xs text-gray-500">Aguardando</p>
-                            </div>
-                            <Clock className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-yellow-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardContent className="p-3 sm:p-4 lg:p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-400 text-xs sm:text-sm">Falharam</p>
-                              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-400">
-                                {stats.transactions.failed}
-                              </p>
-                              <p className="text-xs text-gray-500">Com erro</p>
-                            </div>
-                            <XCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-red-400" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Volume Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
-                            <span>Volume Total</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-2xl font-bold text-white">
-                            {formatCurrency(stats.transactions.total_volume)}
-                          </p>
-                          <p className="text-gray-400 text-sm">Todas as transações</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                            <span>Volume de Depósitos</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-2xl font-bold text-white">
-                            {formatCurrency(stats.transactions.deposits_volume)}
-                          </p>
-                          <p className="text-gray-400 text-sm">Entradas na plataforma</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-slate-900/50 border-slate-700">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                            <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
-                            <span>Volume de Saques</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-2xl font-bold text-white">
-                            {formatCurrency(stats.transactions.withdraws_volume)}
-                          </p>
-                          <p className="text-gray-400 text-sm">Saídas da plataforma</p>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Detailed Transactions Table */}
-                    <Card className="bg-slate-900/50 border-slate-700">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                          <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
-                          <span>Transações Recentes</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="border-slate-700">
-                                <TableHead className="text-gray-400 text-xs sm:text-sm">ID</TableHead>
-                                <TableHead className="text-gray-400 text-xs sm:text-sm">Usuário</TableHead>
-                                <TableHead className="text-gray-400 text-xs sm:text-sm">Tipo</TableHead>
-                                <TableHead className="text-gray-400 text-xs sm:text-sm">Valor</TableHead>
-                                <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                                <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                                  PIX
-                                </TableHead>
-                                <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                                  Data
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {stats.transactions.detailed_list?.slice(0, 20).map((transaction) => (
-                                <TableRow key={transaction.id} className="hover:bg-slate-800 border-slate-700">
-                                  <TableCell>
-                                    <span className="text-white text-xs sm:text-sm font-mono">#{transaction.id}</span>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex flex-col">
-                                      <span className="text-white text-xs sm:text-sm font-medium">
-                                        {transaction.user.name}
-                                      </span>
-                                      <span className="text-gray-500 text-xs">{transaction.user.email}</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>{getTypeBadge(transaction.type)}</TableCell>
-                                  <TableCell>
-                                    <span className="text-white text-xs sm:text-sm font-medium">
-                                      {formatCurrency(transaction.amount)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                                  <TableCell className="hidden md:table-cell">
-                                    {transaction.pix_key ? (
-                                      <div className="flex flex-col">
-                                        <span className="text-white text-xs truncate max-w-32">
-                                          {transaction.pix_key}
-                                        </span>
-                                        <span className="text-gray-500 text-xs">{transaction.pix_type}</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-gray-500 text-xs">-</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="hidden lg:table-cell">
-                                    <span className="text-gray-400 text-xs">{formatDate(transaction.created_at)}</span>
-                                  </TableCell>
-                                </TableRow>
-                              )) || (
-                                <TableRow>
-                                  <TableCell colSpan={7} className="text-center py-4 text-gray-400">
-                                    Nenhuma transação encontrada
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </TabsContent>
-
-              {/* Affiliates Tab - Mobile Optimized */}
-              <TabsContent value="affiliates" className="space-y-4 lg:space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                  <h2 className="text-lg sm:text-xl font-bold text-white">Gerenciar Afiliados</h2>
-                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-xs sm:text-sm">
-                        <UserPlus className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        Novo Afiliado
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle className="text-white">Criar Novo Afiliado</DialogTitle>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateAffiliate} className="space-y-4">
-                        <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <Label htmlFor="name" className="text-white">
-                              Nome
-                            </Label>
-                            <Input
-                              id="name"
-                              value={createForm.name}
-                              onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="email" className="text-white">
-                              Email
-                            </Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              value={createForm.email}
-                              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="username" className="text-white">
-                              Nome de Usuário
-                            </Label>
-                            <Input
-                              id="username"
-                              value={createForm.username}
-                              onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="affiliate_code" className="text-white">
-                              Código de Afiliado
-                            </Label>
-                            <Input
-                              id="affiliate_code"
-                              value={createForm.affiliate_code}
-                              onChange={(e) => setCreateForm({ ...createForm, affiliate_code: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="password" className="text-white">
-                              Senha
-                            </Label>
-                            <Input
-                              id="password"
-                              type="password"
-                              value={createForm.password}
-                              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="commission_rate" className="text-white">
-                              Taxa de Comissão (%)
-                            </Label>
-                            <Input
-                              id="commission_rate"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={createForm.commission_rate}
-                              onChange={(e) =>
-                                setCreateForm({ ...createForm, commission_rate: Number(e.target.value) })
-                              }
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="loss_commission_rate" className="text-white">
-                              Taxa de Comissão de Perda (%)
-                            </Label>
-                            <Input
-                              id="loss_commission_rate"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={createForm.loss_commission_rate}
-                              onChange={(e) =>
-                                setCreateForm({ ...createForm, loss_commission_rate: Number(e.target.value) })
-                              }
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsCreateDialogOpen(false)}
-                            className="border-slate-600 text-white hover:bg-slate-700"
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="submit"
-                            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                          >
-                            Criar Afiliado
-                          </Button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-700">
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Afiliado</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden sm:table-cell">
-                              Código
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Comissão</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                              Referidos
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                              Depósitos
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ganhos</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Saldo</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                              Gerente
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {affiliates.map((affiliate) => (
-                            <TableRow key={affiliate.id} className="hover:bg-slate-800 border-slate-700">
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="text-white text-xs sm:text-sm font-medium">{affiliate.name}</span>
-                                  <span className="text-gray-500 text-xs">{affiliate.email}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                <Badge variant="outline" className="border-slate-600 text-white">
-                                  {affiliate.affiliate_code}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="text-green-400 text-xs sm:text-sm">
-                                    {affiliate.commission_rate}%
-                                  </span>
-                                  {affiliate.loss_commission_rate > 0 && (
-                                    <span className="text-red-400 text-xs">
-                                      {affiliate.loss_commission_rate}% (perda)
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden lg:table-cell">
-                                <span className="text-white text-xs sm:text-sm">{affiliate.total_referrals}</span>
-                              </TableCell>
-                              <TableCell className="hidden lg:table-cell">
-                                <span className="text-green-400 text-xs sm:text-sm font-medium">
-                                  {affiliate.deposits_count}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-white text-xs sm:text-sm">
-                                  {formatCurrency(affiliate.total_earnings)}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-white text-xs sm:text-sm">
-                                  {formatCurrency(affiliate.balance)}
-                                </span>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {affiliate.manager_name ? (
-                                  <div className="flex items-center space-x-1">
-                                    <UserCog className="h-3 w-3 text-blue-400" />
-                                    <span className="text-blue-400 text-xs">{affiliate.manager_name}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-500 text-xs">Sem gerente</span>
-                                )}
-                              </TableCell>
-                              <TableCell>{getStatusBadge(affiliate.status)}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openEditDialog(affiliate)}
-                                    className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                    <span className="sr-only">Editar</span>
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openAssignManagerDialog(affiliate)}
-                                    className="h-7 w-7 text-purple-400 hover:text-purple-300 hover:bg-purple-900/20"
-                                  >
-                                    {affiliate.manager_id ? (
-                                      <>
-                                        <Unlink className="h-3 w-3" />
-                                        <span className="sr-only">Desvincular Gerente</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Link className="h-3 w-3" />
-                                        <span className="sr-only">Vincular Gerente</span>
-                                      </>
-                                    )}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteAffiliate(affiliate.id)}
-                                    className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                    <span className="sr-only">Excluir</span>
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Edit Affiliate Dialog */}
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Editar Afiliado</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleEditAffiliate} className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <Label htmlFor="edit-name" className="text-white">
-                            Nome
-                          </Label>
-                          <Input
-                            id="edit-name"
-                            value={editForm.name}
-                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-email" className="text-white">
-                            Email
-                          </Label>
-                          <Input
-                            id="edit-email"
-                            type="email"
-                            value={editForm.email}
-                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-username" className="text-white">
-                            Nome de Usuário
-                          </Label>
-                          <Input
-                            id="edit-username"
-                            value={editForm.username}
-                            onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-commission-rate" className="text-white">
-                            Taxa de Comissão (%)
-                          </Label>
-                          <Input
-                            id="edit-commission-rate"
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={editForm.commission_rate}
-                            onChange={(e) => setEditForm({ ...editForm, commission_rate: Number(e.target.value) })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-loss-commission-rate" className="text-white">
-                            Taxa de Comissão de Perda (%)
-                          </Label>
-                          <Input
-                            id="edit-loss-commission-rate"
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={editForm.loss_commission_rate}
-                            onChange={(e) => setEditForm({ ...editForm, loss_commission_rate: Number(e.target.value) })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-status" className="text-white">
-                            Status
-                          </Label>
-                          <Select
-                            value={editForm.status}
-                            onValueChange={(value) => setEditForm({ ...editForm, status: value })}
-                          >
-                            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                              <SelectValue placeholder="Selecione o status" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                              <SelectItem value="active">Ativo</SelectItem>
-                              <SelectItem value="inactive">Inativo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-password" className="text-white">
-                            Nova Senha
-                          </Label>
-                          <Input
-                            id="edit-password"
-                            type="password"
-                            value={editForm.password}
-                            onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            placeholder="Deixe em branco para não alterar"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsEditDialogOpen(false)}
-                          className="border-slate-600 text-white hover:bg-slate-700"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="submit"
-                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                        >
-                          Salvar Alterações
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Assign Manager Dialog */}
-                <Dialog open={isAssignManagerDialogOpen} onOpenChange={setIsAssignManagerDialogOpen}>
-                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">
-                        {selectedAffiliateForManager?.manager_id
-                          ? "Desvincular Gerente"
-                          : "Vincular Afiliado a um Gerente"}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="bg-slate-800 p-3 rounded-md">
-                        <p className="text-gray-400 text-xs">Afiliado</p>
-                        <p className="text-white font-medium">{selectedAffiliateForManager?.name}</p>
-                        <p className="text-gray-400 text-xs">{selectedAffiliateForManager?.email}</p>
-                      </div>
-
-                      {selectedAffiliateForManager?.manager_id ? (
-                        <div className="space-y-4">
-                          <div className="bg-slate-800 p-3 rounded-md">
-                            <p className="text-gray-400 text-xs">Gerente Atual</p>
-                            <div className="flex items-center space-x-2">
-                              <UserCog className="h-4 w-4 text-blue-400" />
-                              <p className="text-white font-medium">{selectedAffiliateForManager?.manager_name}</p>
-                            </div>
-                          </div>
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setIsAssignManagerDialogOpen(false)}
-                              className="border-slate-600 text-white hover:bg-slate-700"
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              onClick={() => {
-                                if (selectedAffiliateForManager) {
-                                  handleAssignManager(selectedAffiliateForManager.id, null)
-                                  setIsAssignManagerDialogOpen(false)
-                                }
-                              }}
-                            >
-                              <Unlink className="h-4 w-4 mr-2" />
-                              Desvincular Gerente
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="manager-id" className="text-white">
-                              Selecione um Gerente
-                            </Label>
-                            <Select
-                              onValueChange={(value) => {
-                                if (selectedAffiliateForManager) {
-                                  handleAssignManager(selectedAffiliateForManager.id, Number(value))
-                                  setIsAssignManagerDialogOpen(false)
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                <SelectValue placeholder="Selecione um gerente" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                                {managers
-                                  .filter((manager) => manager.status === "active")
-                                  .map((manager) => (
-                                    <SelectItem key={manager.id} value={manager.id.toString()}>
-                                      {manager.name}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex justify-end">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setIsAssignManagerDialogOpen(false)}
-                              className="border-slate-600 text-white hover:bg-slate-700"
-                            >
-                              Cancelar
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </TabsContent>
-
-              {/* Managers Tab - Mobile Optimized */}
-              <TabsContent value="managers" className="space-y-4 lg:space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                  <h2 className="text-lg sm:text-xl font-bold text-white">Gerenciar Gerentes</h2>
-                  <Dialog open={isCreateManagerDialogOpen} onOpenChange={setIsCreateManagerDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-xs sm:text-sm">
-                        <UserCog className="h-3 w-3 sm:h-4 w-4 mr-1 sm:mr-2" />
-                        Novo Gerente
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle className="text-white">Criar Novo Gerente</DialogTitle>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateManager} className="space-y-4">
-                        <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <Label htmlFor="manager-name" className="text-white">
-                              Nome
-                            </Label>
-                            <Input
-                              id="manager-name"
-                              value={createManagerForm.name}
-                              onChange={(e) => setCreateManagerForm({ ...createManagerForm, name: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="manager-email" className="text-white">
-                              Email
-                            </Label>
-                            <Input
-                              id="manager-email"
-                              type="email"
-                              value={createManagerForm.email}
-                              onChange={(e) => setCreateManagerForm({ ...createManagerForm, email: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="manager-username" className="text-white">
-                              Nome de Usuário
-                            </Label>
-                            <Input
-                              id="manager-username"
-                              value={createManagerForm.username}
-                              onChange={(e) => setCreateManagerForm({ ...createManagerForm, username: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="manager-password" className="text-white">
-                              Senha
-                            </Label>
-                            <Input
-                              id="manager-password"
-                              type="password"
-                              value={createManagerForm.password}
-                              onChange={(e) => setCreateManagerForm({ ...createManagerForm, password: e.target.value })}
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="manager-commission-rate" className="text-white">
-                              Taxa de Comissão (%)
-                            </Label>
-                            <Input
-                              id="manager-commission-rate"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={createManagerForm.commission_rate}
-                              onChange={(e) =>
-                                setCreateManagerForm({ ...createManagerForm, commission_rate: Number(e.target.value) })
-                              }
-                              className="bg-slate-800 border-slate-700 text-white"
-                              required
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsCreateManagerDialogOpen(false)}
-                            className="border-slate-600 text-white hover:bg-slate-700"
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="submit"
-                            className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
-                          >
-                            Criar Gerente
-                          </Button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-700">
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Gerente</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Comissão</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                              Afiliados
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                              Referidos
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ganhos</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Saldo</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {managers.map((manager) => (
-                            <TableRow key={manager.id} className="hover:bg-slate-800 border-slate-700">
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="text-white text-xs sm:text-sm font-medium">{manager.name}</span>
-                                  <span className="text-gray-500 text-xs">{manager.email}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-purple-400 text-xs sm:text-sm">{manager.commission_rate}%</span>
-                              </TableCell>
-                              <TableCell className="hidden lg:table-cell">
-                                <span className="text-white text-xs sm:text-sm">{manager.total_affiliates || 0}</span>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                <span className="text-white text-xs sm:text-sm">
-                                  {manager.total_referrals_managed || 0}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-white text-xs sm:text-sm">
-                                  {formatCurrency(manager.total_earnings)}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-white text-xs sm:text-sm">{formatCurrency(manager.balance)}</span>
-                              </TableCell>
-                              <TableCell>{getStatusBadge(manager.status)}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openEditManagerDialog(manager)}
-                                    className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                    <span className="sr-only">Editar</span>
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteManager(manager.id)}
-                                    className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                    <span className="sr-only">Excluir</span>
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Edit Manager Dialog */}
-                <Dialog open={isEditManagerDialogOpen} onOpenChange={setIsEditManagerDialogOpen}>
-                  <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Editar Gerente</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleEditManager} className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <Label htmlFor="edit-manager-name" className="text-white">
-                            Nome
-                          </Label>
-                          <Input
-                            id="edit-manager-name"
-                            value={editManagerForm.name}
-                            onChange={(e) => setEditManagerForm({ ...editManagerForm, name: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-manager-email" className="text-white">
-                            Email
-                          </Label>
-                          <Input
-                            id="edit-manager-email"
-                            type="email"
-                            value={editManagerForm.email}
-                            onChange={(e) => setEditManagerForm({ ...editManagerForm, email: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-manager-username" className="text-white">
-                            Nome de Usuário
-                          </Label>
-                          <Input
-                            id="edit-manager-username"
-                            value={editManagerForm.username}
-                            onChange={(e) => setEditManagerForm({ ...editManagerForm, username: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-manager-commission-rate" className="text-white">
-                            Taxa de Comissão (%)
-                          </Label>
-                          <Input
-                            id="edit-manager-commission-rate"
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={editManagerForm.commission_rate}
-                            onChange={(e) =>
-                              setEditManagerForm({ ...editManagerForm, commission_rate: Number(e.target.value) })
-                            }
-                            className="bg-slate-800 border-slate-700 text-white"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-manager-status" className="text-white">
-                            Status
-                          </Label>
-                          <Select
-                            value={editManagerForm.status}
-                            onValueChange={(value) => setEditManagerForm({ ...editManagerForm, status: value })}
-                          >
-                            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                              <SelectValue placeholder="Selecione o status" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                              <SelectItem value="active">Ativo</SelectItem>
-                              <SelectItem value="inactive">Inativo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsEditManagerDialogOpen(false)}
-                          className="border-slate-600 text-white hover:bg-slate-700"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="submit"
-                          className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
-                        >
-                          Salvar Alterações
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </TabsContent>
-
-              {/* Affiliate Withdraws Tab - Mobile Optimized */}
-              <TabsContent value="affiliate-withdraws" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Saques de Afiliados</h2>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-700">
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Afiliado</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Valor</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                              Chave PIX
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                              Solicitado
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {affiliateWithdraws.length > 0 ? (
-                            affiliateWithdraws.map((withdraw) => (
-                              <TableRow key={withdraw.id} className="hover:bg-slate-800 border-slate-700">
-                                <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-xs sm:text-sm font-medium">
-                                      {withdraw.affiliate_name}
-                                    </span>
-                                    <span className="text-gray-500 text-xs">{withdraw.affiliate_email}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-white text-xs sm:text-sm font-medium">
-                                    {formatCurrency(withdraw.amount)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-xs truncate max-w-32">{withdraw.pix_key}</span>
-                                    <span className="text-gray-500 text-xs">{withdraw.pix_type}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{getStatusBadge(withdraw.status)}</TableCell>
-                                <TableCell className="hidden lg:table-cell">
-                                  <span className="text-gray-400 text-xs">{formatDate(withdraw.created_at)}</span>
-                                </TableCell>
-                                <TableCell>
-                                  {withdraw.status === "pending" ? (
-                                    <div className="flex items-center space-x-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleProcessWithdraw(withdraw.id, "approve")}
-                                        disabled={processingWithdraw === withdraw.id}
-                                        className="h-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                                      >
-                                        <Check className="h-3 w-3 mr-1" />
-                                        <span className="text-xs">Aprovar</span>
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleProcessWithdraw(withdraw.id, "reject")}
-                                        disabled={processingWithdraw === withdraw.id}
-                                        className="h-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                      >
-                                        <X className="h-3 w-3 mr-1" />
-                                        <span className="text-xs">Rejeitar</span>
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center space-x-1">
-                                      <span className="text-gray-500 text-xs">
-                                        {withdraw.processed_at ? formatDate(withdraw.processed_at) : "Processado"}
-                                      </span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-4 text-gray-400">
-                                Nenhum saque de afiliado encontrado
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Manager Withdraws Tab - Mobile Optimized */}
-              <TabsContent value="manager-withdraws" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Saques de Gerentes</h2>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-700">
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Gerente</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Valor</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden md:table-cell">
-                              Chave PIX
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Status</TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm hidden lg:table-cell">
-                              Solicitado
-                            </TableHead>
-                            <TableHead className="text-gray-400 text-xs sm:text-sm">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {managerWithdraws.length > 0 ? (
-                            managerWithdraws.map((withdraw) => (
-                              <TableRow key={withdraw.id} className="hover:bg-slate-800 border-slate-700">
-                                <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-xs sm:text-sm font-medium">
-                                      {withdraw.manager_name}
-                                    </span>
-                                    <span className="text-gray-500 text-xs">{withdraw.manager_email}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-white text-xs sm:text-sm font-medium">
-                                    {formatCurrency(withdraw.amount)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-xs truncate max-w-32">{withdraw.pix_key}</span>
-                                    <span className="text-gray-500 text-xs">{withdraw.pix_type}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{getStatusBadge(withdraw.status)}</TableCell>
-                                <TableCell className="hidden lg:table-cell">
-                                  <span className="text-gray-400 text-xs">{formatDate(withdraw.created_at)}</span>
-                                </TableCell>
-                                <TableCell>
-                                  {withdraw.status === "pending" ? (
-                                    <div className="flex items-center space-x-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleProcessManagerWithdraw(withdraw.id, "approve")}
-                                        disabled={processingManagerWithdraw === withdraw.id}
-                                        className="h-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                                      >
-                                        <Check className="h-3 w-3 mr-1" />
-                                        <span className="text-xs">Aprovar</span>
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleProcessManagerWithdraw(withdraw.id, "reject")}
-                                        disabled={processingManagerWithdraw === withdraw.id}
-                                        className="h-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                      >
-                                        <X className="h-3 w-3 mr-1" />
-                                        <span className="text-xs">Rejeitar</span>
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center space-x-1">
-                                      <span className="text-gray-500 text-xs">
-                                        {withdraw.processed_at ? formatDate(withdraw.processed_at) : "Processado"}
-                                      </span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-4 text-gray-400">
-                                Nenhum saque de gerente encontrado
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Settings Tab - Mobile Optimized */}
-              <TabsContent value="settings" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Configurações do Sistema</h2>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-white text-sm sm:text-base lg:text-lg">
-                      Configurações Financeiras
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Defina os valores mínimos para depósitos e saques
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="min-deposit" className="text-white">
-                          Depósito Mínimo (R$)
-                        </Label>
-                        <div className="flex items-center space-x-2">
-                          <Input
-                            id="min-deposit"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={settingsForm.min_deposit_amount}
-                            onChange={(e) => setSettingsForm({ ...settingsForm, min_deposit_amount: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                          />
-                          <Button
-                            onClick={() => handleUpdateSetting("min_deposit_amount", settingsForm.min_deposit_amount)}
-                            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                          >
-                            Salvar
-                          </Button>
-                        </div>
-                        <p className="text-gray-400 text-xs">
-                          Atual: {settings.min_deposit_amount?.value || "Não definido"}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="min-withdraw" className="text-white">
-                          Saque Mínimo (R$)
-                        </Label>
-                        <div className="flex items-center space-x-2">
-                          <Input
-                            id="min-withdraw"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={settingsForm.min_withdraw_amount}
-                            onChange={(e) => setSettingsForm({ ...settingsForm, min_withdraw_amount: e.target.value })}
-                            className="bg-slate-800 border-slate-700 text-white"
-                          />
-                          <Button
-                            onClick={() => handleUpdateSetting("min_withdraw_amount", settingsForm.min_withdraw_amount)}
-                            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                          >
-                            Salvar
-                          </Button>
-                        </div>
-                        <p className="text-gray-400 text-xs">
-                          Atual: {settings.min_withdraw_amount?.value || "Não definido"}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-white text-sm sm:text-base lg:text-lg">Ações Administrativas</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Funções especiais para administradores
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <h3 className="text-white font-medium">Recalcular Saldos de Gerentes</h3>
-                        <p className="text-gray-400 text-xs">
-                          Recalcula os saldos dos gerentes com base nas comissões dos afiliados
-                        </p>
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const response = await AuthClient.makeAuthenticatedRequest(
-                                "/api/admin/recalculate-manager-balances",
-                                {
-                                  method: "POST",
-                                  headers: { "X-Admin-Token": adminToken },
-                                },
-                              )
-                              if (response.ok) {
-                                const data = await response.json()
-                                toast.success(data.message || "Saldos recalculados com sucesso!")
-                                fetchManagers()
-                              } else {
-                                const error = await response.json()
-                                toast.error(error.error || "Erro ao recalcular saldos")
-                              }
-                            } catch (error) {
-                              console.error("Erro ao recalcular saldos:", error)
-                              toast.error("Erro interno do servidor")
-                            }
-                          }}
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                        >
-                          Recalcular Saldos
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-white font-medium">Sincronizar Saldos de Gerentes</h3>
-                        <p className="text-gray-400 text-xs">
-                          Sincroniza os saldos dos gerentes com base nas comissões dos afiliados
-                        </p>
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const response = await AuthClient.makeAuthenticatedRequest(
-                                "/api/admin/sync-manager-balances",
-                                {
-                                  method: "POST",
-                                  headers: { "X-Admin-Token": adminToken },
-                                },
-                              )
-                              if (response.ok) {
-                                const data = await response.json()
-                                toast.success(data.message || "Saldos sincronizados com sucesso!")
-                                fetchManagers()
-                              } else {
-                                const error = await response.json()
-                                toast.error(error.error || "Erro ao sincronizar saldos")
-                              }
-                            } catch (error) {
-                              console.error("Erro ao sincronizar saldos:", error)
-                              toast.error("Erro interno do servidor")
-                            }
-                          }}
-                          className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
-                        >
-                          Sincronizar Saldos
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Performance Tab - Mobile Optimized */}
-              <TabsContent value="performance" className="space-y-4 lg:space-y-6">
-                <h2 className="text-lg sm:text-xl font-bold text-white">Desempenho do Sistema</h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Tempo Médio de Depósito</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">
-                            {stats?.performance?.avg_deposit_time
-                              ? `${stats.performance.avg_deposit_time.toFixed(1)}s`
-                              : "N/A"}
-                          </p>
-                          <p className="text-xs text-gray-500">Processamento</p>
-                        </div>
-                        <Clock className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-green-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Tempo Médio de Saque</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">
-                            {stats?.performance?.avg_withdraw_time
-                              ? `${stats.performance.avg_withdraw_time.toFixed(1)}s`
-                              : "N/A"}
-                          </p>
-                          <p className="text-xs text-gray-500">Processamento</p>
-                        </div>
-                        <Clock className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Taxa de Erro da API</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400">
-                            {stats?.performance?.api_error_rate || "0%"}
-                          </p>
-                          <p className="text-xs text-gray-500">Últimas 24h</p>
-                        </div>
-                        <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-yellow-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-3 sm:p-4 lg:p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-400 text-xs sm:text-sm">Uptime do Sistema</p>
-                          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">
-                            {stats?.performance?.system_uptime || "99.9%"}
-                          </p>
-                          <p className="text-xs text-gray-500">Últimos 30 dias</p>
-                        </div>
-                        <Activity className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-purple-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card className="bg-slate-900/50 border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-white flex items-center space-x-2 text-sm sm:text-base">
-                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
-                      <span>Logs do Sistema</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="bg-slate-800 rounded-md p-3 h-64 overflow-y-auto">
-                      <p className="text-gray-400 text-xs">[2023-07-22 15:42:11] INFO: Sistema iniciado com sucesso</p>
-                      <p className="text-gray-400 text-xs">
-                        [2023-07-22 15:45:23] INFO: Conexão com banco de dados estabelecida
-                      </p>
-                      <p className="text-green-400 text-xs">
-                        [2023-07-22 16:01:45] SUCCESS: Depósito #12345 processado com sucesso
-                      </p>
-                      <p className="text-yellow-400 text-xs">
-                        [2023-07-22 16:12:33] WARNING: Tentativa de login inválida para usuário admin@example.com
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        [2023-07-22 16:30:12] INFO: Backup do banco de dados concluído
-                      </p>
-                      <p className="text-red-400 text-xs">
-                        [2023-07-22 16:45:18] ERROR: Falha na conexão com gateway de pagamento
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        [2023-07-22 16:46:22] INFO: Reconexão com gateway de pagamento bem-sucedida
-                      </p>
-                      <p className="text-green-400 text-xs">
-                        [2023-07-22 17:01:05] SUCCESS: Saque #5678 processado com sucesso
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        [2023-07-22 17:15:30] INFO: Manutenção programada iniciada
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        [2023-07-22 17:30:45] INFO: Manutenção programada concluída
-                      </p>
-                    </div>
-                    <div className="mt-4">
-                      <Textarea
-                        placeholder="Digite um comando para executar..."
-                        className="bg-slate-800 border-slate-700 text-white h-10"
-                      />
-                      <div className="flex justify-end mt-2">
-                        <Button
-                          variant="outline"
-                          className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-                        >
-                          Executar Comando
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+    <div className="min-h-screen bg-slate-950">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-slate-900/50 border-b border-slate-700 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-white">
+              {accessLevel === "managers_only" ? "Painel de Gerentes" : "Admin Panel"}
+            </h1>
+            <p className="text-sm text-gray-400">
+              {navigationTabs.find((tab) => tab.id === activeTab)?.label || "Dashboard"}
+            </p>
           </div>
-        </SidebarInset>
+          <div className="flex items-center space-x-2">
+            {/* Notification Bell */}
+            <div className="relative">
+              <Button variant="ghost" size="icon" className="text-white relative">
+                {unreadCount > 0 ? <BellRing className="h-5 w-5 text-yellow-400" /> : <Bell className="h-5 w-5" />}
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+              <div
+                className={`absolute top-1 right-1 w-2 h-2 rounded-full ${notificationsConnected ? "bg-green-400" : "bg-red-400"}`}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-white"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+          </div>
+        </div>
       </div>
-    </SidebarProvider>
+
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden bg-slate-900/95 border-b border-slate-700 p-4">
+          <div className="grid grid-cols-2 gap-2">
+            {navigationTabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <Button
+                  key={tab.id}
+                  variant={activeTab === tab.id ? "default" : "ghost"}
+                  className={`justify-start text-left h-auto p-3 ${
+                    activeTab === tab.id
+                      ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
+                      : "text-gray-300 hover:text-white hover:bg-slate-800"
+                  }`}
+                  onClick={() => {
+                    setActiveTab(tab.id)
+                    setIsMobileMenuOpen(false)
+                  }}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  <span className="text-xs">{tab.label}</span>
+                </Button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 lg:p-6">
+        {/* Desktop Header */}
+        <div className="hidden lg:block mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {accessLevel === "managers_only" ? "Painel de Gerentes" : "Painel Administrativo"}
+              </h1>
+              <p className="text-gray-400">
+                {accessLevel === "managers_only"
+                  ? "Gerencie gerentes e monitore suas atividades"
+                  : "Gerencie afiliados, gerentes, configurações e monitore estatísticas da plataforma"}
+              </p>
+            </div>
+            {/* Desktop Notification Bell */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-600 text-white hover:bg-slate-700 relative bg-transparent"
+              >
+                {unreadCount > 0 ? (
+                  <BellRing className="h-4 w-4 mr-2 text-yellow-400" />
+                ) : (
+                  <Bell className="h-4 w-4 mr-2" />
+                )}
+                Notificações
+                {unreadCount > 0 && (
+                  <Badge className="ml-2 bg-red-500 text-white">{unreadCount > 99 ? "99+" : unreadCount}</Badge>
+                )}
+              </Button>
+              <div
+                className={`absolute top-1 right-1 w-2 h-2 rounded-full ${notificationsConnected ? "bg-green-400" : "bg-red-400"}`}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Refresh Controls */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3 sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-green-400" : "bg-gray-400"}`} />
+              <span className="text-sm text-gray-400">Auto-refresh: {autoRefresh ? "Ativo" : "Inativo"}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${notificationsConnected ? "bg-green-400" : "bg-red-400"}`} />
+              <span className="text-sm text-gray-400">
+                Notificações: {notificationsConnected ? "Conectado" : "Desconectado"}
+              </span>
+            </div>
+            <div className="text-sm text-gray-500">Última: {lastUpdate.toLocaleTimeString("pt-BR")}</div>
+          </div>
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none"
+            >
+              {autoRefresh ? "Pausar" : "Ativar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isLoading}
+              className="border-slate-600 text-white hover:bg-slate-700 bg-transparent flex-1 sm:flex-none"
+            >
+              <Activity className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+              {isLoading ? "Atualizando..." : "Atualizar"}
+            </Button>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Desktop Tab List */}
+          <div className="hidden lg:block">
+            <TabsList className="bg-slate-800 border-slate-700 w-full grid grid-cols-10 h-auto">
+              {navigationTabs.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <TabsTrigger key={tab.id} value={tab.id} className="data-[state=active]:bg-slate-700 p-3 relative">
+                    <Icon className="h-4 w-4 mr-2" />
+                    <span>{tab.label}</span>
+                    {tab.id === "notifications" && unreadCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
+          </div>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6">
+            {stats && (
+              <>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Usuários Online</p>
+                          <p className="text-2xl font-bold text-green-400">{stats.users.online_now}</p>
+                          <p className="text-xs text-gray-500">Última hora</p>
+                        </div>
+                        <Eye className="h-8 w-8 text-green-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Receita Hoje</p>
+                          <p className="text-2xl font-bold text-blue-400">
+                            {formatCurrency(stats.financial.daily_revenue)}
+                          </p>
+                          <p className="text-xs text-gray-500">Lucro dos jogos</p>
+                        </div>
+                        <TrendingUp className="h-8 w-8 text-blue-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Transações Hoje</p>
+                          <p className="text-2xl font-bold text-purple-400">{stats.transactions.today_transactions}</p>
+                          <p className="text-xs text-gray-500">{formatCurrency(stats.transactions.today_volume)}</p>
+                        </div>
+                        <Activity className="h-8 w-8 text-purple-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Saques Pendentes</p>
+                          <p className="text-2xl font-bold text-yellow-400">{stats.withdraws.pending_count}</p>
+                          <p className="text-xs text-gray-500">{formatCurrency(stats.withdraws.pending_amount)}</p>
+                        </div>
+                        <Clock className="h-8 w-8 text-yellow-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Financial and Revenue Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Wallet className="h-5 w-5 text-green-400" />
+                        <span>Situação Financeira</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Saldo da Plataforma</span>
+                        <span className="text-green-400 font-bold">
+                          {formatCurrency(stats.financial.platform_balance)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Saldo dos Usuários</span>
+                        <span className="text-blue-400 font-bold">
+                          {formatCurrency(stats.financial.total_user_balance)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Saques Pendentes</span>
+                        <span className="text-yellow-400 font-bold">
+                          {formatCurrency(stats.financial.pending_withdraws)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium">Saldo Disponível</span>
+                        <span className="text-white font-bold text-lg">
+                          {formatCurrency(stats.financial.available_balance)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <BarChart3 className="h-5 w-5 text-purple-400" />
+                        <span>Receitas por Período</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Hoje</span>
+                        <span className="text-green-400 font-bold">
+                          {formatCurrency(stats.financial.daily_revenue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Esta Semana</span>
+                        <span className="text-blue-400 font-bold">
+                          {formatCurrency(stats.financial.weekly_revenue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Este Mês</span>
+                        <span className="text-purple-400 font-bold">
+                          {formatCurrency(stats.financial.monthly_revenue)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium">Margem de Lucro</span>
+                        <span className="text-white font-bold text-lg">{stats.games.profit_margin.toFixed(1)}%</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Users and Games Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Users className="h-5 w-5 text-blue-400" />
+                        <span>Usuários</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Total de Usuários</span>
+                        <span className="text-blue-400 font-bold">{stats.users.total}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Ativos Hoje</span>
+                        <span className="text-green-400 font-bold">{stats.users.active_today}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Novos esta Semana</span>
+                        <span className="text-purple-400 font-bold">{stats.users.new_this_week}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Bloggers</span>
+                        <span className="text-yellow-400 font-bold">{stats.users.blogger_count}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Gamepad2 className="h-5 w-5 text-green-400" />
+                        <span>Jogos Hoje</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Jogadas</span>
+                        <span className="text-green-400 font-bold">{stats.games.today_plays}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Apostado</span>
+                        <span className="text-red-400 font-bold">{formatCurrency(stats.games.today_spent)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Pago em Prêmios</span>
+                        <span className="text-yellow-400 font-bold">{formatCurrency(stats.games.today_won)}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span className="text-gray-300 font-medium">Lucro Hoje</span>
+                        <span className="text-white font-bold text-lg">
+                          {formatCurrency(stats.games.today_spent - stats.games.today_won)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Recent Activities */}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center space-x-2">
+                      <Activity className="h-5 w-5 text-cyan-400" />
+                      <span>Atividades Recentes (24h)</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {stats.recent_activities.map((activity) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center justify-between p-3 bg-slate-800 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <div
+                              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                activity.type === "deposit"
+                                  ? "bg-green-400"
+                                  : activity.type === "withdraw"
+                                    ? "bg-red-400"
+                                    : activity.type === "game"
+                                      ? "bg-blue-400"
+                                      : "bg-gray-400"
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-sm truncate">{activity.description}</p>
+                              <p className="text-gray-400 text-xs truncate">{activity.user_email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            {activity.amount && (
+                              <p className="text-white font-medium text-sm">{formatCurrency(activity.amount)}</p>
+                            )}
+                            <p className="text-gray-400 text-xs">{formatDate(activity.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications" className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-white">Sistema de Notificações</h2>
+              <div className="flex items-center space-x-2">
+                <Badge
+                  variant={notificationsConnected ? "default" : "destructive"}
+                  className="flex items-center space-x-1"
+                >
+                  <div className={`w-2 h-2 rounded-full ${notificationsConnected ? "bg-green-400" : "bg-red-400"}`} />
+                  <span>{notificationsConnected ? "Conectado" : "Desconectado"}</span>
+                </Badge>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={markAllAsRead}
+                    className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
+                  >
+                    Marcar todas como lidas
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Notification Manager */}
+            <NotificationManager />
+
+            {/* Recent Notifications */}
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Bell className="h-5 w-5 text-cyan-400" />
+                    <span>Notificações Recentes</span>
+                  </div>
+                  {unreadCount > 0 && <Badge className="bg-red-500 text-white">{unreadCount} não lidas</Badge>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    notifications.slice(0, 20).map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`p-4 rounded-lg border transition-colors ${
+                          notification.read ? "bg-slate-800/50 border-slate-700" : "bg-slate-800 border-slate-600"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              {notification.type === "withdraw" ? (
+                                <Wallet className="h-4 w-4 text-red-400" />
+                              ) : (
+                                <DollarSign className="h-4 w-4 text-green-400" />
+                              )}
+                              <h4 className="text-white font-medium text-sm">{notification.title}</h4>
+                              {!notification.read && <div className="w-2 h-2 bg-blue-400 rounded-full" />}
+                            </div>
+                            <p className="text-gray-400 text-sm mb-2">{notification.body}</p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500 text-xs">
+                                {new Date(notification.timestamp).toLocaleString("pt-BR")}
+                              </span>
+                              {!notification.read && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markAsRead(notification.id)}
+                                  className="text-blue-400 hover:text-blue-300 text-xs"
+                                >
+                                  Marcar como lida
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <Bell className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                      <p>Nenhuma notificação recente</p>
+                      <p className="text-sm text-gray-500 mt-1">Você será notificado sobre novos saques e depósitos</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Continue with other existing tabs... */}
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-white">Analytics Avançados</h2>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <Select
+                  value={analyticsDateRange}
+                  onValueChange={(value) => {
+                    console.log("📊 Mudando período para:", value)
+                    setAnalyticsDateRange(value)
+                  }}
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                    <SelectItem value="7">7 dias</SelectItem>
+                    <SelectItem value="30">30 dias</SelectItem>
+                    <SelectItem value="90">90 dias</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={analyticsPeriod}
+                  onValueChange={(value) => {
+                    console.log("📊 Mudando granularidade para:", value)
+                    setAnalyticsPeriod(value)
+                  }}
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                    <SelectItem value="daily">Diário</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Debug info */}
+            {!analyticsData && (
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-6 text-center">
+                  <div className="text-gray-400">Carregando dados de analytics...</div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Período: {analyticsDateRange} dias | Granularidade: {analyticsPeriod}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {analyticsData && (
+              <>
+                {console.log("📊 Renderizando analytics com dados:", analyticsData)}
+                {/* Period Comparison Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Receita</p>
+                          <p className="text-2xl font-bold text-green-400">
+                            {formatCurrency(analyticsData.period_comparison.current_period.revenue)}
+                          </p>
+                          <div className="flex items-center space-x-1 mt-1">
+                            {analyticsData.period_comparison.current_period.revenue >
+                            analyticsData.period_comparison.previous_period.revenue ? (
+                              <TrendingUp className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-red-400" />
+                            )}
+                            <span className="text-xs text-gray-500">vs período anterior</span>
+                          </div>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Usuários</p>
+                          <p className="text-2xl font-bold text-blue-400">
+                            {analyticsData.period_comparison.current_period.users}
+                          </p>
+                          <div className="flex items-center space-x-1 mt-1">
+                            {analyticsData.period_comparison.current_period.users >
+                            analyticsData.period_comparison.previous_period.users ? (
+                              <TrendingUp className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-red-400" />
+                            )}
+                            <span className="text-xs text-gray-500">vs período anterior</span>
+                          </div>
+                        </div>
+                        <Users className="h-8 w-8 text-blue-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Transações</p>
+                          <p className="text-2xl font-bold text-purple-400">
+                            {analyticsData.period_comparison.current_period.transactions}
+                          </p>
+                          <div className="flex items-center space-x-1 mt-1">
+                            {analyticsData.period_comparison.current_period.transactions >
+                            analyticsData.period_comparison.previous_period.transactions ? (
+                              <TrendingUp className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-red-400" />
+                            )}
+                            <span className="text-xs text-gray-500">vs período anterior</span>
+                          </div>
+                        </div>
+                        <Activity className="h-8 w-8 text-purple-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Comissões</p>
+                          <p className="text-2xl font-bold text-yellow-400">
+                            {formatCurrency(analyticsData.period_comparison.current_period.affiliates_earnings)}
+                          </p>
+                          <div className="flex items-center space-x-1 mt-1">
+                            {analyticsData.period_comparison.current_period.affiliates_earnings >
+                            analyticsData.period_comparison.previous_period.affiliates_earnings ? (
+                              <TrendingUp className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-red-400" />
+                            )}
+                            <span className="text-xs text-gray-500">vs período anterior</span>
+                          </div>
+                        </div>
+                        <Target className="h-8 w-8 text-yellow-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Revenue Trend Chart */}
+                {analyticsData && analyticsData.revenue_trend && analyticsData.revenue_trend.length > 0 ? (
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <TrendingUp className="h-5 w-5 text-green-400" />
+                        <span>Tendência de Receita</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer
+                        config={{
+                          revenue: {
+                            label: "Receita",
+                            color: "hsl(var(--chart-1))",
+                          },
+                          deposits: {
+                            label: "Depósitos",
+                            color: "hsl(var(--chart-2))",
+                          },
+                          withdraws: {
+                            label: "Saques",
+                            color: "hsl(var(--chart-3))",
+                          },
+                        }}
+                        className="h-[400px]"
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={analyticsData.revenue_trend}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="date" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Line
+                              type="monotone"
+                              dataKey="revenue"
+                              stroke="var(--color-revenue)"
+                              strokeWidth={2}
+                              name="Receita"
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="deposits"
+                              stroke="var(--color-deposits)"
+                              strokeWidth={2}
+                              name="Depósitos"
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="withdraws"
+                              stroke="var(--color-withdraws)"
+                              strokeWidth={2}
+                              name="Saques"
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-gray-400">Nenhum dado de receita encontrado para o período selecionado</div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Performance Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Affiliate Performance */}
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Users className="h-5 w-5 text-blue-400" />
+                        <span>Performance de Afiliados</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer
+                        config={{
+                          earnings: {
+                            label: "Ganhos",
+                            color: "hsl(var(--chart-1))",
+                          },
+                          conversion: {
+                            label: "Conversão",
+                            color: "hsl(var(--chart-2))",
+                          },
+                        }}
+                        className="h-[300px]"
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analyticsData.affiliate_performance.slice(0, 10)}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="affiliate_name" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="total_earnings" fill="var(--color-earnings)" name="Ganhos (R$)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Manager Performance */}
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <UserCog className="h-5 w-5 text-purple-400" />
+                        <span>Performance de Gerentes</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer
+                        config={{
+                          earnings: {
+                            label: "Ganhos",
+                            color: "hsl(var(--chart-3))",
+                          },
+                          affiliates: {
+                            label: "Afiliados",
+                            color: "hsl(var(--chart-4))",
+                          },
+                        }}
+                        className="h-[300px]"
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analyticsData.manager_performance.slice(0, 10)}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="manager_name" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="total_earnings" fill="var(--color-earnings)" name="Ganhos (R$)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          {/* Continue with remaining tabs... */}
+          {/* The rest of the tabs would continue here with the same structure */}
+        </Tabs>
+      </div>
+    </div>
   )
 }

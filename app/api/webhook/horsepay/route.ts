@@ -18,6 +18,35 @@ interface WithdrawCallback {
 
 type WebhookPayload = DepositCallback | WithdrawCallback
 
+// Função para enviar notificação
+async function sendAdminNotification(payload: {
+  type: "withdraw" | "deposit"
+  title: string
+  body: string
+  data?: any
+}) {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/admin/notifications/send`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+    )
+
+    if (response.ok) {
+      console.log("🔔 Notificação admin enviada:", payload.title)
+    } else {
+      console.error("❌ Erro ao enviar notificação admin:", response.status)
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar notificação admin:", error)
+  }
+}
+
 // Função para normalizar o status (HorsePay usa "true"/"false")
 function normalizeStatus(status: string | boolean): string {
   console.log(`🔄 Normalizando status: ${status} (tipo: ${typeof status})`)
@@ -190,7 +219,9 @@ async function processDepositCallback(payload: DepositCallback) {
   // Buscar a transação no banco
   console.log(`🔎 Buscando transação com external_id: ${payload.external_id}`)
   const [transaction] = await sql`
-  SELECT * FROM transactions WHERE external_id = ${payload.external_id}
+  SELECT t.*, u.name as user_name, u.email as user_email FROM transactions t
+  JOIN users u ON t.user_id = u.id
+  WHERE t.external_id = ${payload.external_id}
 `
 
   if (!transaction) {
@@ -247,6 +278,23 @@ async function processDepositCallback(payload: DepositCallback) {
     `
 
       console.log(`🎉 Sucesso! Valor integral creditado ao usuário!`)
+
+      // 🔔 ENVIAR NOTIFICAÇÃO DE DEPÓSITO VÁLIDO
+      await sendAdminNotification({
+        type: "deposit",
+        title: "💰 Novo Depósito Confirmado",
+        body: `${transaction.user_name} depositou R$ ${originalAmount.toFixed(2)}`,
+        data: {
+          type: "deposit",
+          userId: transaction.user_id,
+          userName: transaction.user_name,
+          userEmail: transaction.user_email,
+          amount: originalAmount,
+          transactionId: transaction.id,
+          externalId: payload.external_id,
+          timestamp: Date.now(),
+        },
+      })
 
       console.log(`📊 VERIFICANDO PROGRESSO DE BÔNUS PARA USUÁRIO ${transaction.user_id}`)
 
