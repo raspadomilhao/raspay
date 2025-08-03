@@ -44,28 +44,51 @@ export function usePushNotifications(): PushNotificationHook {
     }
 
     try {
+      console.log("🔔 Solicitando permissão para notificações...")
+
       const result = await Notification.requestPermission()
+      console.log("🔔 Resultado da permissão:", result)
+
       setPermission(result)
 
       if (result === "granted") {
+        console.log("✅ Permissão concedida!")
         setIsEnabled(true)
         localStorage.setItem("admin-notifications-enabled", "true")
+      } else {
+        console.log("❌ Permissão negada ou não concedida:", result)
       }
 
       return result
     } catch (error) {
-      console.error("Erro ao solicitar permissão para notificações:", error)
+      console.error("❌ Erro ao solicitar permissão para notificações:", error)
       return "denied"
     }
   }, [isSupported])
 
   const sendNotification = useCallback(
     (data: NotificationData) => {
-      if (!isSupported || permission !== "granted" || !isEnabled) {
+      console.log("🔔 Tentando enviar notificação:", data)
+      console.log("🔔 Estado atual - isSupported:", isSupported, "permission:", permission, "isEnabled:", isEnabled)
+
+      if (!isSupported) {
+        console.warn("❌ Navegador não suporta notificações")
+        return
+      }
+
+      if (permission !== "granted") {
+        console.warn("❌ Permissão não concedida. Status:", permission)
+        return
+      }
+
+      if (!isEnabled) {
+        console.warn("❌ Notificações desabilitadas pelo usuário")
         return
       }
 
       try {
+        console.log("✅ Criando notificação...")
+
         const notification = new Notification(data.title, {
           body: data.body,
           icon: data.icon || "/icon-192.png",
@@ -76,6 +99,8 @@ export function usePushNotifications(): PushNotificationHook {
           silent: false,
         })
 
+        console.log("✅ Notificação criada com sucesso!")
+
         // Auto-fechar após 10 segundos se não houver interação
         setTimeout(() => {
           notification.close()
@@ -83,6 +108,7 @@ export function usePushNotifications(): PushNotificationHook {
 
         // Lidar com cliques na notificação
         notification.onclick = (event) => {
+          console.log("🔔 Notificação clicada!")
           event.preventDefault()
 
           // Focar na janela do navegador
@@ -105,16 +131,25 @@ export function usePushNotifications(): PushNotificationHook {
         }
 
         notification.onerror = (error) => {
-          console.error("Erro na notificação:", error)
+          console.error("❌ Erro na notificação:", error)
+        }
+
+        notification.onshow = () => {
+          console.log("✅ Notificação exibida!")
+        }
+
+        notification.onclose = () => {
+          console.log("🔔 Notificação fechada")
         }
       } catch (error) {
-        console.error("Erro ao enviar notificação:", error)
+        console.error("❌ Erro ao enviar notificação:", error)
       }
     },
     [isSupported, permission, isEnabled],
   )
 
   const handleSetIsEnabled = useCallback((enabled: boolean) => {
+    console.log("🔔 Alterando estado das notificações para:", enabled)
     setIsEnabled(enabled)
     localStorage.setItem("admin-notifications-enabled", enabled.toString())
   }, [])
