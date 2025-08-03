@@ -37,8 +37,6 @@ import {
   ChevronRight,
   Bell,
   BellOff,
-  Volume2,
-  VolumeX,
 } from "lucide-react"
 
 import { AuthClient } from "@/lib/auth-client"
@@ -1390,138 +1388,149 @@ export default function AdminConfigPage() {
         </div>
 
         {/* Refresh Controls and Notifications */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3 sm:space-y-0">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-green-400" : "bg-gray-400"}`} />
-              <span className="text-sm text-gray-400">Auto-refresh: {autoRefresh ? "Ativo" : "Inativo"}</span>
-            </div>
-            <div className="text-sm text-gray-500">Última: {lastUpdate.toLocaleTimeString("pt-BR")}</div>
-
-            {/* Notification Status */}
-            <div className="flex items-center space-x-2">
-              <div
-                className={`w-2 h-2 rounded-full ${notificationsEnabled && permission === "granted" ? "bg-blue-400" : "bg-gray-400"}`}
-              />
-              <span className="text-sm text-gray-400">
-                Notificações: {notificationsEnabled && permission === "granted" ? "Ativas" : "Inativas"}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
-            {/* Notification Controls */}
-            {isSupported && (
-              <div className="flex items-center space-x-2">
-                {permission === "granted" ? (
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={notificationsEnabled}
-                      onCheckedChange={setNotificationsEnabled}
-                      className="data-[state=checked]:bg-blue-500"
-                    />
-                    {notificationsEnabled ? (
-                      <Bell className="h-4 w-4 text-blue-400" />
-                    ) : (
-                      <BellOff className="h-4 w-4 text-gray-400" />
-                    )}
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRequestNotificationPermission}
-                    className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none bg-transparent"
-                  >
-                    <Bell className="h-4 w-4 mr-2" />
-                    Ativar Notificações
-                  </Button>
-                )}
-              </div>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none"
-            >
-              {autoRefresh ? "Pausar" : "Ativar"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualRefresh}
-              disabled={isLoading}
-              className="border-slate-600 text-white hover:bg-slate-700 bg-transparent flex-1 sm:flex-none"
-            >
-              <Activity className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-              {isLoading ? "Atualizando..." : "Atualizar"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Notification Status Card */}
-        {isSupported && (
-          <Card className="bg-slate-900/50 border-slate-700 mb-6">
+        <div className="space-y-4 mb-6">
+          {/* Mobile Notification Controls - Sempre visível */}
+          <Card className="bg-slate-900/50 border-slate-700 lg:hidden">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  {permission === "granted" && notificationsEnabled ? (
-                    <>
-                      <div className="flex items-center space-x-2">
-                        <Bell className="h-5 w-5 text-blue-400" />
-                        <Volume2 className="h-4 w-4 text-green-400" />
-                      </div>
-                      <div>
-                        <p className="text-white text-sm font-medium">Notificações Push Ativas</p>
-                        <p className="text-gray-400 text-xs">
-                          Você será notificado sobre novos saques pendentes e depósitos confirmados
-                        </p>
-                      </div>
-                    </>
-                  ) : permission === "denied" ? (
-                    <>
-                      <div className="flex items-center space-x-2">
-                        <BellOff className="h-5 w-5 text-red-400" />
-                        <VolumeX className="h-4 w-4 text-red-400" />
-                      </div>
-                      <div>
-                        <p className="text-white text-sm font-medium">Notificações Bloqueadas</p>
-                        <p className="text-gray-400 text-xs">
-                          As notificações foram negadas. Ative nas configurações do navegador.
-                        </p>
-                      </div>
-                    </>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-white font-medium">Notificações Push</span>
+                  {isSupported && permission === "granted" ? (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={notificationsEnabled}
+                        onCheckedChange={setNotificationsEnabled}
+                        className="data-[state=checked]:bg-blue-500"
+                      />
+                      {notificationsEnabled ? (
+                        <Bell className="h-4 w-4 text-blue-400" />
+                      ) : (
+                        <BellOff className="h-4 w-4 text-gray-400" />
+                      )}
+                    </div>
                   ) : (
-                    <>
-                      <div className="flex items-center space-x-2">
-                        <Bell className="h-5 w-5 text-yellow-400" />
-                        <AlertCircle className="h-4 w-4 text-yellow-400" />
-                      </div>
-                      <div>
-                        <p className="text-white text-sm font-medium">Notificações Disponíveis</p>
-                        <p className="text-gray-400 text-xs">
-                          Clique para ativar notificações sobre saques e depósitos
-                        </p>
-                      </div>
-                    </>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRequestNotificationPermission}
+                      className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      Ativar
+                    </Button>
                   )}
                 </div>
-
-                {permission !== "granted" && (
-                  <Button
-                    onClick={handleRequestNotificationPermission}
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-                  >
-                    <Bell className="h-4 w-4 mr-2" />
-                    Ativar
-                  </Button>
-                )}
+                <div className="text-xs text-gray-400">
+                  {permission === "granted" && notificationsEnabled
+                    ? "Você será notificado sobre saques e depósitos"
+                    : permission === "denied"
+                      ? "Notificações bloqueadas - ative nas configurações do navegador"
+                      : "Clique para ativar notificações"}
+                </div>
               </div>
             </CardContent>
           </Card>
-        )}
+
+          {/* Desktop Controls */}
+          <div className="hidden lg:flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3 sm:space-y-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-green-400" : "bg-gray-400"}`} />
+                <span className="text-sm text-gray-400">Auto-refresh: {autoRefresh ? "Ativo" : "Inativo"}</span>
+              </div>
+              <div className="text-sm text-gray-500">Última: {lastUpdate.toLocaleTimeString("pt-BR")}</div>
+
+              {/* Notification Status */}
+              <div className="flex items-center space-x-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${notificationsEnabled && permission === "granted" ? "bg-blue-400" : "bg-gray-400"}`}
+                />
+                <span className="text-sm text-gray-400">
+                  Notificações: {notificationsEnabled && permission === "granted" ? "Ativas" : "Inativas"}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              {/* Notification Controls */}
+              {isSupported && (
+                <div className="flex items-center space-x-2">
+                  {permission === "granted" ? (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={notificationsEnabled}
+                        onCheckedChange={setNotificationsEnabled}
+                        className="data-[state=checked]:bg-blue-500"
+                      />
+                      {notificationsEnabled ? (
+                        <Bell className="h-4 w-4 text-blue-400" />
+                      ) : (
+                        <BellOff className="h-4 w-4 text-gray-400" />
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRequestNotificationPermission}
+                      className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none bg-transparent"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      Ativar Notificações
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none"
+              >
+                {autoRefresh ? "Pausar" : "Ativar"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isLoading}
+                className="border-slate-600 text-white hover:bg-slate-700 bg-transparent flex-1 sm:flex-none"
+              >
+                <Activity className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                {isLoading ? "Atualizando..." : "Atualizar"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Refresh Controls */}
+          <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-lg lg:hidden">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-green-400" : "bg-gray-400"}`} />
+              <span className="text-sm text-gray-400">
+                {autoRefresh ? "Auto-refresh ativo" : "Auto-refresh pausado"}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className="border-slate-600 text-white hover:bg-slate-700"
+              >
+                {autoRefresh ? "Pausar" : "Ativar"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isLoading}
+                className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
+              >
+                <Activity className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Desktop Tab List */}
