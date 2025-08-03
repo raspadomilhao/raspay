@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { toast } from "sonner"
 import {
@@ -489,12 +490,6 @@ export default function AdminConfigPage() {
   }, [isAuthenticated])
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAnalytics()
-    }
-  }, [isAuthenticated, analyticsDateRange, analyticsPeriod])
-
-  useEffect(() => {
     if (!isAuthenticated || !autoRefresh) return
 
     const interval = setInterval(async () => {
@@ -628,10 +623,7 @@ export default function AdminConfigPage() {
       )
       if (response.ok) {
         const data = await response.json()
-        console.log("📊 Dados de analytics carregados:", data)
         setAnalyticsData(data)
-      } else {
-        console.error("❌ Erro ao carregar analytics:", response.status)
       }
     } catch (error) {
       console.error("Erro ao buscar analytics:", error)
@@ -1280,7 +1272,7 @@ export default function AdminConfigPage() {
         </div>
 
         {/* Refresh Controls */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3 sm:space-y-0 sm:space-x-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3 sm:space-y-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-green-400" : "bg-gray-400"}`} />
@@ -1572,8 +1564,8 @@ export default function AdminConfigPage() {
                 <Select
                   value={analyticsDateRange}
                   onValueChange={(value) => {
-                    console.log("📊 Mudando período para:", value)
                     setAnalyticsDateRange(value)
+                    fetchAnalytics()
                   }}
                 >
                   <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-32">
@@ -1588,8 +1580,8 @@ export default function AdminConfigPage() {
                 <Select
                   value={analyticsPeriod}
                   onValueChange={(value) => {
-                    console.log("📊 Mudando granularidade para:", value)
                     setAnalyticsPeriod(value)
+                    fetchAnalytics()
                   }}
                 >
                   <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-32">
@@ -1604,23 +1596,8 @@ export default function AdminConfigPage() {
               </div>
             </div>
 
-            {/* Debug info */}
-            {!analyticsData && (
-              <Card className="bg-slate-900/50 border-slate-700">
-                <CardContent className="p-6 text-center">
-                  <div className="text-gray-400">
-                    Carregando dados de analytics...
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    Período: {analyticsDateRange} dias | Granularidade: {analyticsPeriod}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {analyticsData && (
               <>
-                {console.log("📊 Renderizando analytics com dados:", analyticsData)}
                 {/* Period Comparison Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card className="bg-slate-900/50 border-slate-700">
@@ -1717,73 +1694,63 @@ export default function AdminConfigPage() {
                 </div>
 
                 {/* Revenue Trend Chart */}
-                {analyticsData && analyticsData.revenue_trend && analyticsData.revenue_trend.length > 0 ? (
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center space-x-2">
-                        <TrendingUp className="h-5 w-5 text-green-400" />
-                        <span>Tendência de Receita</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ChartContainer
-                        config={{
-                          revenue: {
-                            label: "Receita",
-                            color: "hsl(var(--chart-1))",
-                          },
-                          deposits: {
-                            label: "Depósitos",
-                            color: "hsl(var(--chart-2))",
-                          },
-                          withdraws: {
-                            label: "Saques",
-                            color: "hsl(var(--chart-3))",
-                          },
-                        }}
-                        className="h-[400px]"
-                      >
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={analyticsData.revenue_trend}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="date" stroke="#9CA3AF" />
-                            <YAxis stroke="#9CA3AF" />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Line
-                              type="monotone"
-                              dataKey="revenue"
-                              stroke="var(--color-revenue)"
-                              strokeWidth={2}
-                              name="Receita"
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="deposits"
-                              stroke="var(--color-deposits)"
-                              strokeWidth={2}
-                              name="Depósitos"
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="withdraws"
-                              stroke="var(--color-withdraws)"
-                              strokeWidth={2}
-                              name="Saques"
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </ChartContainer>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="bg-slate-900/50 border-slate-700">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-gray-400">
-                        Nenhum dado de receita encontrado para o período selecionado
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center space-x-2">
+                      <TrendingUp className="h-5 w-5 text-green-400" />
+                      <span>Tendência de Receita</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer
+                      config={{
+                        revenue: {
+                          label: "Receita",
+                          color: "hsl(var(--chart-1))",
+                        },
+                        deposits: {
+                          label: "Depósitos",
+                          color: "hsl(var(--chart-2))",
+                        },
+                        withdraws: {
+                          label: "Saques",
+                          color: "hsl(var(--chart-3))",
+                        },
+                      }}
+                      className="h-[400px]"
+                    >
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={analyticsData.revenue_trend}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                          <XAxis dataKey="date" stroke="#9CA3AF" />
+                          <YAxis stroke="#9CA3AF" />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Line
+                            type="monotone"
+                            dataKey="revenue"
+                            stroke="var(--color-revenue)"
+                            strokeWidth={2}
+                            name="Receita"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="deposits"
+                            stroke="var(--color-deposits)"
+                            strokeWidth={2}
+                            name="Depósitos"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="withdraws"
+                            stroke="var(--color-withdraws)"
+                            strokeWidth={2}
+                            name="Saques"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
 
                 {/* Performance Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -3927,4 +3894,39 @@ export default function AdminConfigPage() {
                     [2023-07-22 16:01:45] SUCCESS: Depósito #12345 processado com sucesso
                   </p>
                   <p className="text-yellow-400 text-xs">
-                    [2023-07-22 16:12:33] WARNING: Tentativa de login inválida para usuário\
+                    [2023-07-22 16:12:33] WARNING: Tentativa de login inválida para usuário admin@example.com
+                  </p>
+                  <p className="text-gray-400 text-xs">
+                    [2023-07-22 16:30:12] INFO: Backup do banco de dados concluído
+                  </p>
+                  <p className="text-red-400 text-xs">
+                    [2023-07-22 16:45:18] ERROR: Falha na conexão com gateway de pagamento
+                  </p>
+                  <p className="text-gray-400 text-xs">
+                    [2023-07-22 16:46:22] INFO: Reconexão com gateway de pagamento bem-sucedida
+                  </p>
+                  <p className="text-green-400 text-xs">
+                    [2023-07-22 17:01:05] SUCCESS: Saque #5678 processado com sucesso
+                  </p>
+                  <p className="text-gray-400 text-xs">[2023-07-22 17:15:30] INFO: Manutenção programada iniciada</p>
+                  <p className="text-gray-400 text-xs">[2023-07-22 17:30:45] INFO: Manutenção programada concluída</p>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <Textarea
+                    placeholder="Digite um comando para executar..."
+                    className="bg-slate-800 border-slate-700 text-white h-10"
+                  />
+                  <div className="flex justify-end">
+                    <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-700 bg-transparent">
+                      Executar Comando
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}

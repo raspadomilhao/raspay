@@ -1,14 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { jwtVerify } from "jose"
 import { neon } from "@neondatabase/serverless"
 
 const sql = neon(process.env.DATABASE_URL!)
+const secret = new TextEncoder().encode(process.env.JWT_SECRET || "horsepay-secret-key")
+
+async function verifyAdminAuth(request: NextRequest) {
+  try {
+    const token = request.cookies.get("admin-token")?.value
+    if (!token) return false
+
+    const { payload } = await jwtVerify(token, secret)
+    return payload.isAdmin === true
+  } catch {
+    return false
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Check admin token from header (same as other admin APIs)
-    const adminToken = request.headers.get("X-Admin-Token")
-    if (!adminToken) {
-      console.log("❌ Token de admin não encontrado no header")
+    const isAdmin = await verifyAdminAuth(request)
+    if (!isAdmin) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 
@@ -23,65 +35,32 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(currentDate.getTime() - days * 24 * 60 * 60 * 1000)
     const previousStartDate = new Date(startDate.getTime() - days * 24 * 60 * 60 * 1000)
 
-    console.log(`📊 Buscando dados de receita desde ${startDate.toISOString()}`)
+    // Revenue trend data
+    let dateFormat = "YYYY-MM-DD"
+    let dateInterval = "1 day"
 
-    // Revenue trend data - using different queries for different periods
-    let revenueTrend = []
-
-    if (period === "daily") {
-      revenueTrend = await sql`
-        SELECT 
-          DATE(created_at) as date,
-          COALESCE(SUM(CASE WHEN type = 'game_play' THEN amount ELSE 0 END), 0) as revenue,
-          COALESCE(SUM(CASE WHEN type = 'deposit' AND status = 'success' THEN amount ELSE 0 END), 0) as deposits,
-          COALESCE(SUM(CASE WHEN type = 'withdraw' AND status = 'success' THEN amount ELSE 0 END), 0) as withdraws,
-          COUNT(DISTINCT user_id) as users
-        FROM transactions
-        WHERE created_at >= ${startDate.toISOString()}
-        GROUP BY DATE(created_at)
-        ORDER BY DATE(created_at)
-      `.catch((error) => {
-        console.error("❌ Erro na query de revenue_trend (daily):", error)
-        return []
-      })
-    } else if (period === "weekly") {
-      revenueTrend = await sql`
-        SELECT 
-          TO_CHAR(date_trunc('week', created_at), 'YYYY-"W"WW') as date,
-          COALESCE(SUM(CASE WHEN type = 'game_play' THEN amount ELSE 0 END), 0) as revenue,
-          COALESCE(SUM(CASE WHEN type = 'deposit' AND status = 'success' THEN amount ELSE 0 END), 0) as deposits,
-          COALESCE(SUM(CASE WHEN type = 'withdraw' AND status = 'success' THEN amount ELSE 0 END), 0) as withdraws,
-          COUNT(DISTINCT user_id) as users
-        FROM transactions
-        WHERE created_at >= ${startDate.toISOString()}
-        GROUP BY date_trunc('week', created_at)
-        ORDER BY date_trunc('week', created_at)
-      `.catch((error) => {
-        console.error("❌ Erro na query de revenue_trend (weekly):", error)
-        return []
-      })
+    if (period === "weekly") {
+      dateFormat = 'YYYY-"W"WW'
+      dateInterval = "1 week"
     } else if (period === "monthly") {
-      revenueTrend = await sql`
-        SELECT 
-          TO_CHAR(date_trunc('month', created_at), 'YYYY-MM') as date,
-          COALESCE(SUM(CASE WHEN type = 'game_play' THEN amount ELSE 0 END), 0) as revenue,
-          COALESCE(SUM(CASE WHEN type = 'deposit' AND status = 'success' THEN amount ELSE 0 END), 0) as deposits,
-          COALESCE(SUM(CASE WHEN type = 'withdraw' AND status = 'success' THEN amount ELSE 0 END), 0) as withdraws,
-          COUNT(DISTINCT user_id) as users
-        FROM transactions
-        WHERE created_at >= ${startDate.toISOString()}
-        GROUP BY date_trunc('month', created_at)
-        ORDER BY date_trunc('month', created_at)
-      `.catch((error) => {
-        console.error("❌ Erro na query de revenue_trend (monthly):", error)
-        return []
-      })
+      dateFormat = "YYYY-MM"
+      dateInterval = "1 month"
     }
 
-    console.log(`📊 Revenue trend encontrado: ${revenueTrend.length} registros`)
+    const revenueTrend = await sql`
+      SELECT 
+        TO_CHAR(date_trunc(${period}, created_at), ${dateFormat}) as date,
+        COALESCE(SUM(CASE WHEN type = 'game_play' THEN amount ELSE 0 END), 0) as revenue,
+        COALESCE(SUM(CASE WHEN type = 'deposit' AND status = 'success' THEN amount ELSE 0 END), 0) as deposits,
+        COALESCE(SUM(CASE WHEN type = 'withdraw' AND status = 'success' THEN amount ELSE 0 END), 0) as withdraws,
+        COUNT(DISTINCT user_id) as users
+      FROM transactions
+      WHERE created_at >= ${startDate.toISOString()}
+      GROUP BY date_trunc(${period}, created_at)
+      ORDER BY date_trunc(${period}, created_at)
+    `
 
     // Affiliate performance
-    console.log(`📊 Buscando performance de afiliados`)
     const affiliatePerformance = await sql`
       SELECT 
         a.name as affiliate_name,
@@ -97,20 +76,14 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT CASE WHEN t.type = 'deposit' AND t.status = 'success' THEN t.id END) as deposits_count
       FROM affiliates a
       LEFT JOIN users u ON a.id = u.affiliate_id
-      LEFT JOIN transactions t ON u.id = t.user_id AND t.created_at >= ${startDate.toISOString()}
+      LEFT JOIN transactions t ON u.id = t.user_id
       WHERE a.status = 'active'
       GROUP BY a.id, a.name, a.total_earnings, a.total_referrals
       ORDER BY a.total_earnings DESC
       LIMIT 20
-    `.catch((error) => {
-      console.error("❌ Erro na query de affiliate_performance:", error)
-      return []
-    })
-
-    console.log(`📊 Affiliate performance encontrado: ${affiliatePerformance.length} registros`)
+    `
 
     // Manager performance
-    console.log(`📊 Buscando performance de gerentes`)
     const managerPerformance = await sql`
       SELECT 
         m.name as manager_name,
@@ -127,20 +100,14 @@ export async function GET(request: NextRequest) {
       FROM managers m
       LEFT JOIN affiliates a ON m.id = a.manager_id
       LEFT JOIN users u ON a.id = u.affiliate_id
-      LEFT JOIN transactions t ON u.id = t.user_id AND t.created_at >= ${startDate.toISOString()}
+      LEFT JOIN transactions t ON u.id = t.user_id
       WHERE m.status = 'active'
       GROUP BY m.id, m.name, m.total_earnings
       ORDER BY m.total_earnings DESC
       LIMIT 20
-    `.catch((error) => {
-      console.error("❌ Erro na query de manager_performance:", error)
-      return []
-    })
-
-    console.log(`📊 Manager performance encontrado: ${managerPerformance.length} registros`)
+    `
 
     // Period comparison
-    console.log(`📊 Buscando comparação de períodos`)
     const [currentPeriodStats] = await sql`
       SELECT 
         COALESCE(SUM(CASE WHEN type = 'game_play' THEN amount ELSE 0 END), 0) as revenue,
@@ -149,10 +116,7 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(CASE WHEN type IN ('deposit', 'game_prize') THEN amount ELSE 0 END), 0) as affiliates_earnings
       FROM transactions
       WHERE created_at >= ${startDate.toISOString()}
-    `.catch((error) => {
-      console.error("❌ Erro na query de current_period:", error)
-      return [{ revenue: 0, users: 0, transactions: 0, affiliates_earnings: 0 }]
-    })
+    `
 
     const [previousPeriodStats] = await sql`
       SELECT 
@@ -162,13 +126,7 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(CASE WHEN type IN ('deposit', 'game_prize') THEN amount ELSE 0 END), 0) as affiliates_earnings
       FROM transactions
       WHERE created_at >= ${previousStartDate.toISOString()} AND created_at < ${startDate.toISOString()}
-    `.catch((error) => {
-      console.error("❌ Erro na query de previous_period:", error)
-      return [{ revenue: 0, users: 0, transactions: 0, affiliates_earnings: 0 }]
-    })
-
-    console.log(`📊 Período atual: receita=${currentPeriodStats?.revenue}, usuários=${currentPeriodStats?.users}`)
-    console.log(`📊 Período anterior: receita=${previousPeriodStats?.revenue}, usuários=${previousPeriodStats?.users}`)
+    `
 
     const analyticsData = {
       revenue_trend: revenueTrend.map((row) => ({
@@ -208,20 +166,10 @@ export async function GET(request: NextRequest) {
       },
     }
 
-    console.log(`✅ Analytics gerados com sucesso:`)
-    console.log(`   - Revenue trend: ${analyticsData.revenue_trend.length} pontos`)
-    console.log(`   - Affiliates: ${analyticsData.affiliate_performance.length} registros`)
-    console.log(`   - Managers: ${analyticsData.manager_performance.length} registros`)
-
+    console.log(`✅ Analytics gerados com sucesso`)
     return NextResponse.json(analyticsData)
   } catch (error) {
-    console.error("❌ Erro geral ao buscar analytics:", error)
-    return NextResponse.json(
-      {
-        error: "Erro interno do servidor",
-        details: error instanceof Error ? error.message : "Erro desconhecido",
-      },
-      { status: 500 },
-    )
+    console.error("❌ Erro ao buscar analytics:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
