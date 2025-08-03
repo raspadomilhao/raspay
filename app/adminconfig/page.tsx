@@ -588,6 +588,19 @@ export default function AdminConfigPage() {
 
     if (result === "granted") {
       toast.success("Notificações ativadas com sucesso!")
+
+      // Enviar notificação de teste
+      setTimeout(() => {
+        sendNotification({
+          title: "🎉 Notificações Ativadas!",
+          body: "Sistema de alertas configurado com sucesso. Você receberá notificações sobre saques pendentes e novos depósitos.",
+          tag: "test-notification",
+          data: {
+            section: "dashboard",
+            type: "test",
+          },
+        })
+      }, 1000) // Delay de 1 segundo para garantir que a permissão foi processada
     } else if (result === "denied") {
       toast.error("Permissão para notificações negada")
     } else {
