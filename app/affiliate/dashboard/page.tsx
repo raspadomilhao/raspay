@@ -37,7 +37,6 @@ import {
   TrendingUp,
   TrendingDown,
   Info,
-  Calendar,
   BarChart3,
 } from "lucide-react"
 
@@ -738,14 +737,10 @@ export default function AffiliateDashboardPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-900/50 border border-gray-700">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-900/50 border border-gray-700">
             <TabsTrigger value="overview" className="data-[state=active]:bg-gray-700 text-white">
               <BarChart3 className="h-4 w-4 mr-2" />
               Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="deposits" className="data-[state=active]:bg-gray-700 text-white">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Depósitos PIX
             </TabsTrigger>
             <TabsTrigger value="withdraws" className="data-[state=active]:bg-gray-700 text-white">
               <ArrowUpRight className="h-4 w-4 mr-2" />
@@ -791,7 +786,7 @@ export default function AffiliateDashboardPage() {
             </div>
 
             {/* Estatísticas */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-xs sm:text-sm font-medium text-gray-300">Referidos</CardTitle>
@@ -800,17 +795,6 @@ export default function AffiliateDashboardPage() {
                 <CardContent>
                   <div className="text-xl sm:text-2xl font-bold text-white">{stats?.total_referrals || 0}</div>
                   <p className="text-xs text-gray-400">{stats?.active_referrals || 0} ativos</p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-gray-300">Depósitos PIX</CardTitle>
-                  <CreditCard className="h-4 w-4 text-purple-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl sm:text-2xl font-bold text-purple-400">{stats?.total_real_deposits || 0}</div>
-                  <p className="text-xs text-gray-400">{stats?.total_real_deposits || 0} depósitos</p>
                 </CardContent>
               </Card>
             </div>
@@ -826,7 +810,7 @@ export default function AffiliateDashboardPage() {
                   <div className="text-2xl font-bold text-blue-400">
                     R$ {Number(stats?.deposit_commissions || 0).toFixed(2)}
                   </div>
-                  <p className="text-xs text-gray-400">De depósitos PIX dos referidos</p>
+                  <p className="text-xs text-gray-400">Comissões de depósitos</p>
                 </CardContent>
               </Card>
 
@@ -841,7 +825,7 @@ export default function AffiliateDashboardPage() {
                   >
                     R$ {Number(stats?.loss_commissions || 0).toFixed(2)}
                   </div>
-                  <p className="text-xs text-gray-400">Dos jogos dos referidos</p>
+                  <p className="text-xs text-gray-400">Comissões de jogos</p>
                 </CardContent>
               </Card>
 
@@ -854,73 +838,10 @@ export default function AffiliateDashboardPage() {
                   <div className="text-2xl font-bold text-green-400">
                     R$ {Number(stats?.total_commission_amount || 0).toFixed(2)}
                   </div>
-                  <p className="text-xs text-gray-400">{stats?.total_commissions || 0} comissões</p>
+                  <p className="text-xs text-gray-400">Total acumulado</p>
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          {/* Deposits Tab */}
-          <TabsContent value="deposits" className="space-y-6">
-            {depositStats && (
-              <>
-                {/* Estatísticas de Depósitos PIX */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-xs font-medium text-gray-300">Total de Depósitos PIX</CardTitle>
-                      <CreditCard className="h-4 w-4 text-blue-400" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-xl font-bold text-blue-400">{depositStats.total_deposits}</div>
-                      <p className="text-xs text-gray-400">{depositStats.unique_depositors} usuários únicos</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-xs font-medium text-gray-300">Comissões PIX</CardTitle>
-                      <Award className="h-4 w-4 text-yellow-400" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-xl font-bold text-yellow-400">
-                        R$ {depositStats.total_commissions_earned.toFixed(2)}
-                      </div>
-                      <p className="text-xs text-gray-400">Dos depósitos PIX</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Estatísticas Mensais */}
-                {monthlyStats.length > 0 && (
-                  <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center text-white">
-                        <Calendar className="h-5 w-5 mr-2 text-blue-400" />
-                        Depósitos PIX por Mês (Últimos 6 Meses)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {monthlyStats.map((month) => (
-                          <div key={month.month} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                            <div className="text-sm text-gray-400 mb-1">
-                              {new Date(month.month).toLocaleDateString("pt-BR", {
-                                month: "long",
-                                year: "numeric",
-                              })}
-                            </div>
-                            <div className="text-lg font-bold text-white">{month.deposits_count} depósitos PIX</div>
-                            <div className="text-sm text-green-400">R$ {month.total_amount.toFixed(2)}</div>
-                            <div className="text-xs text-gray-500">{month.unique_users} usuários únicos</div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
           </TabsContent>
 
           {/* Withdraws Tab */}
