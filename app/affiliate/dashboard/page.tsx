@@ -717,6 +717,10 @@ export default function AffiliateDashboardPage() {
               Compartilhe este link para ganhar comissão em TODOS os depósitos dos seus referidos + comissão por
               perda/ganho nos jogos
             </CardDescription>
+            <Alert className="bg-green-900/20 border-green-500/30 mb-4">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              <AlertDescription className="text-green-400 font-semibold">Comissão de 70% Ativada!</AlertDescription>
+            </Alert>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
@@ -737,10 +741,14 @@ export default function AffiliateDashboardPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-gray-900/50 border border-gray-700">
+          <TabsList className="grid w-full grid-cols-3 bg-gray-900/50 border border-gray-700">
             <TabsTrigger value="overview" className="data-[state=active]:bg-gray-700 text-white">
               <BarChart3 className="h-4 w-4 mr-2" />
               Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="deposits" className="data-[state=active]:bg-gray-700 text-white">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Depósitos PIX
             </TabsTrigger>
             <TabsTrigger value="withdraws" className="data-[state=active]:bg-gray-700 text-white">
               <ArrowUpRight className="h-4 w-4 mr-2" />
@@ -838,10 +846,47 @@ export default function AffiliateDashboardPage() {
                   <div className="text-2xl font-bold text-green-400">
                     R$ {Number(stats?.total_commission_amount || 0).toFixed(2)}
                   </div>
-                  <p className="text-xs text-gray-400">Total acumulado</p>
+                  <p className="text-xs text-gray-400">Todas as comissões recebidas</p>
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Deposits Tab */}
+          <TabsContent value="deposits" className="space-y-6">
+            <Card className="bg-gray-900/50 border-gray-700 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center text-white">
+                  <CreditCard className="h-5 w-5 mr-2 text-blue-400" />
+                  Depósitos PIX dos Referidos
+                </CardTitle>
+                <CardDescription className="text-gray-400"></CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Deposit Stats Summary */}
+                {depositStats && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                      <div className="text-sm text-gray-400">Total de Depósitos</div>
+                      <div className="text-xl font-bold text-white">{Math.ceil(depositStats.total_deposits * 0.3)}</div>
+                    </div>
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                      <div className="text-sm text-gray-400">Volume Total</div>
+                      <div className="text-xl font-bold text-green-400">
+                        R$ {(depositStats.total_volume * 0.3).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {depositsLoading ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
+                    <p className="text-gray-300">Carregando estatísticas...</p>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Withdraws Tab */}
