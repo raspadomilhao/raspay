@@ -32,11 +32,13 @@ import {
   Headphones,
   Laptop,
 } from "lucide-react"
+import Image from "next/image" // Import Image component
 import { AuthClient } from "@/lib/auth-client"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Footer } from "@/components/footer"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
+import type { UserProfile } from "@/types/user-profile" // Declare UserProfile type
 
 interface Winner {
   id: string | number
@@ -45,23 +47,13 @@ interface Winner {
   prize_amount: number
   prize_name?: string | null
   prize_type?: "monetary" | "physical"
+  prize_image?: string | null // Added prize_image
   created_at: string
   is_bot?: boolean
   is_jackpot?: boolean
   is_physical_prize?: boolean
   is_special_physical?: boolean
   city?: string | null
-}
-
-interface UserProfile {
-  user: {
-    id: number
-    email: string
-    name: string | null
-  }
-  wallet: {
-    balance: string | number
-  }
 }
 
 // Função segura para obter iniciais
@@ -400,7 +392,7 @@ export default function VencedoresPage() {
 
                 <div className="flex items-center space-x-2">
                   <Trophy className="h-6 w-6 text-yellow-400" />
-                  <h1 className="text-2xl font-bold text-white">Vencedores</h1>
+                  <h1 className="text-2xl font-bold text-white">Ao vivo</h1>
                 </div>
               </div>
               {isLoggedIn && userProfile && (
@@ -544,8 +536,18 @@ export default function VencedoresPage() {
 
                   <CardContent className="relative text-center space-y-4">
                     {/* Prêmio */}
-                    {winner.is_physical_prize ? (
+                    {winner.is_physical_prize && winner.prize_image ? (
                       <div className="space-y-2">
+                        <div className="relative w-full h-24 flex items-center justify-center">
+                          <Image
+                            src={winner.prize_image || "/placeholder.svg"}
+                            alt={winner.prize_name || "Prize"}
+                            width={100}
+                            height={100}
+                            style={{ objectFit: "contain" }}
+                            className="max-h-full max-w-full"
+                          />
+                        </div>
                         <div
                           className={`text-xl font-black bg-gradient-to-r ${getPrizeColor(winner)} bg-clip-text text-transparent leading-tight`}
                         >

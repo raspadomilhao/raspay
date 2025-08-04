@@ -30,8 +30,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useAuthModal } from "@/hooks/use-auth-modal"
-import { AuthModal } from "@/components/auth-modal"
+import { LiveStoriesButton } from "@/components/live-stories-button"
 
 import RaspeDaEsperancaPage from "@/app/jogo/raspe-da-esperanca/page"
 import FortunaDouradaPage from "@/app/jogo/fortuna-dourada/page"
@@ -56,6 +55,9 @@ interface Winner {
   game_name: string
   prize_amount: number
   created_at: string
+  prize_name?: string | null // Adicionado para prêmios físicos
+  prize_image?: string | null // Adicionado para prêmios físicos
+  is_physical_prize?: boolean // Adicionado para prêmios físicos
 }
 
 export default function HomePage() {
@@ -69,7 +71,6 @@ export default function HomePage() {
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false)
   const [isGameModalOpen, setIsGameModalOpen] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
-  const { isOpen: isAuthModalOpen, openModal: openAuthModal, closeModal: closeAuthModal } = useAuthModal()
 
   useEffect(() => {
     const token = AuthClient.getToken()
@@ -149,17 +150,12 @@ export default function HomePage() {
   ]
 
   const bannerImages = [
-    "/images/carousel-banner-premium-1.png",
-    "/images/carousel-banner-premium-2.png",
-    "/images/carousel-banner-premium-3.png",
+    "/images/carousel-banner-new-4.png",
+    "/images/carousel-banner-new-5.png",
+    "/images/carousel-banner-new-6.png",
   ]
 
   const handleGameClick = (gameId: string) => {
-    if (!isLoggedIn) {
-      openAuthModal()
-      return
-    }
-
     setSelectedGame(gameId)
     setIsGameModalOpen(true)
   }
@@ -323,15 +319,11 @@ export default function HomePage() {
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <Button
-                              onClick={() => {
-                                setShowSideMenu(false)
-                                openAuthModal()
-                              }}
-                              className="w-full bg-gradient-to-r from-primary to-blue-500 hover:from-primary/80 hover:to-blue-500/80 text-white"
-                            >
-                              Entrar / Cadastrar
-                            </Button>
+                            <Link href="/auth" onClick={() => setShowSideMenu(false)}>
+                              <Button className="w-full bg-gradient-to-r from-primary to-blue-500 hover:from-primary/80 hover:to-blue-500/80 text-white">
+                                Entrar / Cadastrar
+                              </Button>
+                            </Link>
                           </div>
                         )}
                       </div>
@@ -407,15 +399,12 @@ export default function HomePage() {
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    onClick={() => {
-                      openAuthModal()
-                    }}
-                    className="gradient-primary text-white font-semibold"
-                  >
-                    Entrar
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  <Link href="/auth">
+                    <Button className="gradient-primary text-white font-semibold">
+                      Entrar
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </Link>
                 )}
               </div>
             </div>
@@ -428,7 +417,7 @@ export default function HomePage() {
               <CarouselContent>
                 {bannerImages.map((image, index) => (
                   <CarouselItem key={index}>
-                    <div className="aspect-[16/6] w-full bg-gradient-to-r from-slate-900 to-slate-800">
+                    <div className="aspect-[16/7] w-full">
                       <img
                         src={image || "/placeholder.svg"}
                         alt={`Banner ${index + 1}`}
@@ -444,8 +433,30 @@ export default function HomePage() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
           <section>
-            <div className="mb-2">
-              <h2 className="text-lg font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">Ao vivo</h2>
+              <LiveStoriesButton
+                thumbnailSrc="/images/raspay-mascot-small.png"
+                altText="Últimos Ganhadores ao Vivo"
+                modalTitle="Últimos Ganhadores ao Vivo"
+                modalContent={
+                  <div className="flex flex-col items-center justify-center p-4">
+                    <video
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Video%202025-07-28%20at%2011.54.09-SssftJt0MijRUG7MyV1kVRxVegTdbw.mp4"
+                      controls
+                      autoPlay
+                      loop
+                      muted
+                      className="w-full max-w-lg rounded-lg mb-4"
+                    >
+                      Seu navegador não suporta a tag de vídeo.
+                    </video>
+                    <p className="text-center text-muted-foreground">
+                      Assista aos momentos de sorte dos nossos jogadores!
+                    </p>
+                  </div>
+                }
+              />
             </div>
             <div className="relative">
               <Carousel
@@ -456,25 +467,41 @@ export default function HomePage() {
                 plugins={[Autoplay({ delay: 3000 })]}
                 className="w-full"
               >
-                <CarouselContent className="-ml-1">
+                <CarouselContent className="-ml-1 md:-ml-2">
                   {winners.map((winner) => (
-                    <CarouselItem key={winner.id} className="pl-1 basis-full sm:basis-1/2 lg:basis-1/4">
+                    <CarouselItem key={winner.id} className="pl-1 md:pl-2 basis-full sm:basis-1/2 lg:basis-1/4">
                       <Card className="bg-card/50 border-border">
                         <CardContent className="p-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className="w-7 h-7 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                                <Trophy className="h-3 w-3 text-white" />
-                              </div>
+                              {winner.is_physical_prize && winner.prize_image ? (
+                                <div className="w-8 h-8 flex items-center justify-center rounded-full overflow-hidden">
+                                  <Image
+                                    src={winner.prize_image || "/placeholder.svg"}
+                                    alt={winner.prize_name || "Prêmio Físico"}
+                                    width={32}
+                                    height={32}
+                                    className="object-contain"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                                  <Trophy className="h-4 w-4 text-white" />
+                                </div>
+                              )}
                               <div>
                                 <p className="text-foreground font-semibold text-xs">{winner.user_name}</p>
                                 <p className="text-muted-foreground text-xs">{winner.game_name}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-green-400 font-bold text-xs">
-                                R$ {formatCurrency(winner.prize_amount)}
-                              </p>
+                              {winner.is_physical_prize && winner.prize_name ? (
+                                <p className="text-green-400 font-bold text-xs">{winner.prize_name}</p>
+                              ) : (
+                                <p className="text-green-400 font-bold text-xs">
+                                  R$ {formatCurrency(winner.prize_amount)}
+                                </p>
+                              )}
                               <p className="text-muted-foreground text-xs">
                                 {new Date(winner.created_at).toLocaleDateString("pt-BR")}
                               </p>
@@ -539,15 +566,11 @@ export default function HomePage() {
                     ? "Seu próximo prêmio está a uma raspadinha de distância. Faça um depósito e continue a diversão!"
                     : "Cadastre-se em segundos e comece a ganhar. A sorte favorece os audazes!"}
                 </p>
-                <Button
-                  size="lg"
-                  className="gradient-primary text-white font-bold px-8 py-4 text-base animate-glow"
-                  onClick={() => {
-                    isLoggedIn ? router.push("/deposito") : openAuthModal()
-                  }}
-                >
-                  {isLoggedIn ? "Depositar Agora" : "Criar Conta Grátis"}
-                </Button>
+                <Link href={isLoggedIn ? "/deposito" : "/auth"}>
+                  <Button size="lg" className="gradient-primary text-white font-bold px-8 py-4 text-base animate-glow">
+                    {isLoggedIn ? "Depositar Agora" : "Criar Conta Grátis"}
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </section>
@@ -613,16 +636,6 @@ export default function HomePage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        onSuccess={() => {
-          closeAuthModal()
-          window.location.reload()
-        }}
-      />
 
       <MobileBottomNav />
       <Footer />

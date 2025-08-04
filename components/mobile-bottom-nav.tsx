@@ -6,12 +6,10 @@ import Link from "next/link"
 import { Home, Gamepad2, CreditCard, TrendingUp, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AuthClient } from "@/lib/auth-client"
-import { useAuthModal } from "@/hooks/use-auth-modal"
 
 export function MobileBottomNav() {
   const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const { openModal } = useAuthModal()
 
   useEffect(() => {
     const checkAuth = () => setIsLoggedIn(AuthClient.isLoggedIn())
@@ -25,12 +23,7 @@ export function MobileBottomNav() {
     { href: "/jogos", icon: Gamepad2, label: "Jogos" },
     { href: "/deposito", icon: CreditCard, label: "Depositar", special: true },
     { href: "/saque", icon: TrendingUp, label: "Sacar" },
-    {
-      href: isLoggedIn ? "/perfil" : "#",
-      icon: User,
-      label: "Perfil",
-      onClick: !isLoggedIn ? openModal : undefined,
-    },
+    { href: isLoggedIn ? "/perfil" : "/auth", icon: User, label: "Perfil" },
   ]
 
   return (
@@ -42,32 +35,6 @@ export function MobileBottomNav() {
             (item.href === "/home" && pathname === "/") ||
             pathname === item.href ||
             (item.href === "/jogos" && pathname.startsWith("/jogo/"))
-
-          if (item.onClick) {
-            return (
-              <button
-                key={item.href}
-                onClick={item.onClick}
-                className={cn(
-                  "flex flex-col items-center justify-center space-y-1 text-xs transition-colors relative",
-                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
-                  item.special && "transform scale-110",
-                )}
-              >
-                <div
-                  className={cn(
-                    "relative rounded-full p-3 transition-all",
-                    item.special &&
-                      "bg-gradient-to-br from-primary to-blue-500 text-white -translate-y-3 shadow-lg shadow-primary/30",
-                    isActive && !item.special && "bg-accent",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className={cn("transition-opacity", item.special && "opacity-0")}>{item.label}</span>
-              </button>
-            )
-          }
 
           return (
             <Link
