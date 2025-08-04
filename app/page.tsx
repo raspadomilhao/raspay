@@ -456,7 +456,7 @@ export default function HomePage() {
             <div className="mb-3 flex items-center gap-2">
               <h2 className="text-lg font-bold tracking-tight text-foreground">Ao vivo</h2>
               <LiveStoriesButton
-                thumbnailSrc="/images/raspay-mascot-small.png"
+                thumbnailSrc="/images/mascotecoelho.png"
                 altText="Últimos Ganhadores ao Vivo"
                 modalTitle="Últimos Ganhadores ao Vivo"
                 modalContent={

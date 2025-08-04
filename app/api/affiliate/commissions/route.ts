@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     // Verificar token
     const token = request.cookies.get("affiliate-token")?.value
     if (!token) {
-      return NextResponse.json({ success: false, error: "Token n��o encontrado" }, { status: 401 })
+      return NextResponse.json({ success: false, error: "Token n����o encontrado" }, { status: 401 })
     }
 
     const { payload } = await jwtVerify(token, secret)

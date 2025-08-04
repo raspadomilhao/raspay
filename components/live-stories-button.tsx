@@ -38,7 +38,7 @@ export function LiveStoriesButton({ thumbnailSrc, altText, modalTitle, modalCont
       </Button>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl w-full p-6 bg-card border-border text-foreground">
+        <DialogContent className="max-w-2xl w-full p-6 bg-card border-border text-foreground md:max-w-2xl md:w-full md:h-auto sm:max-w-full sm:h-full sm:p-4">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-bold">{modalTitle}</DialogTitle>
             <Button

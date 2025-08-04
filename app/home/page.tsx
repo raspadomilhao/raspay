@@ -153,6 +153,7 @@ export default function HomePage() {
     "/images/carousel-banner-new-4.png",
     "/images/carousel-banner-new-5.png",
     "/images/carousel-banner-new-6.png",
+    "/images/carousel-banner-new-2.png",
   ]
 
   const handleGameClick = (gameId: string) => {
@@ -436,7 +437,7 @@ export default function HomePage() {
             <div className="mb-3 flex items-center gap-2">
               <h2 className="text-lg font-bold tracking-tight text-foreground">Ao vivo</h2>
               <LiveStoriesButton
-                thumbnailSrc="/images/raspay-mascot-small.png"
+                thumbnailSrc="/images/mascotecoelho.png"
                 altText="Últimos Ganhadores ao Vivo"
                 modalTitle="Últimos Ganhadores ao Vivo"
                 modalContent={
