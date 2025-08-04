@@ -33,6 +33,8 @@ import RaspeDaEsperancaPage from "./jogo/raspe-da-esperanca/page"
 import FortunaDauradaPage from "./jogo/fortuna-dourada/page"
 import MegaSortePage from "./jogo/mega-sorte/page"
 import { ReferralPopup } from "@/components/referral-popup"
+import { useAuthModal } from "@/hooks/use-auth-modal"
+import { AuthModal } from "@/components/auth-modal"
 
 interface UserProfile {
   user: {
@@ -53,6 +55,9 @@ interface Winner {
   game_name: string
   prize_amount: number
   created_at: string
+  prize_name?: string
+  prize_image?: string
+  is_physical_prize?: boolean
 }
 
 export default function HomePage() {
@@ -68,6 +73,7 @@ export default function HomePage() {
   const [isMegaSorteModalOpen, setIsMegaSorteModalOpen] = useState(false)
   const [showReferralPopup, setShowReferralPopup] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
+  const { isOpen: isAuthModalOpen, openModal: openAuthModal, closeModal: closeAuthModal } = useAuthModal()
 
   useEffect(() => {
     const token = AuthClient.getToken()
@@ -113,7 +119,7 @@ export default function HomePage() {
 
   const handleGameClick = (gameId: string) => {
     if (!isLoggedIn) {
-      router.push("/auth")
+      openAuthModal()
       return
     }
 
@@ -131,6 +137,40 @@ export default function HomePage() {
       default:
         break
     }
+  }
+
+  // Função para obter a imagem do prêmio baseado no valor ou nome do prêmio
+  const getPrizeImage = (winner: Winner): string => {
+    // Se tem imagem específica do prêmio físico, usar ela
+    if (winner.prize_image) {
+      return winner.prize_image
+    }
+
+    // Se é prêmio físico mas não tem imagem, usar baseado no nome
+    if (winner.is_physical_prize && winner.prize_name) {
+      const prizeName = winner.prize_name.toLowerCase()
+      if (prizeName.includes("moto")) return "/images/moto.png"
+      if (prizeName.includes("iphone")) return "/images/iphone.png"
+      if (prizeName.includes("ipad")) return "/images/ipad.png"
+    }
+
+    // Para prêmios monetários, usar baseado no valor
+    const prizeAmount = winner.prize_amount
+    if (prizeAmount >= 25000) return "/images/25mil.png"
+    if (prizeAmount >= 10000) return "/images/10mil.png"
+    if (prizeAmount >= 5000) return "/images/5mil.png"
+    if (prizeAmount >= 2000) return "/images/2mil.png"
+    if (prizeAmount >= 1000) return "/images/1mil.png"
+    if (prizeAmount >= 500) return "/images/500reais.png"
+    if (prizeAmount >= 200) return "/images/200reais.png"
+    if (prizeAmount >= 100) return "/images/100reais.png"
+    if (prizeAmount >= 50) return "/images/50reais.png"
+    if (prizeAmount >= 20) return "/images/20reais.png"
+    if (prizeAmount >= 10) return "/images/10reais.png"
+    if (prizeAmount >= 5) return "/images/5reais.png"
+    if (prizeAmount >= 2) return "/images/2reais.png"
+    if (prizeAmount >= 1) return "/images/1real.png"
+    return "/images/50centavos.png"
   }
 
   const games = [
@@ -170,9 +210,9 @@ export default function HomePage() {
   ]
 
   const bannerImages = [
-    "/images/carousel-banner-new-1.png",
-    "/images/carousel-banner-new-2.png",
-    "/images/carousel-banner-new-3.png",
+    "/images/carousel-banner-premium-1.png",
+    "/images/carousel-banner-premium-2.png",
+    "/images/carousel-banner-premium-3.png",
   ]
 
   if (isLoading) {
@@ -334,11 +374,15 @@ export default function HomePage() {
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <Link href="/auth" onClick={() => setShowSideMenu(false)}>
-                              <Button className="w-full bg-gradient-to-r from-primary to-blue-500 hover:from-primary/80 hover:to-blue-500/80 text-white">
-                                Entrar / Cadastrar
-                              </Button>
-                            </Link>
+                            <Button
+                              onClick={() => {
+                                openAuthModal()
+                                setShowSideMenu(false)
+                              }}
+                              className="w-full bg-gradient-to-r from-primary to-blue-500 hover:from-primary/80 hover:to-blue-500/80 text-white"
+                            >
+                              Entrar / Cadastrar
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -414,12 +458,10 @@ export default function HomePage() {
                     </Button>
                   </div>
                 ) : (
-                  <Link href="/auth">
-                    <Button className="gradient-primary text-white font-semibold">
-                      Entrar
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
+                  <Button onClick={openAuthModal} className="gradient-primary text-white font-semibold">
+                    Entrar
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
                 )}
               </div>
             </div>
@@ -432,11 +474,11 @@ export default function HomePage() {
               <CarouselContent>
                 {bannerImages.map((image, index) => (
                   <CarouselItem key={index}>
-                    <div className="aspect-[16/7] w-full">
+                    <div className="aspect-[16/6] w-full bg-gradient-to-r from-slate-900 to-slate-800">
                       <img
                         src={image || "/placeholder.svg"}
                         alt={`Banner ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     </div>
                   </CarouselItem>
@@ -449,9 +491,16 @@ export default function HomePage() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
           <section>
             <div className="mb-3">
-              <h2 className="text-lg font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold tracking-tight text-foreground">Vencedores Recentes</h2>
+                <div className="flex items-center space-x-1">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                  <span className="text-red-500 font-semibold text-xs uppercase tracking-wide">Ao Vivo</span>
+                </div>
+              </div>
+              <p className="text-muted-foreground text-xs mt-0.5">Prêmios pagos em tempo real</p>
             </div>
-            <div className="relative">
+            <div className="relative bg-gradient-to-r from-slate-900/50 to-slate-800/50 rounded-lg border border-slate-700/50 p-2">
               <Carousel
                 opts={{
                   align: "start",
@@ -460,26 +509,43 @@ export default function HomePage() {
                 plugins={[Autoplay({ delay: 3000 })]}
                 className="w-full"
               >
-                <CarouselContent className="-ml-1 md:-ml-2">
+                <CarouselContent className="-ml-1">
                   {winners.map((winner) => (
-                    <CarouselItem key={winner.id} className="pl-1 md:pl-2 basis-full sm:basis-1/2 lg:basis-1/4">
-                      <Card className="bg-card/50 border-border">
+                    <CarouselItem key={winner.id} className="pl-1 basis-full sm:basis-1/2 lg:basis-1/3">
+                      <Card className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border-slate-600/50 hover:border-yellow-400/30 transition-all duration-300">
                         <CardContent className="p-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                                <Trophy className="h-4 w-4 text-white" />
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm overflow-hidden bg-white/10">
+                                <img
+                                  src={getPrizeImage(winner) || "/placeholder.svg"}
+                                  alt={
+                                    winner.is_physical_prize
+                                      ? winner.prize_name || "Prêmio físico"
+                                      : `Prêmio R$ ${formatCurrency(winner.prize_amount)}`
+                                  }
+                                  className="w-6 h-6 object-contain"
+                                />
                               </div>
                               <div>
-                                <p className="text-foreground font-semibold text-xs">{winner.user_name}</p>
-                                <p className="text-muted-foreground text-xs">{winner.game_name}</p>
+                                <p className="text-foreground font-bold text-xs">{winner.user_name}</p>
+                                <p className="text-muted-foreground text-xs opacity-80">{winner.game_name}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-green-400 font-bold text-xs">
-                                R$ {formatCurrency(winner.prize_amount)}
-                              </p>
-                              <p className="text-muted-foreground text-xs">
+                              {winner.is_physical_prize && winner.prize_name ? (
+                                <div>
+                                  <p className="text-yellow-400 font-bold text-xs leading-tight">{winner.prize_name}</p>
+                                  <p className="text-green-400 font-bold text-xs">
+                                    R$ {formatCurrency(winner.prize_amount)}
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-green-400 font-bold text-xs">
+                                  R$ {formatCurrency(winner.prize_amount)}
+                                </p>
+                              )}
+                              <p className="text-muted-foreground text-xs opacity-70">
                                 {new Date(winner.created_at).toLocaleDateString("pt-BR")}
                               </p>
                             </div>
@@ -490,6 +556,9 @@ export default function HomePage() {
                   ))}
                 </CarouselContent>
               </Carousel>
+
+              {/* Efeito de brilho animado */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/5 to-transparent animate-pulse rounded-lg pointer-events-none"></div>
             </div>
           </section>
 
@@ -543,11 +612,13 @@ export default function HomePage() {
                     ? "Seu próximo prêmio está a uma raspadinha de distância. Faça um depósito e continue a diversão!"
                     : "Cadastre-se em segundos e comece a ganhar. A sorte favorece os audazes!"}
                 </p>
-                <Link href={isLoggedIn ? "/deposito" : "/auth"}>
-                  <Button size="lg" className="gradient-primary text-white font-bold px-8 py-4 text-base animate-glow">
-                    {isLoggedIn ? "Depositar Agora" : "Criar Conta Grátis"}
-                  </Button>
-                </Link>
+                <Button
+                  size="lg"
+                  className="gradient-primary text-white font-bold px-8 py-4 text-base animate-glow"
+                  onClick={isLoggedIn ? () => router.push("/deposito") : openAuthModal}
+                >
+                  {isLoggedIn ? "Depositar Agora" : "Criar Conta Grátis"}
+                </Button>
               </CardContent>
             </Card>
           </section>
@@ -580,6 +651,16 @@ export default function HomePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        onSuccess={() => {
+          closeAuthModal()
+          window.location.reload()
+        }}
+      />
 
       <ReferralPopup isOpen={showReferralPopup} onClose={() => setShowReferralPopup(false)} />
 
