@@ -280,7 +280,6 @@ export async function processManagerGameCommission(
     const [existingCommission] = await sql`
       SELECT id FROM manager_commissions 
       WHERE affiliate_id = ${userWithAffiliate.affiliate_id} 
-      AND commission_type = 'affiliate_commission'
       AND description LIKE '%transaction_${transactionId}%'
     `
 
@@ -289,9 +288,9 @@ export async function processManagerGameCommission(
       return
     }
 
-    // 5. Calcular 5% da comissão do afiliado
+    // 5. Calcular 5% APENAS da comissão específica desta transação (não do total)
     const affiliateCommissionAmount = Number(affiliateCommission.commission_amount)
-    const managerCommissionRate = 5.0 // Sempre 5%
+    const managerCommissionRate = Number(manager.commission_rate) || 5.0
     const managerCommissionAmount = (affiliateCommissionAmount * managerCommissionRate) / 100
 
     if (Math.abs(managerCommissionAmount) < 0.01) {
@@ -299,11 +298,14 @@ export async function processManagerGameCommission(
       return
     }
 
-    const description = `5% da comissão do afiliado ${userWithAffiliate.affiliate_name} (R$ ${affiliateCommissionAmount.toFixed(2)}) - transaction_${transactionId}`
+    const description = `${managerCommissionRate}% da comissão do afiliado ${userWithAffiliate.affiliate_name} (R$ ${affiliateCommissionAmount.toFixed(2)}) - transaction_${transactionId}`
 
     console.log(
-      `💰 Gerente ${manager.name} receberá 5% da comissão do afiliado: R$ ${managerCommissionAmount.toFixed(2)}`,
+      `💰 Gerente ${manager.name} receberá ${managerCommissionRate}% da comissão DESTA transação: R$ ${managerCommissionAmount.toFixed(2)}`,
     )
+    console.log(`   • Comissão do afiliado nesta transação: R$ ${affiliateCommissionAmount.toFixed(2)}`)
+    console.log(`   • Taxa do gerente: ${managerCommissionRate}%`)
+    console.log(`   • Comissão do gerente: R$ ${managerCommissionAmount.toFixed(2)}`)
 
     // 6. Criar comissão do gerente (agora com sistema incremental)
     await createManagerCommission({
