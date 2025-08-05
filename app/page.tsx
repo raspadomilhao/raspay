@@ -68,8 +68,7 @@ export default function HomePage() {
   const [showSideMenu, setShowSideMenu] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isGameModalOpen, setIsGameModalOpen] = useState(false)
-  const [isFortunaDauradaModalOpen, setIsFortunaDauradaModalOpen] = useState(false)
-  const [isMegaSorteModalOpen, setIsMegaSorteModalOpen] = useState(false)
+  // REMOVIDO: isFortunaDauradaModalOpen, isMegaSorteModalOpen
   const [showReferralPopup, setShowReferralPopup] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false)
@@ -123,19 +122,7 @@ export default function HomePage() {
     }
 
     setSelectedGame(gameId)
-    switch (gameId) {
-      case "raspe-da-esperanca":
-        setIsGameModalOpen(true)
-        break
-      case "fortuna-dourada":
-        setIsFortunaDauradaModalOpen(true)
-        break
-      case "mega-sorte":
-        setIsMegaSorteModalOpen(true)
-        break
-      default:
-        break
-    }
+    setIsGameModalOpen(true) // Agora todos os jogos abrem o mesmo modal
   }
 
   const games = [
