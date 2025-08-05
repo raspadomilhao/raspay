@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAdminNotifications } from "@/hooks/use-admin-notifications"
 import { toast } from "sonner"
-import { Bell, BellOff, CheckCircle, XCircle, AlertCircle, Loader2, TestTube, Settings } from "lucide-react"
+import { Bell, BellOff, CheckCircle, XCircle, AlertCircle, Loader2, TestTube, Settings, Bug } from "lucide-react"
 
 export function AdminNotifications() {
   const { isSupported, permission, isRegistered, isLoading, error, registerForNotifications, sendTestNotification } =
     useAdminNotifications()
 
   const [isTestLoading, setIsTestLoading] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
 
   const handleActivateNotifications = async () => {
     try {
@@ -26,16 +27,66 @@ export function AdminNotifications() {
   const handleTestNotification = async () => {
     setIsTestLoading(true)
     try {
+      console.log("🧪 Iniciando teste de notificação...")
       const success = await sendTestNotification()
       if (success) {
-        toast.success("🧪 Notificação de teste enviada!")
+        toast.success("🧪 Notificação de teste enviada! Verifique se apareceu.")
       } else {
         toast.error("❌ Erro ao enviar notificação de teste")
       }
     } catch (error) {
+      console.error("❌ Erro no teste:", error)
       toast.error("❌ Erro ao enviar notificação de teste")
     } finally {
       setIsTestLoading(false)
+    }
+  }
+
+  const handleDebugInfo = async () => {
+    try {
+      console.log("🐛 Coletando informações de debug...")
+
+      // Verificar API
+      const apiResponse = await fetch("/api/admin/notifications/send")
+      const apiData = await apiResponse.json()
+
+      // Verificar Service Worker
+      const swRegistration = await navigator.serviceWorker.getRegistration()
+      const subscription = swRegistration ? await swRegistration.pushManager.getSubscription() : null
+
+      // Verificar subscriptions no servidor
+      const listResponse = await fetch("/api/admin/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "list" }),
+      })
+      const listData = await listResponse.json()
+
+      const debug = {
+        api: apiData,
+        serviceWorker: {
+          registered: !!swRegistration,
+          scope: swRegistration?.scope,
+          state: swRegistration?.active?.state,
+        },
+        subscription: {
+          exists: !!subscription,
+          endpoint: subscription?.endpoint?.substring(0, 50) + "...",
+        },
+        serverSubscriptions: listData,
+        browser: {
+          userAgent: navigator.userAgent,
+          isSecure: location.protocol === "https:",
+          permissions: Notification.permission,
+        },
+      }
+
+      setDebugInfo(debug)
+      console.log("🐛 Debug Info:", debug)
+      toast.info("🐛 Informações de debug coletadas! Verifique o console.")
+    } catch (error) {
+      console.error("❌ Erro ao coletar debug:", error)
+      toast.error("❌ Erro ao coletar informações de debug")
     }
   }
 
@@ -167,6 +218,15 @@ export function AdminNotifications() {
             </Button>
           )}
 
+          <Button
+            onClick={handleDebugInfo}
+            variant="outline"
+            className="border-slate-600 text-white hover:bg-slate-700 flex-1 sm:flex-none bg-transparent"
+          >
+            <Bug className="h-4 w-4 mr-2" />
+            Debug
+          </Button>
+
           {permission === "denied" && (
             <Button
               onClick={() => {
@@ -182,6 +242,13 @@ export function AdminNotifications() {
             </Button>
           )}
         </div>
+
+        {debugInfo && (
+          <div className="bg-slate-800/50 p-4 rounded-lg">
+            <h4 className="text-white font-medium mb-2">🐛 Informações de Debug:</h4>
+            <pre className="text-xs text-gray-300 overflow-auto max-h-40">{JSON.stringify(debugInfo, null, 2)}</pre>
+          </div>
+        )}
 
         {isRegistered && (
           <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
