@@ -1,38 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { SignJWT } from "jose"
-import { neon } from "@neondatabase/serverless"
+import { getManagerByEmail } from "@/lib/database-managers"
 
-const sql = neon(process.env.DATABASE_URL!)
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key")
-
-async function getManagerByEmail(email: string) {
-  try {
-    const result = await sql`
-      SELECT * FROM managers 
-      WHERE email = ${email} 
-      LIMIT 1
-    `
-    return result[0] || null
-  } catch (error) {
-    console.error("❌ Erro ao buscar gerente:", error)
-    throw new Error("Erro ao buscar gerente no banco de dados")
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
     console.log("🔐 Manager Login: Iniciando processo de login")
 
-    // Parse do body com tratamento de erro
-    let body
-    try {
-      body = await request.json()
-    } catch (error) {
-      console.error("❌ Erro ao fazer parse do JSON:", error)
-      return NextResponse.json({ success: false, message: "Dados inválidos" }, { status: 400 })
-    }
-
+    const body = await request.json()
     const { email, password } = body
 
     console.log("📧 Email recebido:", email)
@@ -43,13 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar gerente no banco de dados
-    let manager
-    try {
-      manager = await getManagerByEmail(email.toLowerCase())
-    } catch (error) {
-      console.error("❌ Erro ao buscar gerente:", error)
-      return NextResponse.json({ success: false, message: "Erro interno do servidor" }, { status: 500 })
-    }
+    const manager = await getManagerByEmail(email.toLowerCase())
 
     if (!manager) {
       console.log("❌ Gerente não encontrado")
@@ -59,13 +30,7 @@ export async function POST(request: NextRequest) {
     console.log("✅ Gerente encontrado:", manager.name)
 
     // Verificar senha
-    let isPasswordValid
-    try {
-      isPasswordValid = await bcrypt.compare(password, manager.password_hash)
-    } catch (error) {
-      console.error("❌ Erro ao verificar senha:", error)
-      return NextResponse.json({ success: false, message: "Erro interno do servidor" }, { status: 500 })
-    }
+    const isPasswordValid = await bcrypt.compare(password, manager.password_hash!)
 
     if (!isPasswordValid) {
       console.log("❌ Senha inválida")
@@ -84,22 +49,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar token JWT
-    let token
-    try {
-      token = await new SignJWT({
-        managerId: manager.id,
-        email: manager.email,
-        name: manager.name,
-        type: "manager",
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("24h")
-        .sign(JWT_SECRET)
-    } catch (error) {
-      console.error("❌ Erro ao criar token JWT:", error)
-      return NextResponse.json({ success: false, message: "Erro interno do servidor" }, { status: 500 })
-    }
+    const token = await new SignJWT({
+      managerId: manager.id,
+      email: manager.email,
+      name: manager.name,
+      type: "manager",
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("24h")
+      .sign(JWT_SECRET)
 
     console.log("✅ Token JWT criado")
 
@@ -115,23 +74,19 @@ export async function POST(request: NextRequest) {
     })
 
     // Definir cookie com o token
-    try {
-      response.cookies.set("manager-token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60, // 24 horas
-        path: "/",
-      })
-      console.log("✅ Cookie manager-token definido")
-    } catch (error) {
-      console.error("❌ Erro ao definir cookie:", error)
-      // Não retorna erro aqui pois o login ainda funcionará sem o cookie
-    }
+    response.cookies.set("manager-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60, // 24 horas
+      path: "/",
+    })
+
+    console.log("✅ Cookie manager-token definido")
 
     return response
   } catch (error) {
-    console.error("❌ Erro geral no login do gerente:", error)
+    console.error("❌ Erro no login do gerente:", error)
     return NextResponse.json({ success: false, message: "Erro interno do servidor" }, { status: 500 })
   }
 }

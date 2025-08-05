@@ -5,51 +5,29 @@ const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔍 Verificando acesso à lista de gerentes...")
-
-    // Verificar token de admin
-    const adminToken = request.headers.get("X-Admin-Token")
-    console.log("🔑 Token recebido:", adminToken ? "Presente" : "Ausente")
-
-    if (!adminToken) {
-      console.log("❌ Token de admin não fornecido")
-      return NextResponse.json({ error: "Token de admin requerido" }, { status: 401 })
+    const authHeader = request.headers.get("X-Admin-Token")
+    if (!authHeader) {
+      return NextResponse.json({ error: "Token de autenticação necessário" }, { status: 401 })
     }
 
-    // Verificar se o token é válido
-    const validTokens = ["admin-authenticated", "admin-full-access", "admin-managers-only"]
-    if (!validTokens.includes(adminToken)) {
-      console.log("❌ Token de admin inválido:", adminToken)
-      return NextResponse.json({ error: "Token de admin inválido" }, { status: 401 })
-    }
-
-    console.log("✅ Token de admin válido, buscando gerentes...")
+    console.log("📊 Buscando lista de gerentes...")
 
     const managers = await sql`
       SELECT 
         m.*,
-        COALESCE(
-          (SELECT COUNT(*) FROM affiliates WHERE manager_id = m.id),
-          0
-        ) as total_affiliates,
-        COALESCE(
-          (SELECT COUNT(*) FROM users u 
-           JOIN affiliates a ON u.referred_by = a.affiliate_code 
-           WHERE a.manager_id = m.id),
-          0
-        ) as total_referrals_managed,
-        COALESCE(
-          (SELECT SUM(t.amount) FROM transactions t
-           JOIN users u ON t.user_id = u.id
-           JOIN affiliates a ON u.referred_by = a.affiliate_code
-           WHERE a.manager_id = m.id AND t.type = 'deposit' AND t.status = 'success'),
-          0
-        ) as total_deposit_volume
+        COUNT(DISTINCT a.id) as total_affiliates,
+        COUNT(DISTINCT u.id) as total_referrals_managed,
+        COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'success' THEN t.amount ELSE 0 END), 0) as total_deposit_volume
       FROM managers m
+      LEFT JOIN affiliates a ON m.id = a.manager_id
+      LEFT JOIN users u ON a.id = u.affiliate_id
+      LEFT JOIN transactions t ON u.id = t.user_id
+      GROUP BY m.id, m.name, m.email, m.username, m.password_hash, m.commission_rate, 
+               m.status, m.total_earnings, m.balance, m.created_at, m.updated_at
       ORDER BY m.created_at DESC
     `
 
-    console.log("📊 Gerentes encontrados:", managers.length)
+    console.log(`✅ Encontrados ${managers.length} gerentes`)
 
     return NextResponse.json({
       success: true,

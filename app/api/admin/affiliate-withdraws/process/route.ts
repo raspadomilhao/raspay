@@ -5,95 +5,93 @@ const sql = neon(process.env.DATABASE_URL!)
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔄 Iniciando processamento de saque de afiliado...")
+    console.log("🔍 Processando ação de saque de afiliado...")
 
-    // Verificar autenticação admin
-    const adminToken = request.headers.get("X-Admin-Token")
-    console.log("🔐 Token recebido:", adminToken ? "Presente" : "Ausente")
+    const { withdraw_id, action, admin_notes } = await request.json()
 
-    if (!adminToken || (!adminToken.startsWith("admin-") && !adminToken.startsWith("manager-"))) {
-      console.log("❌ Token de admin inválido:", adminToken)
-      return NextResponse.json({ error: "Acesso negado" }, { status: 401 })
-    }
+    console.log("📋 Dados recebidos:", { withdraw_id, action, admin_notes })
 
-    const body = await request.json()
-    console.log("📝 Dados recebidos:", body)
-
-    const { withdraw_id, action, admin_notes } = body
-
+    // Validações
     if (!withdraw_id || !action) {
-      console.log("❌ Dados obrigatórios ausentes:", { withdraw_id, action })
-      return NextResponse.json({ error: "withdraw_id e action são obrigatórios" }, { status: 400 })
+      return NextResponse.json({ error: "Dados obrigatórios não fornecidos" }, { status: 400 })
     }
 
     if (!["approve", "reject"].includes(action)) {
-      console.log("❌ Ação inválida:", action)
-      return NextResponse.json({ error: "Ação deve ser 'approve' ou 'reject'" }, { status: 400 })
+      return NextResponse.json({ error: "Ação inválida" }, { status: 400 })
     }
 
-    console.log(`🔄 Processando saque ${withdraw_id} com ação: ${action}`)
+    // Buscar a solicitação de saque
+    const [withdraw] = await sql`
+      SELECT aw.*, a.name as affiliate_name, a.balance as affiliate_balance
+      FROM affiliate_withdraws aw
+      JOIN affiliates a ON a.id = aw.affiliate_id
+      WHERE aw.id = ${withdraw_id}
+    `
 
-    if (action === "approve") {
-      // Aprovar saque
-      await sql`
-        UPDATE affiliate_withdraws 
-        SET 
-          status = 'approved',
-          admin_notes = ${admin_notes || ""},
-          processed_at = NOW()
-        WHERE id = ${withdraw_id}
-      `
-      console.log(`✅ Saque ${withdraw_id} aprovado`)
-    } else {
-      // Rejeitar saque - devolver o valor ao saldo do afiliado
-      const withdraw = await sql`
-        SELECT affiliate_id, amount 
-        FROM affiliate_withdraws 
-        WHERE id = ${withdraw_id}
-      `
+    if (!withdraw) {
+      return NextResponse.json({ error: "Solicitação de saque não encontrada" }, { status: 404 })
+    }
 
-      if (withdraw.length > 0) {
-        const { affiliate_id, amount } = withdraw[0]
+    if (withdraw.status !== "pending") {
+      return NextResponse.json({ error: "Esta solicitação já foi processada" }, { status: 400 })
+    }
 
-        // Devolver o valor ao saldo do afiliado
+    console.log(`💰 Saque encontrado: R$ ${Number(withdraw.amount).toFixed(2)} - Status: ${withdraw.status}`)
+
+    // Iniciar transação
+    await sql`BEGIN`
+
+    try {
+      if (action === "approve") {
+        // Aprovar saque - não altera saldo (já foi debitado)
         await sql`
-          UPDATE affiliates 
-          SET balance = balance + ${amount}
-          WHERE id = ${affiliate_id}
+          UPDATE affiliate_withdraws 
+          SET 
+            status = 'approved',
+            processed_at = NOW(),
+            admin_notes = ${admin_notes || null}
+          WHERE id = ${withdraw_id}
         `
 
-        // Atualizar status do saque
+        console.log("✅ Saque aprovado - saldo já havia sido debitado")
+      } else if (action === "reject") {
+        // Rejeitar saque - devolver valor ao saldo
+        const currentBalance = Number(withdraw.affiliate_balance) || 0
+        const refundAmount = Number(withdraw.amount)
+        const newBalance = currentBalance + refundAmount
+
+        console.log(`🔄 Devolvendo saldo: ${currentBalance} + ${refundAmount} = ${newBalance}`)
+
+        await sql`
+          UPDATE affiliates 
+          SET balance = ${newBalance}
+          WHERE id = ${withdraw.affiliate_id}
+        `
+
         await sql`
           UPDATE affiliate_withdraws 
           SET 
             status = 'rejected',
-            admin_notes = ${admin_notes || ""},
-            processed_at = NOW()
+            processed_at = NOW(),
+            admin_notes = ${admin_notes || null}
           WHERE id = ${withdraw_id}
         `
 
-        console.log(`✅ Saque ${withdraw_id} rejeitado e valor R$ ${amount} devolvido ao afiliado ${affiliate_id}`)
+        console.log("✅ Saque rejeitado - valor devolvido ao saldo")
       }
+
+      await sql`COMMIT`
+
+      return NextResponse.json({
+        success: true,
+        message: `Saque ${action === "approve" ? "aprovado" : "rejeitado"} com sucesso`,
+      })
+    } catch (error) {
+      await sql`ROLLBACK`
+      throw error
     }
-
-    const message = action === "approve" ? "Saque aprovado com sucesso!" : "Saque rejeitado com sucesso!"
-
-    console.log(`✅ Saque do afiliado ${action === "approve" ? "aprovado" : "rejeitado"}:`, withdraw_id)
-
-    return NextResponse.json({
-      success: true,
-      message,
-    })
   } catch (error) {
-    console.error("❌ Erro ao processar saque do afiliado:", error)
-
-    // Garantir que sempre retornamos JSON válido
-    return NextResponse.json(
-      {
-        error: "Erro interno do servidor",
-        details: error instanceof Error ? error.message : "Erro desconhecido",
-      },
-      { status: 500 },
-    )
+    console.error("❌ Erro ao processar saque:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
