@@ -10,11 +10,15 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { toast } from "sonner"
 import {
   Users,
+  UserPlus,
+  Edit,
+  Trash2,
   DollarSign,
   TrendingUp,
   Settings,
@@ -29,22 +33,26 @@ import {
   XCircle,
   Lock,
   AlertCircle,
+  Check,
+  X,
   FileText,
   UserCog,
+  Link,
+  Unlink,
   Zap,
   Menu,
+  Search,
+  Filter,
   Download,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   TrendingDown,
   Target,
-  Bell,
 } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from "recharts"
 
 import { AuthClient } from "@/lib/auth-client"
-import { AdminNotifications } from "@/components/admin-notifications"
 
 interface Affiliate {
   id: number
@@ -1118,7 +1126,6 @@ export default function AdminConfigPage() {
     ...(accessLevel === "full"
       ? [
           { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-          { id: "notifications", label: "Notificações", icon: Bell },
           { id: "analytics", label: "Analytics", icon: TrendingUp },
           { id: "transactions", label: "Transações", icon: CreditCard },
           { id: "affiliates", label: "Afiliados", icon: Users },
@@ -1297,7 +1304,7 @@ export default function AdminConfigPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Desktop Tab List */}
           <div className="hidden lg:block">
-            <TabsList className="bg-slate-800 border-slate-700 w-full grid grid-cols-10 h-auto">
+            <TabsList className="bg-slate-800 border-slate-700 w-full grid grid-cols-9 h-auto">
               {navigationTabs.map((tab) => {
                 const Icon = tab.icon
                 return (
@@ -1548,70 +1555,6 @@ export default function AdminConfigPage() {
             )}
           </TabsContent>
 
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Notificações Push</h2>
-                <p className="text-gray-400">Configure notificações em tempo real para eventos importantes</p>
-              </div>
-            </div>
-
-            <AdminNotifications />
-
-            {/* Notification History */}
-            <Card className="bg-slate-900/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-gray-400" />
-                  <span>Histórico de Notificações</span>
-                </CardTitle>
-                <CardDescription>Últimas notificações enviadas para administradores</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-green-400" />
-                      <div>
-                        <p className="text-white text-sm">💰 Novo Depósito Confirmado!</p>
-                        <p className="text-gray-400 text-xs">João Silva depositou R$ 50,00</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-400 text-xs">Há 2 minutos</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-400" />
-                      <div>
-                        <p className="text-white text-sm">💰 Novo Depósito Confirmado!</p>
-                        <p className="text-gray-400 text-xs">Maria Santos depositou R$ 25,00</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-400 text-xs">Há 15 minutos</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-purple-400" />
-                      <div>
-                        <p className="text-white text-sm">💰 Novo Depósito Confirmado!</p>
-                        <p className="text-gray-400 text-xs">Carlos Oliveira depositou R$ 100,00</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-400 text-xs">Há 1 hora</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Continue with other tabs... */}
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1884,8 +1827,6 @@ export default function AdminConfigPage() {
             )}
           </TabsContent>
 
-          {/* Continue with remaining tabs - I'll add the key ones */}
-
           {/* Transactions Tab */}
           <TabsContent value="transactions" className="space-y-6">
             <h2 className="text-xl font-bold text-white">Transações do Sistema</h2>
@@ -1947,6 +1888,52 @@ export default function AdminConfigPage() {
                   </Card>
                 </div>
 
+                {/* Volume Cards */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <TrendingUp className="h-5 w-5 text-green-400" />
+                        <span>Volume Total</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-white">{formatCurrency(stats.transactions.total_volume)}</p>
+                      <p className="text-gray-400 text-sm">Todas as transações</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <DollarSign className="h-5 w-5 text-blue-400" />
+                        <span>Volume de Depósitos</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-white">
+                        {formatCurrency(stats.transactions.deposits_volume)}
+                      </p>
+                      <p className="text-gray-400 text-sm">Entradas na plataforma</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-900/50 border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Wallet className="h-5 w-5 text-red-400" />
+                        <span>Volume de Saques</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-white">
+                        {formatCurrency(stats.transactions.withdraws_volume)}
+                      </p>
+                      <p className="text-gray-400 text-sm">Saídas da plataforma</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {/* Detailed Transactions Table */}
                 <Card className="bg-slate-900/50 border-slate-700">
                   <CardHeader>
@@ -1966,6 +1953,7 @@ export default function AdminConfigPage() {
                             <TableHead className="text-gray-400">Tipo</TableHead>
                             <TableHead className="text-gray-400">Valor</TableHead>
                             <TableHead className="text-gray-400">Status</TableHead>
+                            <TableHead className="text-gray-400">PIX</TableHead>
                             <TableHead className="text-gray-400">Data</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1987,12 +1975,22 @@ export default function AdminConfigPage() {
                               </TableCell>
                               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                               <TableCell>
+                                {transaction.pix_key ? (
+                                  <div className="flex flex-col">
+                                    <span className="text-white text-xs truncate max-w-32">{transaction.pix_key}</span>
+                                    <span className="text-gray-500 text-xs">{transaction.pix_type}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500 text-xs">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <span className="text-gray-400 text-xs">{formatDate(transaction.created_at)}</span>
                               </TableCell>
                             </TableRow>
                           )) || (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-4 text-gray-400">
+                              <TableCell colSpan={7} className="text-center py-4 text-gray-400">
                                 Nenhuma transação encontrada
                               </TableCell>
                             </TableRow>
@@ -2024,6 +2022,12 @@ export default function AdminConfigPage() {
                             {getTypeBadge(transaction.type)}
                             {getStatusBadge(transaction.status)}
                           </div>
+                          {transaction.pix_key && (
+                            <div className="mt-2 p-2 bg-slate-700/50 rounded">
+                              <p className="text-white text-xs truncate">{transaction.pix_key}</p>
+                              <p className="text-gray-500 text-xs">{transaction.pix_type}</p>
+                            </div>
+                          )}
                         </MobileCard>
                       )) || <div className="text-center py-8 text-gray-400">Nenhuma transação encontrada</div>}
                     </div>
@@ -2033,36 +2037,289 @@ export default function AdminConfigPage() {
             )}
           </TabsContent>
 
-          {/* Affiliates Tab - Simplified version */}
+          {/* Affiliates Tab */}
           <TabsContent value="affiliates" className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="text-xl font-bold text-white">Gerenciar Afiliados</h2>
-              <Button
-                onClick={() => handleExportData("affiliates")}
-                disabled={isExporting}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isExporting ? "Exportando..." : "Exportar CSV"}
-              </Button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <Button
+                  onClick={() => handleExportData("affiliates")}
+                  disabled={isExporting}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full sm:w-auto"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isExporting ? "Exportando..." : "Exportar CSV"}
+                </Button>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 w-full sm:w-auto">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Novo Afiliado
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md mx-4">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Criar Novo Afiliado</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateAffiliate} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <Label htmlFor="name" className="text-white">
+                            Nome
+                          </Label>
+                          <Input
+                            id="name"
+                            value={createForm.name}
+                            onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email" className="text-white">
+                            Email
+                          </Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={createForm.email}
+                            onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="username" className="text-white">
+                            Nome de Usuário
+                          </Label>
+                          <Input
+                            id="username"
+                            value={createForm.username}
+                            onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="affiliate_code" className="text-white">
+                            Código de Afiliado
+                          </Label>
+                          <Input
+                            id="affiliate_code"
+                            value={createForm.affiliate_code}
+                            onChange={(e) => setCreateForm({ ...createForm, affiliate_code: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="password" className="text-white">
+                            Senha
+                          </Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            value={createForm.password}
+                            onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="commission_rate" className="text-white">
+                            Taxa de Comissão (%)
+                          </Label>
+                          <Input
+                            id="commission_rate"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={createForm.commission_rate}
+                            onChange={(e) => setCreateForm({ ...createForm, commission_rate: Number(e.target.value) })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="loss_commission_rate" className="text-white">
+                            Taxa de Comissão de Perda (%)
+                          </Label>
+                          <Input
+                            id="loss_commission_rate"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={createForm.loss_commission_rate}
+                            onChange={(e) =>
+                              setCreateForm({ ...createForm, loss_commission_rate: Number(e.target.value) })
+                            }
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsCreateDialogOpen(false)}
+                          className="border-slate-600 text-white hover:bg-slate-700"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                        >
+                          Criar Afiliado
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
+
+            {/* Search and Filter Controls */}
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="relative flex-1 w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por nome, email, username ou código..."
+                      value={affiliateSearchTerm}
+                      onChange={(e) => setAffiliateSearchTerm(e.target.value)}
+                      className="pl-10 bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+                  <Select value={affiliateStatusFilter} onValueChange={setAffiliateStatusFilter}>
+                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-32">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="active">Ativos</SelectItem>
+                      <SelectItem value="inactive">Inativos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="bg-slate-900/50 border-slate-700">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-slate-700">
-                        <TableHead className="text-gray-400">Afiliado</TableHead>
+                        <SortableHeader
+                          label="Afiliado"
+                          sortKey="name"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
                         <TableHead className="text-gray-400">Código</TableHead>
-                        <TableHead className="text-gray-400">Comissão</TableHead>
-                        <TableHead className="text-gray-400">Referidos</TableHead>
-                        <TableHead className="text-gray-400">Ganhos</TableHead>
-                        <TableHead className="text-gray-400">Status</TableHead>
+                        <SortableHeader
+                          label="Comissão"
+                          sortKey="commission_rate"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Referidos"
+                          sortKey="total_referrals"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Depósitos"
+                          sortKey="deposits_count"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Ganhos"
+                          sortKey="total_earnings"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Saldo"
+                          sortKey="balance"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <TableHead className="text-gray-400">Gerente</TableHead>
+                        <SortableHeader
+                          label="Status"
+                          sortKey="status"
+                          currentSortBy={affiliateSortBy}
+                          currentSortOrder={affiliateSortOrder}
+                          onSort={(key) => {
+                            if (affiliateSortBy === key) {
+                              setAffiliateSortOrder(affiliateSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setAffiliateSortBy(key as keyof Affiliate)
+                              setAffiliateSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <TableHead className="text-gray-400">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {affiliates.slice(0, 10).map((affiliate) => (
+                      {paginatedAffiliates.map((affiliate) => (
                         <TableRow key={affiliate.id} className="hover:bg-slate-800 border-slate-700">
                           <TableCell>
                             <div className="flex flex-col">
@@ -2076,54 +2333,641 @@ export default function AdminConfigPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className="text-green-400">{affiliate.commission_rate}%</span>
+                            <div className="flex flex-col">
+                              <span className="text-green-400">{affiliate.commission_rate}%</span>
+                              {affiliate.loss_commission_rate > 0 && (
+                                <span className="text-red-400 text-xs">{affiliate.loss_commission_rate}% (perda)</span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <span className="text-white">{affiliate.total_referrals}</span>
                           </TableCell>
                           <TableCell>
+                            <span className="text-green-400 font-medium">{affiliate.deposits_count}</span>
+                          </TableCell>
+                          <TableCell>
                             <span className="text-white">{formatCurrency(affiliate.total_earnings)}</span>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-white">{formatCurrency(affiliate.balance)}</span>
+                          </TableCell>
+                          <TableCell>
+                            {affiliate.manager_name ? (
+                              <div className="flex items-center space-x-1">
+                                <UserCog className="h-3 w-3 text-blue-400" />
+                                <span className="text-blue-400 text-xs">{affiliate.manager_name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 text-xs">Sem gerente</span>
+                            )}
+                          </TableCell>
                           <TableCell>{getStatusBadge(affiliate.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog(affiliate)}
+                                className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openAssignManagerDialog(affiliate)}
+                                className="h-7 w-7 text-purple-400 hover:text-purple-300 hover:bg-purple-900/20"
+                              >
+                                {affiliate.manager_id ? <Unlink className="h-3 w-3" /> : <Link className="h-3 w-3" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteAffiliate(affiliate.id)}
+                                className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="lg:hidden p-4 space-y-4">
+                  {paginatedAffiliates.map((affiliate) => (
+                    <MobileCard key={affiliate.id}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="text-white font-medium">{affiliate.name}</h3>
+                          <p className="text-gray-500 text-xs">{affiliate.email}</p>
+                          <div className="mt-2">
+                            <Badge variant="outline" className="border-slate-600 text-white text-xs">
+                              {affiliate.affiliate_code}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right">{getStatusBadge(affiliate.status)}</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-400">Comissão</p>
+                          <p className="text-green-400">{affiliate.commission_rate}%</p>
+                          {affiliate.loss_commission_rate > 0 && (
+                            <p className="text-red-400 text-xs">{affiliate.loss_commission_rate}% (perda)</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Referidos</p>
+                          <p className="text-white">{affiliate.total_referrals}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Ganhos</p>
+                          <p className="text-white">{formatCurrency(affiliate.total_earnings)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Saldo</p>
+                          <p className="text-white">{formatCurrency(affiliate.balance)}</p>
+                        </div>
+                      </div>
+
+                      {affiliate.manager_name && (
+                        <div className="flex items-center space-x-2 p-2 bg-slate-700/50 rounded">
+                          <UserCog className="h-4 w-4 text-blue-400" />
+                          <span className="text-blue-400 text-sm">Gerente: {affiliate.manager_name}</span>
+                        </div>
+                      )}
+
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(affiliate)}
+                          className="flex-1 border-slate-600 text-blue-400 hover:bg-blue-900/20"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAssignManagerDialog(affiliate)}
+                          className="flex-1 border-slate-600 text-purple-400 hover:bg-purple-900/20"
+                        >
+                          {affiliate.manager_id ? (
+                            <>
+                              <Unlink className="h-3 w-3 mr-1" />
+                              Desvincular
+                            </>
+                          ) : (
+                            <>
+                              <Link className="h-3 w-3 mr-1" />
+                              Vincular
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteAffiliate(affiliate.id)}
+                          className="border-slate-600 text-red-400 hover:bg-red-900/20"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </MobileCard>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                <PaginationControls
+                  currentPage={affiliateCurrentPage}
+                  totalPages={affiliateTotalPages}
+                  onPageChange={setAffiliateCurrentPage}
+                  itemsPerPage={affiliateItemsPerPage}
+                  totalItems={filteredAndSortedAffiliates.length}
+                />
               </CardContent>
             </Card>
+
+            {/* Edit Affiliate Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md mx-4">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Editar Afiliado</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleEditAffiliate} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="edit-name" className="text-white">
+                        Nome
+                      </Label>
+                      <Input
+                        id="edit-name"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-email" className="text-white">
+                        Email
+                      </Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-username" className="text-white">
+                        Nome de Usuário
+                      </Label>
+                      <Input
+                        id="edit-username"
+                        value={editForm.username}
+                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-commission-rate" className="text-white">
+                        Taxa de Comissão (%)
+                      </Label>
+                      <Input
+                        id="edit-commission-rate"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editForm.commission_rate}
+                        onChange={(e) => setEditForm({ ...editForm, commission_rate: Number(e.target.value) })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-loss-commission-rate" className="text-white">
+                        Taxa de Comissão de Perda (%)
+                      </Label>
+                      <Input
+                        id="edit-loss-commission-rate"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editForm.loss_commission_rate}
+                        onChange={(e) => setEditForm({ ...editForm, loss_commission_rate: Number(e.target.value) })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-status" className="text-white">
+                        Status
+                      </Label>
+                      <Select
+                        value={editForm.status}
+                        onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                          <SelectItem value="active">Ativo</SelectItem>
+                          <SelectItem value="inactive">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-password" className="text-white">
+                        Nova Senha
+                      </Label>
+                      <Input
+                        id="edit-password"
+                        type="password"
+                        value={editForm.password}
+                        onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        placeholder="Deixe em branco para não alterar"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsEditDialogOpen(false)}
+                      className="border-slate-600 text-white hover:bg-slate-700"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                    >
+                      Salvar Alterações
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Assign Manager Dialog */}
+            <Dialog open={isAssignManagerDialogOpen} onOpenChange={setIsAssignManagerDialogOpen}>
+              <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md mx-4">
+                <DialogHeader>
+                  <DialogTitle className="text-white">
+                    {selectedAffiliateForManager?.manager_id ? "Desvincular Gerente" : "Vincular Afiliado a um Gerente"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="bg-slate-800 p-3 rounded-md">
+                    <p className="text-gray-400 text-xs">Afiliado</p>
+                    <p className="text-white font-medium">{selectedAffiliateForManager?.name}</p>
+                    <p className="text-gray-400 text-xs">{selectedAffiliateForManager?.email}</p>
+                  </div>
+
+                  {selectedAffiliateForManager?.manager_id ? (
+                    <div className="space-y-4">
+                      <div className="bg-slate-800 p-3 rounded-md">
+                        <p className="text-gray-400 text-xs">Gerente Atual</p>
+                        <div className="flex items-center space-x-2">
+                          <UserCog className="h-4 w-4 text-blue-400" />
+                          <p className="text-white font-medium">{selectedAffiliateForManager?.manager_name}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsAssignManagerDialogOpen(false)}
+                          className="border-slate-600 text-white hover:bg-slate-700"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => {
+                            if (selectedAffiliateForManager) {
+                              handleAssignManager(selectedAffiliateForManager.id, null)
+                              setIsAssignManagerDialogOpen(false)
+                            }
+                          }}
+                        >
+                          <Unlink className="h-4 w-4 mr-2" />
+                          Desvincular Gerente
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="manager-id" className="text-white">
+                          Selecione um Gerente
+                        </Label>
+                        <Select
+                          onValueChange={(value) => {
+                            if (selectedAffiliateForManager) {
+                              handleAssignManager(selectedAffiliateForManager.id, Number(value))
+                              setIsAssignManagerDialogOpen(false)
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                            <SelectValue placeholder="Selecione um gerente" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                            {managers
+                              .filter((manager) => manager.status === "active")
+                              .map((manager) => (
+                                <SelectItem key={manager.id} value={manager.id.toString()}>
+                                  {manager.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsAssignManagerDialogOpen(false)}
+                          className="border-slate-600 text-white hover:bg-slate-700"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
-          {/* Managers Tab - Simplified version */}
+          {/* Managers Tab */}
           <TabsContent value="managers" className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="text-xl font-bold text-white">Gerenciar Gerentes</h2>
-              <Button
-                onClick={() => handleExportData("managers")}
-                disabled={isExporting}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isExporting ? "Exportando..." : "Exportar CSV"}
-              </Button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <Button
+                  onClick={() => handleExportData("managers")}
+                  disabled={isExporting}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 w-full sm:w-auto"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isExporting ? "Exportando..." : "Exportar CSV"}
+                </Button>
+                <Dialog open={isCreateManagerDialogOpen} onOpenChange={setIsCreateManagerDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 w-full sm:w-auto">
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Novo Gerente
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md mx-4">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Criar Novo Gerente</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateManager} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <Label htmlFor="manager-name" className="text-white">
+                            Nome
+                          </Label>
+                          <Input
+                            id="manager-name"
+                            value={createManagerForm.name}
+                            onChange={(e) => setCreateManagerForm({ ...createManagerForm, name: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="manager-email" className="text-white">
+                            Email
+                          </Label>
+                          <Input
+                            id="manager-email"
+                            type="email"
+                            value={createManagerForm.email}
+                            onChange={(e) => setCreateManagerForm({ ...createManagerForm, email: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="manager-username" className="text-white">
+                            Nome de Usuário
+                          </Label>
+                          <Input
+                            id="manager-username"
+                            value={createManagerForm.username}
+                            onChange={(e) => setCreateManagerForm({ ...createManagerForm, username: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="manager-password" className="text-white">
+                            Senha
+                          </Label>
+                          <Input
+                            id="manager-password"
+                            type="password"
+                            value={createManagerForm.password}
+                            onChange={(e) => setCreateManagerForm({ ...createManagerForm, password: e.target.value })}
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="manager-commission-rate" className="text-white">
+                            Taxa de Comissão (%)
+                          </Label>
+                          <Input
+                            id="manager-commission-rate"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={createManagerForm.commission_rate}
+                            onChange={(e) =>
+                              setCreateManagerForm({ ...createManagerForm, commission_rate: Number(e.target.value) })
+                            }
+                            className="bg-slate-800 border-slate-700 text-white"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsCreateManagerDialogOpen(false)}
+                          className="border-slate-600 text-white hover:bg-slate-700"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
+                        >
+                          Criar Gerente
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
+
+            {/* Search and Filter Controls for Managers */}
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="relative flex-1 w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por nome, email ou username..."
+                      value={managerSearchTerm}
+                      onChange={(e) => setManagerSearchTerm(e.target.value)}
+                      className="pl-10 bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+                  <Select value={managerStatusFilter} onValueChange={setManagerStatusFilter}>
+                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-32">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="active">Ativos</SelectItem>
+                      <SelectItem value="inactive">Inativos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="bg-slate-900/50 border-slate-700">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-slate-700">
-                        <TableHead className="text-gray-400">Gerente</TableHead>
-                        <TableHead className="text-gray-400">Comissão</TableHead>
-                        <TableHead className="text-gray-400">Afiliados</TableHead>
-                        <TableHead className="text-gray-400">Ganhos</TableHead>
-                        <TableHead className="text-gray-400">Saldo</TableHead>
-                        <TableHead className="text-gray-400">Status</TableHead>
+                        <SortableHeader
+                          label="Gerente"
+                          sortKey="name"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Comissão"
+                          sortKey="commission_rate"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Afiliados"
+                          sortKey="total_affiliates"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Referidos"
+                          sortKey="total_referrals_managed"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Ganhos"
+                          sortKey="total_earnings"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Saldo"
+                          sortKey="balance"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <SortableHeader
+                          label="Status"
+                          sortKey="status"
+                          currentSortBy={managerSortBy}
+                          currentSortOrder={managerSortOrder}
+                          onSort={(key) => {
+                            if (managerSortBy === key) {
+                              setManagerSortOrder(managerSortOrder === "asc" ? "desc" : "asc")
+                            } else {
+                              setManagerSortBy(key as keyof Manager)
+                              setManagerSortOrder("asc")
+                            }
+                          }}
+                        />
+                        <TableHead className="text-gray-400">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {managers.slice(0, 10).map((manager) => (
+                      {paginatedManagers.map((manager) => (
                         <TableRow key={manager.id} className="hover:bg-slate-800 border-slate-700">
                           <TableCell>
                             <div className="flex flex-col">
@@ -2138,16 +2982,684 @@ export default function AdminConfigPage() {
                             <span className="text-white">{manager.total_affiliates || 0}</span>
                           </TableCell>
                           <TableCell>
+                            <span className="text-white">{manager.total_referrals_managed || 0}</span>
+                          </TableCell>
+                          <TableCell>
                             <span className="text-white">{formatCurrency(manager.total_earnings)}</span>
                           </TableCell>
                           <TableCell>
                             <span className="text-white">{formatCurrency(manager.balance)}</span>
                           </TableCell>
                           <TableCell>{getStatusBadge(manager.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditManagerDialog(manager)}
+                                className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteManager(manager.id)}
+                                className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="lg:hidden p-4 space-y-4">
+                  {paginatedManagers.map((manager) => (
+                    <MobileCard key={manager.id}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="text-white font-medium">{manager.name}</h3>
+                          <p className="text-gray-500 text-xs">{manager.email}</p>
+                        </div>
+                        <div className="text-right">{getStatusBadge(manager.status)}</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-400">Comissão</p>
+                          <p className="text-purple-400">{manager.commission_rate}%</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Afiliados</p>
+                          <p className="text-white">{manager.total_affiliates || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Ganhos</p>
+                          <p className="text-white">{formatCurrency(manager.total_earnings)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400">Saldo</p>
+                          <p className="text-white">{formatCurrency(manager.balance)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditManagerDialog(manager)}
+                          className="flex-1 border-slate-600 text-blue-400 hover:bg-blue-900/20"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteManager(manager.id)}
+                          className="border-slate-600 text-red-400 hover:bg-red-900/20"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </MobileCard>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                <PaginationControls
+                  currentPage={managerCurrentPage}
+                  totalPages={managerTotalPages}
+                  onPageChange={setManagerCurrentPage}
+                  itemsPerPage={managerItemsPerPage}
+                  totalItems={filteredAndSortedManagers.length}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Edit Manager Dialog */}
+            <Dialog open={isEditManagerDialogOpen} onOpenChange={setIsEditManagerDialogOpen}>
+              <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md mx-4">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Editar Gerente</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleEditManager} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="edit-manager-name" className="text-white">
+                        Nome
+                      </Label>
+                      <Input
+                        id="edit-manager-name"
+                        value={editManagerForm.name}
+                        onChange={(e) => setEditManagerForm({ ...editManagerForm, name: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-manager-email" className="text-white">
+                        Email
+                      </Label>
+                      <Input
+                        id="edit-manager-email"
+                        type="email"
+                        value={editManagerForm.email}
+                        onChange={(e) => setEditManagerForm({ ...editManagerForm, email: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-manager-username" className="text-white">
+                        Nome de Usuário
+                      </Label>
+                      <Input
+                        id="edit-manager-username"
+                        value={editManagerForm.username}
+                        onChange={(e) => setEditManagerForm({ ...editManagerForm, username: e.target.value })}
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-manager-commission-rate" className="text-white">
+                        Taxa de Comissão (%)
+                      </Label>
+                      <Input
+                        id="edit-manager-commission-rate"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editManagerForm.commission_rate}
+                        onChange={(e) =>
+                          setEditManagerForm({ ...editManagerForm, commission_rate: Number(e.target.value) })
+                        }
+                        className="bg-slate-800 border-slate-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-manager-status" className="text-white">
+                        Status
+                      </Label>
+                      <Select
+                        value={editManagerForm.status}
+                        onValueChange={(value) => setEditManagerForm({ ...editManagerForm, status: value })}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                          <SelectItem value="active">Ativo</SelectItem>
+                          <SelectItem value="inactive">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsEditManagerDialogOpen(false)}
+                      className="border-slate-600 text-white hover:bg-slate-700"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
+                    >
+                      Salvar Alterações
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+
+          {/* Affiliate Withdraws Tab */}
+          <TabsContent value="affiliate-withdraws" className="space-y-6">
+            <h2 className="text-xl font-bold text-white">Saques de Afiliados</h2>
+
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardContent className="p-0">
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-700">
+                        <TableHead className="text-gray-400">Afiliado</TableHead>
+                        <TableHead className="text-gray-400">Valor</TableHead>
+                        <TableHead className="text-gray-400">Chave PIX</TableHead>
+                        <TableHead className="text-gray-400">Status</TableHead>
+                        <TableHead className="text-gray-400">Solicitado</TableHead>
+                        <TableHead className="text-gray-400">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {affiliateWithdraws.length > 0 ? (
+                        affiliateWithdraws.map((withdraw) => (
+                          <TableRow key={withdraw.id} className="hover:bg-slate-800 border-slate-700">
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-white font-medium">{withdraw.affiliate_name}</span>
+                                <span className="text-gray-500 text-xs">{withdraw.affiliate_email}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-white font-medium">{formatCurrency(withdraw.amount)}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-white text-xs truncate max-w-32">{withdraw.pix_key}</span>
+                                <span className="text-gray-500 text-xs">{withdraw.pix_type}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(withdraw.status)}</TableCell>
+                            <TableCell>
+                              <span className="text-gray-400 text-xs">{formatDate(withdraw.created_at)}</span>
+                            </TableCell>
+                            <TableCell>
+                              {withdraw.status === "pending" ? (
+                                <div className="flex items-center space-x-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleProcessWithdraw(withdraw.id, "approve")}
+                                    disabled={processingWithdraw === withdraw.id}
+                                    className="h-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Aprovar
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleProcessWithdraw(withdraw.id, "reject")}
+                                    disabled={processingWithdraw === withdraw.id}
+                                    className="h-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Rejeitar
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 text-xs">
+                                  {withdraw.processed_at ? formatDate(withdraw.processed_at) : "Processado"}
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4 text-gray-400">
+                            Nenhum saque de afiliado encontrado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="lg:hidden p-4 space-y-4">
+                  {affiliateWithdraws.length > 0 ? (
+                    affiliateWithdraws.map((withdraw) => (
+                      <MobileCard key={withdraw.id}>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-white font-medium">{withdraw.affiliate_name}</h3>
+                            <p className="text-gray-500 text-xs">{withdraw.affiliate_email}</p>
+                            <p className="text-white font-bold text-lg mt-1">{formatCurrency(withdraw.amount)}</p>
+                          </div>
+                          <div className="text-right">{getStatusBadge(withdraw.status)}</div>
+                        </div>
+
+                        <div className="bg-slate-700/50 p-2 rounded">
+                          <p className="text-gray-400 text-xs">Chave PIX</p>
+                          <p className="text-white text-sm truncate">{withdraw.pix_key}</p>
+                          <p className="text-gray-500 text-xs">{withdraw.pix_type}</p>
+                        </div>
+
+                        <div className="text-xs text-gray-400">Solicitado em: {formatDate(withdraw.created_at)}</div>
+
+                        {withdraw.status === "pending" ? (
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleProcessWithdraw(withdraw.id, "approve")}
+                              disabled={processingWithdraw === withdraw.id}
+                              className="flex-1 border-green-600 text-green-400 hover:bg-green-900/20"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Aprovar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleProcessWithdraw(withdraw.id, "reject")}
+                              disabled={processingWithdraw === withdraw.id}
+                              className="flex-1 border-red-600 text-red-400 hover:bg-red-900/20"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Rejeitar
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-center text-gray-500 text-sm">
+                            {withdraw.processed_at
+                              ? `Processado em: ${formatDate(withdraw.processed_at)}`
+                              : "Processado"}
+                          </div>
+                        )}
+                      </MobileCard>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">Nenhum saque de afiliado encontrado</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Manager Withdraws Tab */}
+          <TabsContent value="manager-withdraws" className="space-y-6">
+            <h2 className="text-xl font-bold text-white">Saques de Gerentes</h2>
+
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardContent className="p-0">
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-700">
+                        <TableHead className="text-gray-400">Gerente</TableHead>
+                        <TableHead className="text-gray-400">Valor</TableHead>
+                        <TableHead className="text-gray-400">Chave PIX</TableHead>
+                        <TableHead className="text-gray-400">Status</TableHead>
+                        <TableHead className="text-gray-400">Solicitado</TableHead>
+                        <TableHead className="text-gray-400">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {managerWithdraws.length > 0 ? (
+                        managerWithdraws.map((withdraw) => (
+                          <TableRow key={withdraw.id} className="hover:bg-slate-800 border-slate-700">
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-white font-medium">{withdraw.manager_name}</span>
+                                <span className="text-gray-500 text-xs">{withdraw.manager_email}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-white font-medium">{formatCurrency(withdraw.amount)}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-white text-xs truncate max-w-32">{withdraw.pix_key}</span>
+                                <span className="text-gray-500 text-xs">{withdraw.pix_type}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(withdraw.status)}</TableCell>
+                            <TableCell>
+                              <span className="text-gray-400 text-xs">{formatDate(withdraw.created_at)}</span>
+                            </TableCell>
+                            <TableCell>
+                              {withdraw.status === "pending" ? (
+                                <div className="flex items-center space-x-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleProcessManagerWithdraw(withdraw.id, "approve")}
+                                    disabled={processingManagerWithdraw === withdraw.id}
+                                    className="h-7 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Aprovar
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleProcessManagerWithdraw(withdraw.id, "reject")}
+                                    disabled={processingManagerWithdraw === withdraw.id}
+                                    className="h-7 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Rejeitar
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 text-xs">
+                                  {withdraw.processed_at ? formatDate(withdraw.processed_at) : "Processado"}
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4 text-gray-400">
+                            Nenhum saque de gerente encontrado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="lg:hidden p-4 space-y-4">
+                  {managerWithdraws.length > 0 ? (
+                    managerWithdraws.map((withdraw) => (
+                      <MobileCard key={withdraw.id}>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-white font-medium">{withdraw.manager_name}</h3>
+                            <p className="text-gray-500 text-xs">{withdraw.manager_email}</p>
+                            <p className="text-white font-bold text-lg mt-1">{formatCurrency(withdraw.amount)}</p>
+                          </div>
+                          <div className="text-right">{getStatusBadge(withdraw.status)}</div>
+                        </div>
+
+                        <div className="bg-slate-700/50 p-2 rounded">
+                          <p className="text-gray-400 text-xs">Chave PIX</p>
+                          <p className="text-white text-sm truncate">{withdraw.pix_key}</p>
+                          <p className="text-gray-500 text-xs">{withdraw.pix_type}</p>
+                        </div>
+
+                        <div className="text-xs text-gray-400">Solicitado em: {formatDate(withdraw.created_at)}</div>
+
+                        {withdraw.status === "pending" ? (
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleProcessManagerWithdraw(withdraw.id, "approve")}
+                              disabled={processingManagerWithdraw === withdraw.id}
+                              className="flex-1 border-green-600 text-green-400 hover:bg-green-900/20"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Aprovar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleProcessManagerWithdraw(withdraw.id, "reject")}
+                              disabled={processingManagerWithdraw === withdraw.id}
+                              className="flex-1 border-red-600 text-red-400 hover:bg-red-900/20"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Rejeitar
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-center text-gray-500 text-sm">
+                            {withdraw.processed_at
+                              ? `Processado em: ${formatDate(withdraw.processed_at)}`
+                              : "Processado"}
+                          </div>
+                        )}
+                      </MobileCard>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">Nenhum saque de gerente encontrado</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports" className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-white">Relatórios e Exportações</h2>
+            </div>
+
+            {/* Export Options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <Users className="h-8 w-8 text-blue-400" />
+                    <Button
+                      onClick={() => handleExportData("affiliates")}
+                      disabled={isExporting}
+                      size="sm"
+                      className="bg-blue-500 hover:bg-blue-600"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      CSV
+                    </Button>
+                  </div>
+                  <h3 className="text-white font-medium mb-2">Relatório de Afiliados</h3>
+                  <p className="text-gray-400 text-sm">Dados completos dos afiliados, comissões e performance</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <UserCog className="h-8 w-8 text-purple-400" />
+                    <Button
+                      onClick={() => handleExportData("managers")}
+                      disabled={isExporting}
+                      size="sm"
+                      className="bg-purple-500 hover:bg-purple-600"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      CSV
+                    </Button>
+                  </div>
+                  <h3 className="text-white font-medium mb-2">Relatório de Gerentes</h3>
+                  <p className="text-gray-400 text-sm">Dados dos gerentes, afiliados gerenciados e ganhos</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <CreditCard className="h-8 w-8 text-green-400" />
+                    <Button
+                      onClick={() => handleExportData("transactions")}
+                      disabled={isExporting}
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      CSV
+                    </Button>
+                  </div>
+                  <h3 className="text-white font-medium mb-2">Relatório de Transações</h3>
+                  <p className="text-gray-400 text-sm">Histórico completo de transações e pagamentos</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <Target className="h-8 w-8 text-yellow-400" />
+                    <Button
+                      onClick={() => handleExportData("commissions")}
+                      disabled={isExporting}
+                      size="sm"
+                      className="bg-yellow-500 hover:bg-yellow-600"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      CSV
+                    </Button>
+                  </div>
+                  <h3 className="text-white font-medium mb-2">Relatório de Comissões</h3>
+                  <p className="text-gray-400 text-sm">Detalhamento de todas as comissões pagas</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Custom Report Builder */}
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-cyan-400" />
+                  <span>Relatório Personalizado</span>
+                </CardTitle>
+                <CardDescription>Configure um relatório personalizado com filtros específicos</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="report-type" className="text-white">
+                      Tipo de Relatório
+                    </Label>
+                    <Select>
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                        <SelectItem value="affiliates">Afiliados</SelectItem>
+                        <SelectItem value="managers">Gerentes</SelectItem>
+                        <SelectItem value="transactions">Transações</SelectItem>
+                        <SelectItem value="commissions">Comissões</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="date-from" className="text-white">
+                      Data Inicial
+                    </Label>
+                    <Input id="date-from" type="date" className="bg-slate-800 border-slate-700 text-white" />
+                  </div>
+                  <div>
+                    <Label htmlFor="date-to" className="text-white">
+                      Data Final
+                    </Label>
+                    <Input id="date-to" type="date" className="bg-slate-800 border-slate-700 text-white" />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    disabled={isExporting}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExporting ? "Gerando..." : "Gerar Relatório"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Reports */}
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <Clock className="h-5 w-5 text-gray-400" />
+                  <span>Relatórios Recentes</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-4 w-4 text-blue-400" />
+                      <div>
+                        <p className="text-white text-sm">Relatório de Afiliados - Janeiro 2024</p>
+                        <p className="text-gray-400 text-xs">Gerado em 15/01/2024 às 14:30</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-4 w-4 text-purple-400" />
+                      <div>
+                        <p className="text-white text-sm">Relatório de Gerentes - Janeiro 2024</p>
+                        <p className="text-gray-400 text-xs">Gerado em 14/01/2024 às 09:15</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-4 w-4 text-green-400" />
+                      <div>
+                        <p className="text-white text-sm">Relatório de Transações - Dezembro 2023</p>
+                        <p className="text-gray-400 text-xs">Gerado em 02/01/2024 às 16:45</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -2168,7 +3680,7 @@ export default function AdminConfigPage() {
                     <Label htmlFor="min-deposit" className="text-white">
                       Depósito Mínimo (R$)
                     </Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <Input
                         id="min-deposit"
                         type="number"
@@ -2180,7 +3692,7 @@ export default function AdminConfigPage() {
                       />
                       <Button
                         onClick={() => handleUpdateSetting("min_deposit_amount", settingsForm.min_deposit_amount)}
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 w-full sm:w-auto"
                       >
                         Salvar
                       </Button>
@@ -2193,7 +3705,7 @@ export default function AdminConfigPage() {
                     <Label htmlFor="min-withdraw" className="text-white">
                       Saque Mínimo (R$)
                     </Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <Input
                         id="min-withdraw"
                         type="number"
@@ -2205,7 +3717,7 @@ export default function AdminConfigPage() {
                       />
                       <Button
                         onClick={() => handleUpdateSetting("min_withdraw_amount", settingsForm.min_withdraw_amount)}
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 w-full sm:w-auto"
                       >
                         Salvar
                       </Button>
@@ -2217,9 +3729,193 @@ export default function AdminConfigPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white">Ações Administrativas</CardTitle>
+                <CardDescription>Funções especiais para administradores</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="text-white font-medium">Recalcular Saldos de Gerentes</h3>
+                    <p className="text-gray-400 text-sm">
+                      Recalcula os saldos dos gerentes com base nas comissões dos afiliados
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const response = await AuthClient.makeAuthenticatedRequest(
+                            "/api/admin/recalculate-manager-balances",
+                            {
+                              method: "POST",
+                              headers: { "X-Admin-Token": adminToken },
+                            },
+                          )
+                          if (response.ok) {
+                            const data = await response.json()
+                            toast.success(data.message || "Saldos recalculados com sucesso!")
+                            fetchManagers()
+                          } else {
+                            const error = await response.json()
+                            toast.error(error.error || "Erro ao recalcular saldos")
+                          }
+                        } catch (error) {
+                          console.error("Erro ao recalcular saldos:", error)
+                          toast.error("Erro interno do servidor")
+                        }
+                      }}
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 w-full"
+                    >
+                      Recalcular Saldos
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-white font-medium">Sincronizar Saldos de Gerentes</h3>
+                    <p className="text-gray-400 text-sm">
+                      Sincroniza os saldos dos gerentes com base nas comissões dos afiliados
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const response = await AuthClient.makeAuthenticatedRequest(
+                            "/api/admin/sync-manager-balances",
+                            {
+                              method: "POST",
+                              headers: { "X-Admin-Token": adminToken },
+                            },
+                          )
+                          if (response.ok) {
+                            const data = await response.json()
+                            toast.success(data.message || "Saldos sincronizados com sucesso!")
+                            fetchManagers()
+                          } else {
+                            const error = await response.json()
+                            toast.error(error.error || "Erro ao sincronizar saldos")
+                          }
+                        } catch (error) {
+                          console.error("Erro ao sincronizar saldos:", error)
+                          toast.error("Erro interno do servidor")
+                        }
+                      }}
+                      className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 w-full"
+                    >
+                      Sincronizar Saldos
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* Other tabs can be added as needed */}
+          {/* Performance Tab */}
+          <TabsContent value="performance" className="space-y-6">
+            <h2 className="text-xl font-bold text-white">Desempenho do Sistema</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Tempo Médio de Depósito</p>
+                      <p className="text-2xl font-bold text-green-400">
+                        {stats?.performance?.avg_deposit_time
+                          ? `${stats.performance.avg_deposit_time.toFixed(1)}s`
+                          : "N/A"}
+                      </p>
+                      <p className="text-xs text-gray-500">Processamento</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-green-400" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Tempo Médio de Saque</p>
+                      <p className="text-2xl font-bold text-blue-400">
+                        {stats?.performance?.avg_withdraw_time
+                          ? `${stats.performance.avg_withdraw_time.toFixed(1)}s`
+                          : "N/A"}
+                      </p>
+                      <p className="text-xs text-gray-500">Processamento</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-blue-400" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Taxa de Erro da API</p>
+                      <p className="text-2xl font-bold text-yellow-400">{stats?.performance?.api_error_rate || "0%"}</p>
+                      <p className="text-xs text-gray-500">Últimas 24h</p>
+                    </div>
+                    <AlertCircle className="h-8 w-8 text-yellow-400" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Uptime do Sistema</p>
+                      <p className="text-2xl font-bold text-purple-400">
+                        {stats?.performance?.system_uptime || "99.9%"}
+                      </p>
+                      <p className="text-xs text-gray-500">Últimos 30 dias</p>
+                    </div>
+                    <Activity className="h-8 w-8 text-purple-400" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-cyan-400" />
+                  <span>Logs do Sistema</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-green-400" />
+                      <div>
+                        <p className="text-white text-sm">Sistema iniciado com sucesso</p>
+                        <p className="text-gray-400 text-xs">Hoje às 08:00:00</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                      <div>
+                        <p className="text-white text-sm">Backup automático realizado</p>
+                        <p className="text-gray-400 text-xs">Hoje às 06:00:00</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                      <div>
+                        <p className="text-white text-sm">Alta carga de usuários detectada</p>
+                        <p className="text-gray-400 text-xs">Ontem às 20:30:00</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

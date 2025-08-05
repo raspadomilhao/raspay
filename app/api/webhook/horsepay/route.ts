@@ -35,56 +35,6 @@ function normalizeStatus(status: string | boolean): string {
   return status.toString()
 }
 
-// 🔔 FUNÇÃO PARA ENVIAR NOTIFICAÇÃO PUSH PARA ADMINS
-async function sendAdminNotification(title: string, body: string, data?: any) {
-  try {
-    console.log("🔔 Enviando notificação para admins:", { title, body })
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/admin/notifications/send`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "send",
-          notification: {
-            title,
-            body,
-            icon: "/icon-192.png",
-            badge: "/icon-192.png",
-            tag: "deposit-confirmed",
-            data: {
-              url: "/adminconfig",
-              timestamp: Date.now(),
-              ...data,
-            },
-            actions: [
-              {
-                action: "view",
-                title: "Ver Painel",
-                icon: "/icon-192.png",
-              },
-            ],
-          },
-        }),
-      },
-    )
-
-    const result = await response.json()
-
-    if (result.success) {
-      console.log("✅ Notificação enviada para admins:", result.message)
-    } else {
-      console.error("❌ Erro ao enviar notificação:", result.error)
-    }
-  } catch (error) {
-    console.error("❌ Erro ao enviar notificação push:", error)
-    // Não falhar o webhook por causa da notificação
-  }
-}
-
 // 🔗 FUNÇÃO PARA PROCESSAR BÔNUS DE INDICAÇÃO
 async function processReferralBonus(userId: number, transactionId: number): Promise<void> {
   try {
@@ -297,28 +247,6 @@ async function processDepositCallback(payload: DepositCallback) {
     `
 
       console.log(`🎉 Sucesso! Valor integral creditado ao usuário!`)
-
-      // 🔔 BUSCAR DADOS DO USUÁRIO PARA NOTIFICAÇÃO
-      const [user] = await sql`
-        SELECT name, email, username FROM users WHERE id = ${transaction.user_id}
-      `
-
-      // 🔔 ENVIAR NOTIFICAÇÃO PUSH PARA ADMINS
-      if (user) {
-        const userName = user.name || user.username || user.email
-        await sendAdminNotification(
-          "💰 Novo Depósito Confirmado!",
-          `${userName} depositou R$ ${originalAmount.toFixed(2)}`,
-          {
-            type: "deposit_confirmed",
-            user_id: transaction.user_id,
-            user_name: userName,
-            amount: originalAmount,
-            transaction_id: transaction.id,
-            external_id: payload.external_id,
-          },
-        )
-      }
 
       console.log(`📊 VERIFICANDO PROGRESSO DE BÔNUS PARA USUÁRIO ${transaction.user_id}`)
 
