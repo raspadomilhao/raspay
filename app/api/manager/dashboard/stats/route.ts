@@ -94,7 +94,6 @@ export async function GET(request: NextRequest) {
     // Calcular valores
     const totalAffiliateEarnings = Number(affiliateStats.total_affiliate_earnings) || 0
     const commissionRate = Number(manager.commission_rate) || 5.0
-    const calculatedManagerEarnings = (totalAffiliateEarnings * commissionRate) / 100
     const currentBalance = Number(manager.balance) || 0
 
     const stats = {
@@ -105,7 +104,7 @@ export async function GET(request: NextRequest) {
       commission_rate: commissionRate,
       pending_withdraws: Number(withdrawStats.pending_withdraws) || 0,
       total_affiliate_earnings: totalAffiliateEarnings,
-      calculated_manager_earnings: calculatedManagerEarnings,
+      calculated_manager_earnings: currentBalance, // USAR O SALDO ATUAL EM VEZ DO CÁLCULO
       this_month_transactions: Number(monthlyStats.this_month_transactions) || 0,
       total_deposits_managed: Number(referralStats.total_deposits_managed) || 0,
       total_deposit_volume_managed: Number(referralStats.total_deposit_volume_managed) || 0,
@@ -119,7 +118,7 @@ export async function GET(request: NextRequest) {
     console.log("📊 Stats calculadas:", {
       current_balance: stats.current_balance,
       total_affiliate_earnings: stats.total_affiliate_earnings,
-      calculated_manager_earnings: stats.calculated_manager_earnings,
+      calculated_manager_earnings: stats.calculated_manager_earnings, // Agora será igual ao current_balance
     })
 
     return NextResponse.json(stats)

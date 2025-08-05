@@ -494,18 +494,14 @@ export default function ManagerDashboard() {
               Como Funciona o Sistema Simplificado
             </CardTitle>
             <CardDescription>
-              Seu saldo é sempre {stats.commission_rate}% do total ganho pelos seus afiliados
+              Seu saldo atual reflete suas comissões acumuladas (5% dos ganhos dos afiliados)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                  <span className="text-gray-300">Total Ganho dos Afiliados:</span>
-                  <span className="text-blue-400 font-bold">{formatCurrency(stats.total_affiliate_earnings)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                  <span className="text-gray-300">Sua Comissão ({stats.commission_rate}%):</span>
+                  <span className="text-gray-300">Suas Comissões Acumuladas:</span>
                   <span className="text-green-400 font-bold">{formatCurrency(stats.calculated_manager_earnings)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
@@ -520,8 +516,8 @@ export default function ManagerDashboard() {
                   <h4 className="text-blue-400 font-medium mb-2">✅ Vantagens:</h4>
                   <ul className="text-sm text-gray-300 space-y-1">
                     <li>• Sistema simples e transparente</li>
-                    <li>• Baseado no histórico total (não diminui)</li>
-                    <li>• Atualização automática</li>
+                    <li>• Baseado no saldo real (não em cálculos duplicados)</li>
+                    <li>• Atualização incremental a cada comissão</li>
                     <li>• Fácil de verificar e auditar</li>
                   </ul>
                 </div>

@@ -146,6 +146,18 @@ interface Pagination {
   has_prev: boolean
 }
 
+interface RankingAffiliate {
+  position: number
+  name: string
+  username: string
+  is_current_user: boolean
+}
+
+interface RankingData {
+  ranking: RankingAffiliate[]
+  current_affiliate_position: number | null
+}
+
 export default function AffiliateDashboardPage() {
   const [affiliate, setAffiliate] = useState<AffiliateData | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
@@ -171,6 +183,8 @@ export default function AffiliateDashboardPage() {
   })
   const [withdrawLoading, setWithdrawLoading] = useState(false)
   const [cancellingWithdraw, setCancellingWithdraw] = useState<number | null>(null)
+  const [rankingData, setRankingData] = useState<RankingData | null>(null)
+  const [rankingLoading, setRankingLoading] = useState(false)
   const router = useRouter()
 
   const loadDashboardData = async () => {
@@ -279,9 +293,37 @@ export default function AffiliateDashboardPage() {
     }
   }
 
+  const loadRanking = async () => {
+    try {
+      setRankingLoading(true)
+      const token = localStorage.getItem("affiliate-token")
+      if (!token) return
+
+      const response = await fetch("/api/affiliate/ranking", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setRankingData(data)
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar ranking:", error)
+    } finally {
+      setRankingLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadDashboardData()
     loadWithdrawRequests()
+    loadRanking()
   }, [])
 
   useEffect(() => {
@@ -736,6 +778,103 @@ export default function AffiliateDashboardPage() {
                 {copySuccess ? "Copiado!" : "Copiar"}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Ranking de Afiliados - Card Menor e Discreto */}
+        <Card className="mb-6 bg-gray-900/30 border-gray-800 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center text-white text-lg">
+              <Award className="h-4 w-4 mr-2 text-yellow-500" />🏆 Ranking Top 5
+            </CardTitle>
+            <Alert className="bg-gradient-to-r from-yellow-900/10 to-orange-900/10 border-yellow-500/20 mb-2">
+              <Award className="h-3 w-3 text-yellow-400" />
+              <AlertDescription className="text-yellow-400 text-sm">
+                Os 3 melhores do mês ganham prêmio especial!
+              </AlertDescription>
+            </Alert>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {rankingLoading ? (
+              <div className="text-center py-3">
+                <RefreshCw className="h-4 w-4 animate-spin mx-auto mb-1 text-white" />
+                <p className="text-gray-300 text-xs">Carregando...</p>
+              </div>
+            ) : rankingData && rankingData.ranking.length > 0 ? (
+              <div className="space-y-2">
+                {rankingData.ranking.map((affiliate) => (
+                  <div
+                    key={affiliate.position}
+                    className={`flex items-center justify-between p-2 rounded-md border text-sm ${
+                      affiliate.is_current_user
+                        ? "bg-blue-900/20 border-blue-500/30"
+                        : "bg-gray-800/30 border-gray-700/50"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
+                          affiliate.position === 1
+                            ? "bg-yellow-500 text-black"
+                            : affiliate.position === 2
+                              ? "bg-gray-400 text-black"
+                              : affiliate.position === 3
+                                ? "bg-orange-600 text-white"
+                                : "bg-gray-600 text-white"
+                        }`}
+                      >
+                        {affiliate.position === 1
+                          ? "🥇"
+                          : affiliate.position === 2
+                            ? "🥈"
+                            : affiliate.position === 3
+                              ? "🥉"
+                              : affiliate.position}
+                      </div>
+                      <div>
+                        <div
+                          className={`font-medium text-sm ${affiliate.is_current_user ? "text-blue-400" : "text-white"}`}
+                        >
+                          {affiliate.name}
+                          {affiliate.is_current_user && (
+                            <Badge className="ml-1 bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs px-1 py-0">
+                              Você
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {affiliate.position <= 3 && (
+                      <Badge
+                        className={`text-xs px-1 py-0 ${
+                          affiliate.position === 1
+                            ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                            : affiliate.position === 2
+                              ? "bg-gray-400/20 text-gray-300 border-gray-400/30"
+                              : "bg-orange-600/20 text-orange-400 border-orange-600/30"
+                        }`}
+                      >
+                        Prêmio
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+
+                {rankingData.current_affiliate_position && !rankingData.ranking.find((a) => a.is_current_user) && (
+                  <div className="mt-3 pt-2 border-t border-gray-700/50">
+                    <div className="text-center text-xs text-gray-400">
+                      Sua posição:{" "}
+                      <span className="text-white font-semibold">#{rankingData.current_affiliate_position}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <Award className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">Ranking em breve</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
