@@ -1,9 +1,29 @@
-import { NextResponse } from "next/server"
-import { sql } from "@/lib/database"
+import { type NextRequest, NextResponse } from "next/server"
+import { neon } from "@neondatabase/serverless"
 
-export async function GET() {
+const sql = neon(process.env.DATABASE_URL!)
+
+export async function GET(request: NextRequest) {
   try {
-    console.log("🔍 Buscando saques de afiliados pendentes...")
+    console.log("🔍 Verificando acesso à lista de saques de afiliados...")
+
+    // Verificar token de admin
+    const adminToken = request.headers.get("X-Admin-Token")
+    console.log("🔑 Token recebido:", adminToken ? "Presente" : "Ausente")
+
+    if (!adminToken) {
+      console.log("❌ Token de admin não fornecido")
+      return NextResponse.json({ error: "Token de admin requerido" }, { status: 401 })
+    }
+
+    // Verificar se o token é válido
+    const validTokens = ["admin-authenticated", "admin-full-access", "admin-managers-only"]
+    if (!validTokens.includes(adminToken)) {
+      console.log("❌ Token de admin inválido:", adminToken)
+      return NextResponse.json({ error: "Token de admin inválido" }, { status: 401 })
+    }
+
+    console.log("✅ Token de admin válido, buscando saques de afiliados...")
 
     const withdraws = await sql`
       SELECT 
@@ -15,8 +35,9 @@ export async function GET() {
       FROM affiliate_withdraws aw
       JOIN affiliates a ON aw.affiliate_id = a.id
       ORDER BY aw.created_at DESC
-      LIMIT 100
     `
+
+    console.log("📊 Saques de afiliados encontrados:", withdraws.length)
 
     return NextResponse.json({
       success: true,
@@ -24,6 +45,12 @@ export async function GET() {
     })
   } catch (error) {
     console.error("❌ Erro ao buscar saques de afiliados:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Erro interno do servidor",
+        details: error instanceof Error ? error.message : "Erro desconhecido",
+      },
+      { status: 500 },
+    )
   }
 }

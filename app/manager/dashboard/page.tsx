@@ -242,6 +242,8 @@ export default function ManagerDashboard() {
     e.preventDefault()
 
     try {
+      console.log("🔄 Enviando solicitação de saque...")
+
       const response = await fetch("/api/manager/withdraw/request", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -249,9 +251,41 @@ export default function ManagerDashboard() {
         body: JSON.stringify(withdrawForm),
       })
 
-      const result = await response.json()
+      console.log("📡 Status da resposta:", response.status)
+      console.log("📡 Headers da resposta:", Object.fromEntries(response.headers.entries()))
 
-      if (response.ok) {
+      // Verificar se a resposta é JSON válido
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const responseText = await response.text()
+        console.error("❌ Resposta não é JSON:", responseText)
+        toast.error("Erro interno do servidor. Tente novamente em alguns minutos.")
+        return
+      }
+
+      // Tentar obter o texto da resposta primeiro
+      const responseText = await response.text()
+      console.log("📦 Resposta bruta:", responseText)
+
+      // Verificar se a resposta é JSON válido
+      let result
+      try {
+        result = JSON.parse(responseText)
+        console.log("📦 Resultado parseado:", result)
+      } catch (parseError) {
+        console.error("❌ Erro ao parsear JSON:", parseError)
+        console.error("❌ Resposta não é JSON:", responseText)
+
+        // Mostrar erro mais detalhado
+        if (responseText.includes("Internal server error") || responseText.includes("Internal Server Error")) {
+          toast.error("Erro interno do servidor. Tente novamente em alguns minutos.")
+        } else {
+          toast.error(`Erro no servidor: ${responseText.substring(0, 100)}...`)
+        }
+        return
+      }
+
+      if (response.ok && result.success) {
         toast.success(result.message || "Solicitação de saque enviada com sucesso!")
         setIsWithdrawDialogOpen(false)
         setWithdrawForm({ amount: "", pix_key: "", pix_type: "cpf" })
@@ -267,11 +301,12 @@ export default function ManagerDashboard() {
         // Recarregar todos os dados para garantir consistência
         fetchData()
       } else {
+        console.error("❌ Erro na resposta:", result)
         toast.error(result.error || "Erro ao solicitar saque")
       }
     } catch (error) {
-      console.error("Erro ao solicitar saque:", error)
-      toast.error("Erro interno do servidor")
+      console.error("❌ Erro ao solicitar saque:", error)
+      toast.error("Erro de conexão com o servidor")
     }
   }
 

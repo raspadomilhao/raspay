@@ -38,8 +38,26 @@ export default function ManagerLogin() {
 
       console.log("📡 Status da resposta:", response.status)
 
-      if (response.ok) {
-        const data = await response.json()
+      // Verificar se a resposta é JSON válida
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("❌ Resposta não é JSON:", contentType)
+        const textResponse = await response.text()
+        console.error("❌ Conteúdo da resposta:", textResponse.substring(0, 200))
+        toast.error("Erro interno do servidor - resposta inválida")
+        return
+      }
+
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error("❌ Erro ao fazer parse do JSON:", jsonError)
+        toast.error("Erro ao processar resposta do servidor")
+        return
+      }
+
+      if (response.ok && data.success) {
         console.log("✅ Login bem-sucedido:", data.message)
 
         // Salvar token no localStorage como backup
@@ -58,13 +76,12 @@ export default function ManagerLogin() {
         console.log("🎉 Redirecionando para dashboard...")
         router.push("/manager/dashboard")
       } else {
-        const error = await response.json()
-        console.error("❌ Erro no login:", error)
-        toast.error(error.error || "Erro ao fazer login")
+        console.error("❌ Erro no login:", data)
+        toast.error(data.message || "Erro ao fazer login")
       }
     } catch (error) {
       console.error("❌ Erro na requisição:", error)
-      toast.error("Erro interno do servidor")
+      toast.error("Erro de conexão com o servidor")
     } finally {
       setIsLoading(false)
     }

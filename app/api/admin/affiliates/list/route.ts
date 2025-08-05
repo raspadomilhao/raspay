@@ -5,53 +5,50 @@ const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("X-Admin-Token")
-    if (!authHeader) {
-      return NextResponse.json({ error: "Token de autenticação necessário" }, { status: 401 })
+    console.log("🔍 Verificando acesso à lista de afiliados...")
+
+    // Verificar token de admin
+    const adminToken = request.headers.get("X-Admin-Token")
+    console.log("🔑 Token recebido:", adminToken ? "Presente" : "Ausente")
+
+    if (!adminToken) {
+      console.log("❌ Token de admin não fornecido")
+      return NextResponse.json({ error: "Token de admin requerido" }, { status: 401 })
     }
 
-    console.log("📊 Buscando lista de afiliados...")
+    // Verificar se o token é válido
+    const validTokens = ["admin-authenticated", "admin-full-access", "admin-managers-only"]
+    if (!validTokens.includes(adminToken)) {
+      console.log("❌ Token de admin inválido:", adminToken)
+      return NextResponse.json({ error: "Token de admin inválido" }, { status: 401 })
+    }
+
+    console.log("✅ Token de admin válido, buscando afiliados...")
 
     const affiliates = await sql`
       SELECT 
         a.*,
         m.name as manager_name,
-        m.username as manager_username,
-        COUNT(DISTINCT u.id) as total_referrals,
-        COUNT(DISTINCT CASE WHEN t.type = 'deposit' AND t.status = 'success' AND t.external_id IS NOT NULL THEN t.id END) as deposits_count
+        COALESCE(
+          (SELECT COUNT(*) FROM users WHERE referred_by = a.affiliate_code),
+          0
+        ) as total_referrals,
+        COALESCE(
+          (SELECT COUNT(*) FROM transactions t 
+           JOIN users u ON t.user_id = u.id 
+           WHERE u.referred_by = a.affiliate_code AND t.type = 'deposit' AND t.status = 'success'),
+          0
+        ) as deposits_count
       FROM affiliates a
       LEFT JOIN managers m ON a.manager_id = m.id
-      LEFT JOIN users u ON a.id = u.affiliate_id
-      LEFT JOIN transactions t ON u.id = t.user_id
-      GROUP BY a.id, a.name, a.email, a.username, a.affiliate_code, a.password_hash, 
-               a.commission_rate, a.loss_commission_rate, a.total_earnings, a.balance, 
-               a.status, a.created_at, a.updated_at, a.manager_id, m.name, m.username
       ORDER BY a.created_at DESC
     `
 
-    console.log(`✅ Encontrados ${affiliates.length} afiliados`)
+    console.log("📊 Afiliados encontrados:", affiliates.length)
 
     return NextResponse.json({
       success: true,
-      affiliates: affiliates.map((affiliate) => ({
-        id: affiliate.id,
-        name: affiliate.name,
-        email: affiliate.email,
-        username: affiliate.username,
-        affiliate_code: affiliate.affiliate_code,
-        commission_rate: Number(affiliate.commission_rate),
-        loss_commission_rate: Number(affiliate.loss_commission_rate),
-        total_earnings: Number(affiliate.total_earnings),
-        balance: Number(affiliate.balance),
-        status: affiliate.status,
-        created_at: affiliate.created_at,
-        updated_at: affiliate.updated_at,
-        manager_id: affiliate.manager_id,
-        manager_name: affiliate.manager_name,
-        manager_username: affiliate.manager_username,
-        total_referrals: Number(affiliate.total_referrals),
-        deposits_count: Number(affiliate.deposits_count), // Adicionar esta linha
-      })),
+      affiliates,
     })
   } catch (error) {
     console.error("❌ Erro ao buscar afiliados:", error)
