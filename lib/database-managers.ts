@@ -144,39 +144,32 @@ export async function createManagerCommission(data: {
   commission_type?: string
   description?: string
 }): Promise<ManagerCommission> {
+  console.log(`💰 Criando comissão do gerente ${data.manager_id}: +R$ ${data.commission_amount.toFixed(2)}`)
+
+  // 1. Criar o registro da comissão
   const [commission] = await sql`
     INSERT INTO manager_commissions (manager_id, affiliate_id, commission_amount, commission_type, description)
     VALUES (${data.manager_id}, ${data.affiliate_id}, ${data.commission_amount}, ${data.commission_type || "game_result"}, ${data.description || null})
     RETURNING *
   `
 
-  // 🔄 SISTEMA SIMPLIFICADO: Recalcular saldo baseado no total dos afiliados
-  const [affiliateStats] = await sql`
-    SELECT COALESCE(SUM(total_earnings), 0) as total_affiliate_earnings
-    FROM affiliates 
-    WHERE manager_id = ${data.manager_id}
-  `
-
-  const [manager] = await sql`
-    SELECT commission_rate FROM managers WHERE id = ${data.manager_id}
-  `
-
-  const totalAffiliateEarnings = Number(affiliateStats.total_affiliate_earnings) || 0
-  const commissionRate = Number(manager.commission_rate) || 5.0
-  const calculatedBalance = (totalAffiliateEarnings * commissionRate) / 100
-
-  // Atualizar saldo calculado do gerente
-  await sql`
+  // 2. ✅ SISTEMA INCREMENTAL: Apenas somar a nova comissão ao saldo atual
+  const [updatedManager] = await sql`
     UPDATE managers 
-    SET balance = ${calculatedBalance},
-        total_earnings = ${calculatedBalance},
+    SET balance = balance + ${data.commission_amount},
+        total_earnings = total_earnings + ${data.commission_amount},
         updated_at = NOW()
     WHERE id = ${data.manager_id}
+    RETURNING balance, total_earnings
   `
 
-  console.log(
-    `💰 Saldo do gerente ${data.manager_id} recalculado: R$ ${calculatedBalance.toFixed(2)} (${commissionRate}% de R$ ${totalAffiliateEarnings.toFixed(2)})`,
-  )
+  const newBalance = Number(updatedManager.balance)
+  const newTotalEarnings = Number(updatedManager.total_earnings)
+
+  console.log(`✅ Comissão adicionada ao gerente ${data.manager_id}:`)
+  console.log(`   • Nova comissão: +R$ ${data.commission_amount.toFixed(2)}`)
+  console.log(`   • Saldo atual: R$ ${newBalance.toFixed(2)}`)
+  console.log(`   • Total histórico: R$ ${newTotalEarnings.toFixed(2)}`)
 
   return commission
 }
@@ -238,7 +231,7 @@ export async function getManagerStats(managerId: number) {
   }
 }
 
-// 🎯 NOVA FUNÇÃO: Processar comissão do gerente baseada nas comissões dos afiliados
+// 🎯 FUNÇÃO CORRIGIDA: Processar comissão do gerente baseada nas comissões dos afiliados
 export async function processManagerGameCommission(
   userId: number,
   transactionId: number,
@@ -312,7 +305,7 @@ export async function processManagerGameCommission(
       `💰 Gerente ${manager.name} receberá 5% da comissão do afiliado: R$ ${managerCommissionAmount.toFixed(2)}`,
     )
 
-    // 6. Criar comissão do gerente
+    // 6. Criar comissão do gerente (agora com sistema incremental)
     await createManagerCommission({
       manager_id: userWithAffiliate.manager_id,
       affiliate_id: userWithAffiliate.affiliate_id,
@@ -362,7 +355,7 @@ export async function createManagerWithdraw(data: {
 
     console.log(`📝 Saque criado com ID: ${withdraw.id}`)
 
-    // 3. Debitar do saldo do gerente
+    // 3. Debitar do saldo do gerente (mantém total_earnings intacto)
     const [updatedManager] = await sql`
       UPDATE managers 
       SET balance = balance - ${data.amount},
