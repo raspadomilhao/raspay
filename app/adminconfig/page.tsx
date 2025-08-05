@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { toast } from "sonner"
 import {
@@ -3885,41 +3884,33 @@ export default function AdminConfigPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-slate-800 rounded-md p-4 h-64 overflow-y-auto">
-                  <p className="text-gray-400 text-xs">[2023-07-22 15:42:11] INFO: Sistema iniciado com sucesso</p>
-                  <p className="text-gray-400 text-xs">
-                    [2023-07-22 15:45:23] INFO: Conexão com banco de dados estabelecida
-                  </p>
-                  <p className="text-green-400 text-xs">
-                    [2023-07-22 16:01:45] SUCCESS: Depósito #12345 processado com sucesso
-                  </p>
-                  <p className="text-yellow-400 text-xs">
-                    [2023-07-22 16:12:33] WARNING: Tentativa de login inválida para usuário admin@example.com
-                  </p>
-                  <p className="text-gray-400 text-xs">
-                    [2023-07-22 16:30:12] INFO: Backup do banco de dados concluído
-                  </p>
-                  <p className="text-red-400 text-xs">
-                    [2023-07-22 16:45:18] ERROR: Falha na conexão com gateway de pagamento
-                  </p>
-                  <p className="text-gray-400 text-xs">
-                    [2023-07-22 16:46:22] INFO: Reconexão com gateway de pagamento bem-sucedida
-                  </p>
-                  <p className="text-green-400 text-xs">
-                    [2023-07-22 17:01:05] SUCCESS: Saque #5678 processado com sucesso
-                  </p>
-                  <p className="text-gray-400 text-xs">[2023-07-22 17:15:30] INFO: Manutenção programada iniciada</p>
-                  <p className="text-gray-400 text-xs">[2023-07-22 17:30:45] INFO: Manutenção programada concluída</p>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <Textarea
-                    placeholder="Digite um comando para executar..."
-                    className="bg-slate-800 border-slate-700 text-white h-10"
-                  />
-                  <div className="flex justify-end">
-                    <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-700 bg-transparent">
-                      Executar Comando
-                    </Button>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-green-400" />
+                      <div>
+                        <p className="text-white text-sm">Sistema iniciado com sucesso</p>
+                        <p className="text-gray-400 text-xs">Hoje às 08:00:00</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                      <div>
+                        <p className="text-white text-sm">Backup automático realizado</p>
+                        <p className="text-gray-400 text-xs">Hoje às 06:00:00</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                      <div>
+                        <p className="text-white text-sm">Alta carga de usuários detectada</p>
+                        <p className="text-gray-400 text-xs">Ontem às 20:30:00</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
