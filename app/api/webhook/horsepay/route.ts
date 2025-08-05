@@ -35,86 +35,6 @@ function normalizeStatus(status: string | boolean): string {
   return status.toString()
 }
 
-// 🔔 FUNÇÃO PARA ENVIAR NOTIFICAÇÃO PUSH PARA ADMINS
-async function sendAdminNotification(title: string, body: string, data?: any) {
-  try {
-    console.log("🔔 Preparando notificação para admins...")
-    console.log("🔔 Título:", title)
-    console.log("🔔 Corpo:", body)
-    console.log("🔔 Dados extras:", data)
-
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000"
-
-    console.log("🔔 Base URL:", baseUrl)
-
-    const notificationPayload = {
-      type: "send",
-      notification: {
-        title,
-        body,
-        icon: "/icon-192.png",
-        badge: "/icon-192.png",
-        image: "/images/raspay-logo-new.png",
-        tag: "deposit-confirmed",
-        data: {
-          url: "/adminconfig",
-          timestamp: Date.now(),
-          ...data,
-        },
-        actions: [
-          {
-            action: "view",
-            title: "Ver Painel",
-            icon: "/icon-192.png",
-          },
-          {
-            action: "close",
-            title: "Fechar",
-          },
-        ],
-      },
-    }
-
-    console.log("🔔 Payload da notificação:", JSON.stringify(notificationPayload, null, 2))
-
-    const response = await fetch(`${baseUrl}/api/admin/notifications/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Raspay-Webhook/1.0",
-      },
-      body: JSON.stringify(notificationPayload),
-    })
-
-    console.log("🔔 Status da resposta:", response.status)
-    console.log("🔔 Headers da resposta:", Object.fromEntries(response.headers.entries()))
-
-    const result = await response.json()
-    console.log("🔔 Resultado da notificação:", result)
-
-    if (result.success) {
-      console.log("✅ Notificação enviada com sucesso!")
-      console.log("📊 Estatísticas:", result.stats)
-      if (result.stats) {
-        console.log(`📊 Enviado para ${result.stats.success} de ${result.stats.total} admins`)
-      }
-    } else {
-      console.error("❌ Erro ao enviar notificação:", result.error)
-      console.error("❌ Detalhes:", result.results)
-    }
-
-    return result.success
-  } catch (error) {
-    console.error("❌ Erro crítico ao enviar notificação push:", error)
-    console.error("❌ Stack trace:", error instanceof Error ? error.stack : "N/A")
-    // Não falhar o webhook por causa da notificação
-    return false
-  }
-}
-
 // 🔗 FUNÇÃO PARA PROCESSAR BÔNUS DE INDICAÇÃO
 async function processReferralBonus(userId: number, transactionId: number): Promise<void> {
   try {
@@ -327,40 +247,6 @@ async function processDepositCallback(payload: DepositCallback) {
     `
 
       console.log(`🎉 Sucesso! Valor integral creditado ao usuário!`)
-
-      // 🔔 BUSCAR DADOS DO USUÁRIO PARA NOTIFICAÇÃO
-      console.log(`🔔 Buscando dados do usuário para notificação...`)
-      const [user] = await sql`
-        SELECT name, email, username FROM users WHERE id = ${transaction.user_id}
-      `
-
-      // 🔔 ENVIAR NOTIFICAÇÃO PUSH PARA ADMINS
-      if (user) {
-        const userName = user.name || user.username || user.email
-        console.log(`🔔 Enviando notificação para admins sobre depósito de ${userName}`)
-
-        const notificationSent = await sendAdminNotification(
-          "💰 Novo Depósito Confirmado!",
-          `${userName} depositou R$ ${originalAmount.toFixed(2)}`,
-          {
-            type: "deposit_confirmed",
-            user_id: transaction.user_id,
-            user_name: userName,
-            user_email: user.email,
-            amount: originalAmount,
-            transaction_id: transaction.id,
-            external_id: payload.external_id,
-          },
-        )
-
-        if (notificationSent) {
-          console.log("✅ Notificação enviada com sucesso!")
-        } else {
-          console.log("⚠️ Falha ao enviar notificação (não crítico)")
-        }
-      } else {
-        console.log("⚠️ Usuário não encontrado para notificação")
-      }
 
       console.log(`📊 VERIFICANDO PROGRESSO DE BÔNUS PARA USUÁRIO ${transaction.user_id}`)
 
