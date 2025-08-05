@@ -413,6 +413,23 @@ export async function processManagerWithdraw(
   try {
     console.log(`🔄 Processando saque ${withdrawId} - Ação: ${action}`)
 
+    // Primeiro, buscar o saque para verificar se existe
+    const [withdraw] = await sql`
+      SELECT * FROM manager_withdraws WHERE id = ${withdrawId}
+    `
+
+    if (!withdraw) {
+      console.log(`❌ Saque ${withdrawId} não encontrado`)
+      return false
+    }
+
+    if (withdraw.status !== "pending") {
+      console.log(`❌ Saque ${withdrawId} já foi processado (status: ${withdraw.status})`)
+      return false
+    }
+
+    console.log(`📋 Saque encontrado: R$ ${Number(withdraw.amount).toFixed(2)} do gerente ${withdraw.manager_id}`)
+
     if (action === "approve") {
       await sql`
         UPDATE manager_withdraws 
@@ -424,22 +441,16 @@ export async function processManagerWithdraw(
       console.log(`✅ Saque ${withdrawId} aprovado`)
     } else {
       // Rejeitar - devolver o valor ao saldo do gerente
-      const [withdraw] = await sql`
-        SELECT * FROM manager_withdraws WHERE id = ${withdrawId}
+      console.log(`💰 Devolvendo R$ ${Number(withdraw.amount).toFixed(2)} ao gerente ${withdraw.manager_id}`)
+
+      await sql`
+        UPDATE managers 
+        SET balance = balance + ${withdraw.amount},
+            updated_at = NOW()
+        WHERE id = ${withdraw.manager_id}
       `
 
-      if (withdraw) {
-        console.log(`💰 Devolvendo R$ ${Number(withdraw.amount).toFixed(2)} ao gerente ${withdraw.manager_id}`)
-
-        await sql`
-          UPDATE managers 
-          SET balance = balance + ${withdraw.amount},
-              updated_at = NOW()
-          WHERE id = ${withdraw.manager_id}
-        `
-
-        console.log(`✅ Valor devolvido ao saldo do gerente`)
-      }
+      console.log(`✅ Valor devolvido ao saldo do gerente`)
 
       await sql`
         UPDATE manager_withdraws 
@@ -453,7 +464,7 @@ export async function processManagerWithdraw(
 
     return true
   } catch (error) {
-    console.error("Erro ao processar saque de gerente:", error)
+    console.error("❌ Erro ao processar saque de gerente:", error)
     return false
   }
 }
