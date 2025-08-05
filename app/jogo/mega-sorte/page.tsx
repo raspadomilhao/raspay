@@ -62,7 +62,7 @@ const regularPrizeConfig = [
 
 // Configuração de prêmios para bloggers - MEGA SORTE
 const bloggerPrizeConfig = [
-  { value: 2.5, image: "/images/2reais.png", chance: 8 },
+  { value: 2, image: "/images/2reais.png", chance: 8 },
   { value: 5, image: "/images/5reais.png", chance: 12 },
   { value: 10, image: "/images/10reais.png", chance: 15 },
   { value: 20, image: "/images/20reais.png", chance: 18 },
@@ -85,7 +85,7 @@ const regularConfig = {
 }
 
 const bloggerConfig = {
-  winFrequency: 0.85, // 85% de chance de ganhar para bloggers
+  winFrequency: 0.65, // 85% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
