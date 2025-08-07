@@ -41,11 +41,11 @@ const GAME_PRICE = 5.0
 
 // Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-{ value: 5, image: "/images/memimei5.webp", chance: 80 },
-{ value: 10, image: "/images/memimei10.webp", chance: 10 },
-{ value: 20, image: "/images/memimei20.webp", chance: 5 },
-{ value: 25, image: "/images/memimei25.webp", chance: 4.5 },
-{ value: 30, image: "/images/memimei30.webp", chance: 0.5 },
+{ value: 5, image: "/images/memimei5.webp", chance: 97 },
+{ value: 10, image: "/images/memimei10.webp", chance: 2 },
+{ value: 20, image: "/images/memimei20.webp", chance: 0.5 },
+{ value: 25, image: "/images/memimei25.webp", chance: 0.4 },
+{ value: 30, image: "/images/memimei30.webp", chance: 0.1 },
 { value: 50, image: "/images/memimei50.webp", chance: 0},
 { value: 200, image: "/images/memimei200.webp", chance: 0 },
 { value: 400, image: "/images/memimei400.webp", chance: 0 },
@@ -69,13 +69,13 @@ const bloggerPrizeConfig = [
 
 // Configurações gerais
 const regularConfig = {
-winFrequency: 0.15, // 15% de chance de ganhar
+winFrequency: 0.50, // 15% de chance de ganhar
 scratchThreshold: 0.7,
 prizeConfig: regularPrizeConfig,
 }
 
 const bloggerConfig = {
-winFrequency: 0.30, // 30% de chance de ganhar para bloggers
+winFrequency: 0.50, // 30% de chance de ganhar para bloggers
 scratchThreshold: 0.7,
 prizeConfig: bloggerPrizeConfig,
 }

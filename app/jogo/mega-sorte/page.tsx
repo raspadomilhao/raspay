@@ -81,7 +81,7 @@ const regularConfig = {
 }
 
 const bloggerConfig = {
-  winFrequency: 0.30, // 30% de chance de ganhar para bloggers
+  winFrequency: 0.50, // 30% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
