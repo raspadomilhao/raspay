@@ -4,7 +4,7 @@ import { neon } from "@neondatabase/serverless"
 import { processAffiliateLossCommission } from "@/lib/database"
 
 const sql = neon(process.env.DATABASE_URL!)
-const GAME_PRICE = 3.0
+const GAME_PRICE = 5.0
 
 export async function POST(request: NextRequest) {
   try {

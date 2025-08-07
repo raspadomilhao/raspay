@@ -6,21 +6,7 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Zap,
-  Star,
-  Gift,
-  Trophy,
-  TrendingUp,
-  CreditCard,
-  Play,
-  Gamepad2,
-  Wallet,
-  Menu,
-  Home,
-  User,
-  LogOut,
-} from "lucide-react"
+import { Zap, Star, Gift, Trophy, TrendingUp, CreditCard, Play, Gamepad2, Wallet, Menu, Home, User, LogOut, Sparkles, Crown, Diamond } from 'lucide-react'
 import { AuthClient } from "@/lib/auth-client"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Footer } from "@/components/footer"
@@ -28,6 +14,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import RaspeDaEsperancaPage from "@/app/jogo/raspe-da-esperanca/page"
 import FortunaDouradaPage from "@/app/jogo/fortuna-dourada/page"
 import MegaSortePage from "@/app/jogo/mega-sorte/page"
+import SuperPremiosPage from "@/app/jogo/super-premios/page"
+import SonhoDeConsumoPage from "@/app/jogo/sonho-de-consumo/page"
+import OutfitPage from "@/app/jogo/outfit/page"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 interface UserProfile {
@@ -43,10 +32,35 @@ interface UserProfile {
   }
 }
 
+interface Game {
+  id: string
+  name: string
+  description: string
+  minBet: number
+  maxPrize: number
+  image: string
+  gradient: string
+  bgGradient: string
+  icon: string
+}
+
+// Mapeamento de ícones
+const iconMap: { [key: string]: any } = {
+  Zap,
+  Star,
+  Gift,
+  Trophy,
+  Sparkles,
+  Crown,
+  Diamond,
+  Gamepad2
+}
+
 export default function JogosPage() {
   const router = useRouter()
   const pathname = usePathname()
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [games, setGames] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showSideMenu, setShowSideMenu] = useState(false)
   const [isGameModalOpen, setIsGameModalOpen] = useState(false)
@@ -60,6 +74,7 @@ export default function JogosPage() {
     }
 
     fetchUserProfile()
+    fetchGames()
   }, [router])
 
   const fetchUserProfile = async () => {
@@ -76,6 +91,30 @@ export default function JogosPage() {
       }
     } catch (error) {
       console.error("Erro ao buscar perfil:", error)
+    }
+  }
+
+  const fetchGames = async () => {
+    try {
+      const response = await fetch("/api/games/list")
+      if (response.ok) {
+        const data = await response.json()
+        // Transformar os dados do banco para o formato esperado
+        const formattedGames = data.games.map((game: any) => ({
+          id: game.game_id,
+          name: game.name,
+          description: game.description,
+          minBet: parseFloat(game.min_bet) || 0,
+          maxPrize: parseFloat(game.max_prize) || 0,
+          image: game.image_url,
+          gradient: `from-${game.gradient_from} to-${game.gradient_to}`,
+          bgGradient: `from-${game.gradient_from}/20 to-${game.gradient_to}/20`,
+          icon: game.icon
+        }))
+        setGames(formattedGames)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar jogos:", error)
     } finally {
       setIsLoading(false)
     }
@@ -98,42 +137,6 @@ export default function JogosPage() {
     }
     return 0
   }
-
-  const games = [
-    {
-      id: "raspe-da-esperanca",
-      name: "Raspe da Esperança",
-      description: "Prêmios de até R$ 1.000!",
-      minBet: 1,
-      maxPrize: 1000,
-      icon: Zap,
-      gradient: "from-cyan-500 to-blue-500",
-      bgGradient: "from-cyan-500/20 to-blue-500/20",
-      image: "/images/banner1real.png",
-    },
-    {
-      id: "fortuna-dourada",
-      name: "Fortuna Dourada",
-      description: "Tesouros escondidos com prêmios de até R$ 5.000!",
-      minBet: 3,
-      maxPrize: 5000,
-      icon: Star,
-      gradient: "from-yellow-500 to-orange-500",
-      bgGradient: "from-yellow-500/20 to-orange-500/20",
-      image: "/images/banner3reais.png",
-    },
-    {
-      id: "mega-sorte",
-      name: "Mega Sorte",
-      description: "Os maiores prêmios! Ganhe até R$ 10.000!",
-      minBet: 5,
-      maxPrize: 10000,
-      icon: Gift,
-      gradient: "from-purple-500 to-pink-500",
-      bgGradient: "from-purple-500/20 to-pink-500/20",
-      image: "/images/banner5reais.png",
-    },
-  ]
 
   if (isLoading) {
     return (
@@ -321,44 +324,51 @@ export default function JogosPage() {
 
           {/* Games Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {games.map((game) => (
-              <Card
-                key={game.id}
-                className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
-              >
-                <CardContent className="p-0">
-                  <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
-                    {/* Background Image */}
-                    <img
-                      src={game.image || "/placeholder.svg"}
-                      alt={game.name}
-                      className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
+            {games.map((game) => {
+              const IconComponent = iconMap[game.icon] || Zap
+              return (
+                <Card
+                  key={game.id}
+                  className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
+                >
+                  <CardContent className="p-0">
+                    <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
+                      {/* Background Image */}
+                      <img
+                        src={game.image || "/placeholder.svg"}
+                        alt={game.name}
+                        className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
 
-                    {/* Text Overlay - Only R$ 1 in top right corner */}
-                    <div className="absolute top-3 right-3">
-                      <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
-                        R$ {game.minBet}
-                      </Badge>
+                      {/* Text Overlay - Only R$ value in top right corner */}
+                      <div className="absolute top-3 right-3">
+                        <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
+                          R$ {game.minBet.toFixed(2)}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Button Section */}
-                  <div className="p-3">
-                    <Button
-                      onClick={() => {
-                        setSelectedGame(game.id)
-                        setIsGameModalOpen(true)
-                      }}
-                      className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Jogar Agora
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    {/* Game Description */}
+                    <div className="p-3 pt-2">
+                      <h3 className="text-white font-bold text-center mb-2">{game.name}</h3>
+                      <p className="text-sm text-gray-300 text-center">{game.description}</p>
+                    </div>
+                    {/* Button Section */}
+                    <div className="p-3 pt-0">
+                      <Button
+                        onClick={() => {
+                          setSelectedGame(game.id)
+                          setIsGameModalOpen(true)
+                        }}
+                        className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Jogar Agora
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           {/* Info Section */}
@@ -402,6 +412,9 @@ export default function JogosPage() {
             {selectedGame === "raspe-da-esperanca" && <RaspeDaEsperancaPage />}
             {selectedGame === "fortuna-dourada" && <FortunaDouradaPage />}
             {selectedGame === "mega-sorte" && <MegaSortePage />}
+            {selectedGame === "super-premios" && <SuperPremiosPage />}
+            {selectedGame === "sonho-de-consumo" && <SonhoDeConsumoPage />}
+            {selectedGame === "outfit" && <OutfitPage />}
           </div>
         </DialogContent>
       </Dialog>

@@ -7,22 +7,7 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Zap,
-  Trophy,
-  Play,
-  ArrowRight,
-  Wallet,
-  Menu,
-  LogOut,
-  Sparkles,
-  Home,
-  Gamepad2,
-  CreditCard,
-  TrendingUp,
-  User,
-  X,
-} from "lucide-react"
+import { Zap, Trophy, Play, ArrowRight, Wallet, Menu, LogOut, Sparkles, Home, Gamepad2, CreditCard, TrendingUp, User, X, Star, Gift, Crown, Diamond } from 'lucide-react'
 import { AuthClient } from "@/lib/auth-client"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Footer } from "@/components/footer"
@@ -34,6 +19,9 @@ import RaspeDaEsperancaPage from "./jogo/raspe-da-esperanca/page"
 import FortunaDauradaPage from "./jogo/fortuna-dourada/page"
 import MegaSortePage from "./jogo/mega-sorte/page"
 import { LiveStoriesButton } from "@/components/live-stories-button"
+import SuperPremiosPage from "./jogo/super-premios/page"
+import SonhoDeConsumoPage from "./jogo/sonho-de-consumo/page"
+import OutfitPage from "./jogo/outfit/page"
 
 interface UserProfile {
   user: {
@@ -54,9 +42,33 @@ interface Winner {
   game_name: string
   prize_amount: number
   created_at: string
-  prize_name?: string | null // Adicionado para prêmios físicos
-  prize_image?: string | null // Adicionado para prêmios físicos
-  is_physical_prize?: boolean // Adicionado para prêmios físicos
+  prize_name?: string | null
+  prize_image?: string | null
+  is_physical_prize?: boolean
+}
+
+interface Game {
+  id: string
+  name: string
+  description: string
+  minBet: number
+  maxPrize: number
+  image: string
+  gradient: string
+  bgGradient: string
+  icon: string
+}
+
+// Mapeamento de ícones
+const iconMap: { [key: string]: any } = {
+  Zap,
+  Star,
+  Gift,
+  Trophy,
+  Sparkles,
+  Crown,
+  Diamond,
+  Gamepad2
 }
 
 export default function HomePage() {
@@ -64,11 +76,11 @@ export default function HomePage() {
   const pathname = usePathname()
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [winners, setWinners] = useState<Winner[]>([])
+  const [games, setGames] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showSideMenu, setShowSideMenu] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isGameModalOpen, setIsGameModalOpen] = useState(false)
-  // REMOVIDO: isFortunaDauradaModalOpen, isMegaSorteModalOpen
   const [showReferralPopup, setShowReferralPopup] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false)
@@ -84,7 +96,7 @@ export default function HomePage() {
     }
 
     fetchRecentWinners()
-    setIsLoading(false)
+    fetchGames()
   }, [router])
 
   const fetchUserProfile = async () => {
@@ -108,6 +120,32 @@ export default function HomePage() {
     }
   }
 
+  const fetchGames = async () => {
+    try {
+      const response = await fetch("/api/games/list")
+      if (response.ok) {
+        const data = await response.json()
+        // Transformar os dados do banco para o formato esperado
+        const formattedGames = data.games.map((game: any) => ({
+          id: game.game_id,
+          name: game.name,
+          description: game.description,
+          minBet: parseFloat(game.min_bet) || 0,
+          maxPrize: parseFloat(game.max_prize) || 0,
+          image: game.image_url,
+          gradient: `from-${game.gradient_from} to-${game.gradient_to}`,
+          bgGradient: `from-${game.gradient_from}/20 to-${game.gradient_to}/20`,
+          icon: game.icon
+        }))
+        setGames(formattedGames)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar jogos:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const formatCurrency = (value: number | string | null | undefined): string => {
     const numValue = Number(value)
     return isNaN(numValue) ? "0.00" : numValue.toFixed(2)
@@ -122,44 +160,8 @@ export default function HomePage() {
     }
 
     setSelectedGame(gameId)
-    setIsGameModalOpen(true) // Agora todos os jogos abrem o mesmo modal
+    setIsGameModalOpen(true)
   }
-
-  const games = [
-    {
-      id: "raspe-da-esperanca",
-      name: "Raspe da Esperança",
-      description: "Prêmios de até R$ 1.000!",
-      minBet: 1,
-      maxPrize: 1000,
-      icon: Zap,
-      gradient: "from-cyan-500 to-blue-500",
-      bgGradient: "from-cyan-500/20 to-blue-500/20",
-      image: "/images/banner1real.png",
-    },
-    {
-      id: "fortuna-dourada",
-      name: "Fortuna Dourada",
-      description: "Tesouros escondidos com prêmios de até R$ 5.000!",
-      minBet: 3,
-      maxPrize: 5000,
-      icon: Trophy,
-      gradient: "from-yellow-500 to-orange-500",
-      bgGradient: "from-yellow-500/20 to-orange-500/20",
-      image: "/images/banner3reais.png",
-    },
-    {
-      id: "mega-sorte",
-      name: "Mega Sorte",
-      description: "Os maiores prêmios! Ganhe até R$ 10.000!",
-      minBet: 5,
-      maxPrize: 10000,
-      icon: Sparkles,
-      gradient: "from-purple-500 to-pink-500",
-      bgGradient: "from-purple-500/20 to-pink-500/20",
-      image: "/images/banner5reais.png",
-    },
-  ]
 
   const bannerImages = [
     "/images/carousel-banner-new-4.png",
@@ -525,41 +527,48 @@ export default function HomePage() {
 
           <section>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {games.map((game) => (
-                <Card
-                  key={game.id}
-                  className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
-                >
-                  <CardContent className="p-0">
-                    <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
-                      {/* Background Image */}
-                      <img
-                        src={game.image || "/placeholder.svg"}
-                        alt={game.name}
-                        className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
-                      />
+              {games.map((game) => {
+                const IconComponent = iconMap[game.icon] || Zap
+                return (
+                  <Card
+                    key={game.id}
+                    className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
+                  >
+                    <CardContent className="p-0">
+                      <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
+                        {/* Background Image */}
+                        <img
+                          src={game.image || "/placeholder.svg"}
+                          alt={game.name}
+                          className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
 
-                      {/* Text Overlay - Only R$ value in top right corner */}
-                      <div className="absolute top-3 right-3">
-                        <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
-                          R$ {game.minBet}
-                        </Badge>
+                        {/* Text Overlay - Only R$ value in top right corner */}
+                        <div className="absolute top-3 right-3">
+                          <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
+                            R$ {game.minBet.toFixed(2)}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Button Section */}
-                    <div className="p-3">
-                      <Button
-                        onClick={() => handleGameClick(game.id)}
-                        className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Jogar Agora
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      {/* Game Name and Description */}
+                      <div className="p-3 pt-2">
+                        <h3 className="text-white font-bold text-center mb-2">{game.name}</h3>
+                        <p className="text-sm text-muted-foreground text-center">{game.description}</p>
+                      </div>
+                      {/* Button Section */}
+                      <div className="p-3 pt-0">
+                        <Button
+                          onClick={() => handleGameClick(game.id)}
+                          className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Jogar Agora
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           </section>
 
@@ -640,6 +649,9 @@ export default function HomePage() {
             {selectedGame === "raspe-da-esperanca" && <RaspeDaEsperancaPage />}
             {selectedGame === "fortuna-dourada" && <FortunaDauradaPage />}
             {selectedGame === "mega-sorte" && <MegaSortePage />}
+            {selectedGame === "super-premios" && <SuperPremiosPage />}
+            {selectedGame === "sonho-de-consumo" && <SonhoDeConsumoPage />}
+            {selectedGame === "outfit" && <OutfitPage />}
           </div>
         </DialogContent>
       </Dialog>

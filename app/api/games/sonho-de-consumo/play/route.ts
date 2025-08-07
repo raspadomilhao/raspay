@@ -4,11 +4,11 @@ import { neon } from "@neondatabase/serverless"
 import { processAffiliateLossCommission } from "@/lib/database"
 
 const sql = neon(process.env.DATABASE_URL!)
-const GAME_PRICE = 15.0
+const GAME_PRICE = 20.0
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🎮 === JOGO MEGA SORTE ===")
+    console.log("🎮 === JOGO SONHO DE CONSUMO ===")
 
     // 1. Verificar autenticação
     const auth = await verifyAuth(request)

@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { Crown, Volume2, VolumeX, Sparkles } from 'lucide-react'
 import { AuthClient } from "@/lib/auth-client"
 import { FloatingBalance } from "@/components/floating-balance"
 import { getRandomOverlayImage } from "@/lib/game-overlays"
@@ -37,82 +37,91 @@ interface GameState {
 }
 
 const NUM_CELLS = 9
-const GAME_PRICE = 15.0 // Mega Sorte custa R$ 5
+const GAME_PRICE = 100
 
-// Configuração de prêmios para usuários regulares - MEGA SORTE
+// Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-  { value: 50, image: "/images/eletro50.png", chance: 99 },
-  { value: 70, image: "/images/eletro70.webp", chance: 1 },
-  { value: 80, image: "/images/eletro80.png", chance: 0 },
-  { value: 90, image: "/images/eletro90.webp", chance: 0 },
-  { value: 110, image: "/images/eletro110.png", chance: 0 },
-  { value: 130, image: "/images/eletro130.png", chance: 0 },
-  { value: 260, image: "/images/eletro260.png", chance: 0 },
-  { value: 450, image: "/images/eletro450.webp", chance: 0 },
-  { value: 500, image: "/images/eletro500.png", chance: 0 },
-  { value: 1500, image: "/images/eletro1500.png", chance: 0 },
-  { value: 2000, image: "/images/eletro2000.png", chance: 0 },
-  { value: 2500, image: "/images/eletro2500.png", chance: 0 },
-  { value: 4000, image: "/images/eletro4000.png", chance: 0 },
+{ value: 25, image: "/images/out25.png", chance: 20 },
+{ value: 50, image: "/images/out50.webp", chance: 49 },
+{ value: 100, image: "/images/out100.webp", chance: 30 },
+{ value: 200, image: "/images/out200.webp", chance: 1 },
+{ value: 250, image: "/images/out250.webp", chance: 0 },
+{ value: 280, image: "/images/out280.webp", chance: 0 },
+{ value: 300, image: "/images/out300.png", chance: 0 },
+{ value: 350, image: "/images/out350.png", chance: 0 },
+{ value: 400, image: "/images/out400.webp", chance: 0 },
+{ value: 600, image: "/images/out600.webp", chance: 0 },
+{ value: 1000, image: "/images/out1000.png", chance: 0 },
+{ value: 1200, image: "/images/out12000.webp", chance: 0 },
+{ value: 1500, image: "/images/out1500.webp", chance: 0 },
+{ value: 3500, image: "/images/out3500.webp", chance: 0 },
+{ value: 20000, image: "/images/out20000.webp", chance: 0 },
+{ value: 80000, image: "/images/out80000.webp", chance: 0 },
 ]
 
-// Configuração de prêmios para bloggers - MEGA SORTE
+// Configuração de prêmios para bloggers
 const bloggerPrizeConfig = [
-  { value: 50, image: "/images/eletro50.png", chance: 40 },
-  { value: 70, image: "/images/eletro70.webp", chance: 10 },
-  { value: 80, image: "/images/eletro80.png", chance: 10 },
-  { value: 90, image: "/images/eletro90.webp", chance: 5 },
-  { value: 110, image: "/images/eletro110.png", chance: 5 },
-  { value: 130, image: "/images/eletro130.png", chance: 5 },
-  { value: 260, image: "/images/eletro260.png", chance: 5 },
-  { value: 450, image: "/images/eletro450.webp", chance: 5 },
-  { value: 500, image: "/images/eletro500.png", chance: 5 },
-  { value: 1500, image: "/images/eletro1500.png", chance: 5 },
-  { value: 2000, image: "/images/eletro2000.png", chance: 5 },
-  { value: 2500, image: "/images/eletro2500.png", chance: 0 },
-  { value: 4000, image: "/images/eletro4000.png", chance: 0 },
+{ value: 25, image: "/images/out25.png", chance: 20 },
+{ value: 50, image: "/images/out50.webp", chance: 30 },
+{ value: 100, image: "/images/out100.webp", chance: 20 },
+{ value: 200, image: "/images/out200.webp", chance: 5 },
+{ value: 250, image: "/images/out250.webp", chance: 5 },
+{ value: 280, image: "/images/out280.webp", chance: 5 },
+{ value: 300, image: "/images/out300.png", chance: 5},
+{ value: 350, image: "/images/out350.png", chance: 3 },
+{ value: 400, image: "/images/out400.webp", chance: 2 },
+{ value: 600, image: "/images/out600.webp", chance: 1 },
+{ value: 1000, image: "/images/out1000.png", chance: 1 },
+{ value: 1200, image: "/images/out12000.webp", chance: 1 },
+{ value: 1500, image: "/images/out1500.webp", chance: 1 },
+{ value: 3500, image: "/images/out3500.webp", chance: 1 },
+{ value: 20000, image: "/images/out20000.webp", chance: 0 },
+{ value: 80000, image: "/images/out80000.webp", chance: 0 },
 ]
 
 // Configurações gerais
 const regularConfig = {
-  winFrequency: 0.10, // 10% de chance de ganhar
+  winFrequency: 0.5, // 50% de chance de ganhar
   scratchThreshold: 0.7,
   prizeConfig: regularPrizeConfig,
 }
 
 const bloggerConfig = {
-  winFrequency: 0.30, // 30% de chance de ganhar para bloggers
+  winFrequency: 0.5, // 50% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
-  R$50: "/images/eletro50.png",
-  R$70: "/images/eletro70.webp",
-  R$80: "/images/eletro80.png",
-  R$90: "/images/eletro90.webp",
-  R$110: "/images/eletro110.png",
-  R$130: "/images/eletro130.png",
-  R$260: "/images/eletro260.png",
-  R$450: "/images/eletro450.webp",
-  R$500: "/images/eletro500.png",
-  R$1500: "/images/eletro1500.png",
-  R$2000: "/images/eletro2000.png",
-  R$2500: "/images/eletro2500.png",
-  R$4000: "/images/eletro4000.png",
+"R$25": "/images/out25.png",
+"R$50": "/images/out50.webp",
+"R$100": "/images/out100.webp",
+"R$200": "/images/out200.webp",
+"R$250": "/images/out250.webp",
+"R$280": "/images/out280.webp",
+"R$300": "/images/out300.png",
+"R$350": "/images/out350.png",
+"R$400": "/images/out400.webp",
+"R$600": "/images/out600.webp",
+"R$1000": "/images/out1000.png",
+"R$1200": "/images/out12000.webp",
+"R$1500": "/images/out1500.webp",
+"R$3500": "/images/out3500.webp",
+"R$20000": "/images/out20000.webp",
+"R$80000": "/images/out80000.webp",
 }
 
 const winMessages = [
-  "MEGA SORTE! Ganhou R$@valor@!",
-  "Parabéns! Mega prêmio de R$@valor@!",
-  "Que sorte incrível! R$@valor@ na sua conta!",
+  "Outfit perfeito! Ganhou R$@valor@!",
+  "Parabéns! Seu estilo vale R$@valor@!",
+  "Que elegância! R$@valor@ na sua conta!",
 ]
 
 const loseMessages = [
-  "Não foi desta vez, mas continue tentando!",
-  "A mega sorte está chegando!",
-  "Próxima vez pode ser a grande!",
+  "Não foi desta vez, mas continue estiloso!",
+  "Continue tentando, o look perfeito está chegando!",
+  "A próxima raspadinha pode ser a sua!",
 ]
 
 const formatCurrency = (value: string | number | undefined | null): string => {
@@ -142,24 +151,28 @@ const isBlogger = (userProfile: UserProfile | null): boolean => {
   return bloggerEmails.includes(userProfile.user.email.toLowerCase())
 }
 
-// Conteúdo para exibição na tabela de prêmios (baseado na imagem fornecida)
+// Conteúdo para exibição na tabela de prêmios
 const gameContentDisplay = [
-{ name: "Geladeira", value: 4000, image: "/images/eletro4000.png" },
-{ name: "Máquina de Lavar", value: 2500, image: "/images/eletro2500.png" },
-{ name: 'TV 50"', value: 2000, image: "/images/eletro2000.png" },
-{ name: "Ar Condicionado", value: 1500, image: "/images/eletro1500.png" },
-{ name: "Microondas", value: 500, image: "/images/eletro500.png" },
-{ name: "Fogão 4 bocas", value: 450, image: "/images/eletro450.webp" },
-{ name: "Air Fryer", value: 260, image: "/images/eletro260.png" },
-{ name: "Liquidificador", value: 130, image: "/images/eletro130.png" },
-{ name: "Ventilador", value: 110, image: "/images/eletro110.png" },
-{ name: "Mixer", value: 90, image: "/images/eletro90.webp" },
-{ name: "Sanduicheira", value: 80, image: "/images/eletro80.png" },
-{ name: "Cafeteira", value: 70, image: "/images/eletro70.webp" },
-{ name: "Ferro de Passar", value: 50, image: "/images/eletro50.png" },
+{ name: "Rolex Submariner", value: 80000, image: "/images/out80000.webp" },
+{ name: "Mochila Louis Vuitton", value: 20000, image: "/images/out20000.webp" },
+{ name: "Boné Gucci", value: 3500, image: "/images/out3500.webp" },
+{ name: "Óculos Dolcce Gabanna", value: 1500, image: "/images/out1500.webp" },
+{ name: "Tênis Jordan", value: 1200, image: "/images/out12000.webp" },
+{ name: "Perfume Carolina Herrera", value: 1000, image: "/images/out1000.png" },
+{ name: "Bracelete Swarovski", value: 600, image: "/images/out600.webp" },
+{ name: "Vestido Zara", value: 400, image: "/images/out400.webp" },
+{ name: "Pulseira Pandora", value: 350, image: "/images/out350.png" },
+{ name: "Ocullos Juliette", value: 300, image: "/images/out300.png" },
+{ name: "Kit Make Rihanna Fenty Beauty", value: 280, image: "/images/out280.webp" },
+{ name: "Camiseta Hugo Boss", value: 250, image: "/images/out250.webp" },
+{ name: "Boné Lacoste", value: 200, image: "/images/out200.webp" },
+{ name: "Perfume da Virginia", value: 100, image: "/images/out100.webp" },
+{ name: "Meia Jordan", value: 50, image: "/images/out50.webp" },
+{ name: "Cartão Shein", value: 25, image: "/images/out25.png" },
+
 ]
 
-export default function MegaSortePage() {
+export default function OutfitPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -353,13 +366,12 @@ export default function MegaSortePage() {
         finalSymbolIds[pos] = winningSymbolId
       })
 
-      // Preencher o resto com outros valores de prêmios (máximo 2 de cada)
+      // Preencher o resto com outros valores de prêmios diferentes
       const otherPrizes: string[] = []
       config.prizeConfig.forEach((prize) => {
-        const prizeSymbol = `R$${prize.value}`
-        if (prizeSymbol !== winningSymbolId) {
-          otherPrizes.push(prizeSymbol)
-          otherPrizes.push(prizeSymbol) // Máximo 2 de cada
+        if (prize.value !== winningPrizeAmount) {
+          otherPrizes.push(`R$${prize.value}`)
+          otherPrizes.push(`R$${prize.value}`) // Adicionar duas vezes para ter mais opções
         }
       })
       shuffleArray(otherPrizes)
@@ -379,7 +391,7 @@ export default function MegaSortePage() {
         let tempSymbolIds = []
         const counts: { [key: string]: number } = {}
 
-        // Criar pool de símbolos para cartela perdedora
+        // Criar pool de símbolos para cartela perdedora usando apenas prêmios em dinheiro
         const symbolPoolForNonWinning: string[] = []
 
         // Adicionar prêmios em dinheiro (mas não 3 iguais)
@@ -420,27 +432,45 @@ export default function MegaSortePage() {
 
     const overlayImageSrc = getRandomOverlayImage()
 
-    try {
-      const overlayImg = new Image()
-      overlayImg.crossOrigin = "anonymous"
-      await new Promise((resolve, reject) => {
-        overlayImg.onload = resolve
-        overlayImg.onerror = reject
-        overlayImg.src = overlayImageSrc
-      })
-      ctx.drawImage(overlayImg, 0, 0, width, height)
-    } catch (overlayError) {
-      // Fallback para cor sólida se a imagem não carregar
-      ctx.fillStyle = "#7C3AED"
+    const overlayImage = new Image()
+    overlayImage.crossOrigin = "anonymous"
+    overlayImage.onload = () => {
+      ctx.save()
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = "high"
+      const imageAspect = overlayImage.width / overlayImage.height
+      const canvasAspect = width / height
+      let drawWidth, drawHeight, offsetX, offsetY
+      if (imageAspect > canvasAspect) {
+        drawHeight = height
+        drawWidth = height * imageAspect
+        offsetX = (width - drawWidth) / 2
+        offsetY = 0
+      } else {
+        drawWidth = width
+        drawHeight = width / imageAspect
+        offsetX = 0
+        offsetY = (height - drawHeight) / 2
+      }
+      ctx.drawImage(overlayImage, offsetX, offsetY, drawWidth, drawHeight)
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)"
+      ctx.fillRect(0, 0, width, height)
+      ctx.restore()
+      ctx.globalCompositeOperation = "destination-out"
+    }
+
+    overlayImage.onerror = () => {
+      ctx.fillStyle = "#DC2626"
       ctx.fillRect(0, 0, width, height)
       const gradient = ctx.createLinearGradient(0, 0, width, height)
-      gradient.addColorStop(0, "#A855F7")
-      gradient.addColorStop(0.5, "#8B5CF6")
-      gradient.addColorStop(1, "#7C3AED")
+      gradient.addColorStop(0, "#F87171")
+      gradient.addColorStop(0.5, "#EF4444")
+      gradient.addColorStop(1, "#DC2626")
       ctx.fillStyle = gradient
       ctx.fillRect(0, 0, width, height)
+      ctx.globalCompositeOperation = "destination-out"
     }
-    ctx.globalCompositeOperation = "destination-out"
+    overlayImage.src = overlayImageSrc
   }
 
   const getEventPos = (canvas: HTMLCanvasElement, event: MouseEvent | TouchEvent) => {
@@ -504,14 +534,14 @@ export default function MegaSortePage() {
         const symbolText = symbolSpan?.textContent || symbolElement.textContent
         if (symbolText === winningSymbol) {
           symbolElement.style.animation = "pulse 1.5s ease-in-out infinite"
-          symbolElement.style.boxShadow = "0 0 25px rgba(168, 85, 247, 0.8), inset 0 0 25px rgba(168, 85, 247, 0.3)"
-          symbolElement.style.border = "3px solid #A855F7"
-          symbolElement.style.backgroundColor = "rgba(168, 85, 247, 0.15)"
+          symbolElement.style.boxShadow = "0 0 25px rgba(236, 72, 153, 0.8), inset 0 0 25px rgba(236, 72, 153, 0.3)"
+          symbolElement.style.border = "3px solid #EC4899"
+          symbolElement.style.backgroundColor = "rgba(236, 72, 153, 0.15)"
           symbolElement.style.transform = "scale(1.05)"
           symbolElement.style.zIndex = "10"
           const img = symbolElement.querySelector("img")
           if (img) {
-            img.style.filter = "brightness(1.3) drop-shadow(0 0 10px rgba(168, 85, 247, 0.8))"
+            img.style.filter = "brightness(1.3) drop-shadow(0 0 10px rgba(236, 72, 153, 0.8))"
           }
         }
       }
@@ -520,7 +550,7 @@ export default function MegaSortePage() {
 
   const processGameResult = async () => {
     try {
-      const response = await AuthClient.makeAuthenticatedRequest("/api/games/mega-sorte/play", {
+      const response = await AuthClient.makeAuthenticatedRequest("/api/games/outfit/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -560,7 +590,7 @@ export default function MegaSortePage() {
         playSound(audioWinRef)
         playSound(audioCoinRef)
         setModalType("win")
-        setModalTitle("MEGA SORTE!")
+        setModalTitle("Outfit Perfeito!")
         setModalMessage(messageText)
         setShowModal(true)
       } else {
@@ -680,7 +710,7 @@ export default function MegaSortePage() {
         hasWonRealPrize: false,
         realPrizeAmount: 0,
       }
-      setMessage("Clique ou arraste para raspar a mega sorte!")
+      setMessage("Clique ou arraste para raspar o outfit!")
       setShowModal(false)
       if (scratchGridRef.current) {
         scratchGridRef.current.innerHTML = ""
@@ -688,13 +718,13 @@ export default function MegaSortePage() {
       const symbolIds = generateScratchCardSymbols()
       const gameContainer = document.createElement("div")
       gameContainer.className =
-        "relative w-full aspect-square bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border-2 border-purple-400/30 shadow-2xl shadow-purple-500/10"
+        "relative w-full aspect-square bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border-2 border-pink-400/30 shadow-2xl shadow-pink-500/10"
       const symbolsGrid = document.createElement("div")
       symbolsGrid.className = "absolute inset-0 grid grid-cols-3 gap-2 p-3"
       for (let i = 0; i < NUM_CELLS; i++) {
         const cellContent = document.createElement("div")
         cellContent.className =
-          "flex flex-col justify-center items-center text-purple-300 font-bold bg-gray-800/70 rounded-lg p-1 opacity-0 scale-75 transition-all duration-300"
+          "flex flex-col justify-center items-center text-pink-300 font-bold bg-gray-800/70 rounded-lg p-1 opacity-0 scale-75 transition-all duration-300"
         cellContent.id = `symbol-${i}`
         const symbol = createSymbolHtml(symbolIds[i])
         if (symbol.imageUrl) {
@@ -703,7 +733,7 @@ export default function MegaSortePage() {
           img.alt = symbol.legendText
           img.className = "w-full h-auto max-w-[60px] max-h-[60px] object-contain mb-1"
           img.onerror = () => {
-            img.src = `https://placehold.co/40x40/7C3AED/A855F7?text=${encodeURIComponent(symbolIds[i])}`
+            img.src = `https://placehold.co/40x40/DC2626/F87171?text=${encodeURIComponent(symbolIds[i])}`
           }
           cellContent.appendChild(img)
           const legend = document.createElement("span")
@@ -758,8 +788,8 @@ export default function MegaSortePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
-          <p className="text-white">Carregando Mega Sorte...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-400 mx-auto mb-4"></div>
+          <p className="text-white">Carregando Jogo...</p>
         </div>
       </div>
     )
@@ -775,15 +805,15 @@ export default function MegaSortePage() {
       <audio ref={audioCoinRef} src="/sounds/coin.mp3" preload="auto" />
       <audio ref={audioAmbientRef} src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Fantasy%20Dream%20Music%20-%20Dessert%20Land%20%E2%98%85924%20_%20Soothing%2C%20Beautiful%20%282%29-FxmO0t8tSiZUth7OsRAv6ykMhrRHQX.mp3" preload="auto" loop />
 
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 opacity-70"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(168,85,247,0.1)_0,_transparent_60%)]"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-pink-900/20 to-gray-900 opacity-70"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(236,72,153,0.1)_0,_transparent_60%)]"></div>
 
       <main className="relative z-10 max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col justify-center">
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-            Eletrodomesticos
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
+            Outfit
           </h1>
-          <p className="text-purple-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
+          <p className="text-pink-200/80 mt-1">Vista-se com estilo! Encontre 3 símbolos iguais!</p>
         </div>
 
         <div ref={scratchGridRef} className="mb-6" />
@@ -803,7 +833,7 @@ export default function MegaSortePage() {
             <Button
               onClick={initGame}
               disabled={gameLoading || !canPlay}
-              className="w-full font-bold py-3 text-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg shadow-lg shadow-purple-500/30 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
+              className="w-full font-bold py-3 text-lg bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-lg shadow-lg shadow-pink-500/30 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
             >
               {gameLoading
                 ? "Preparando..."
@@ -826,7 +856,7 @@ export default function MegaSortePage() {
 
         <div className="flex items-center justify-between text-sm mt-8 text-gray-400">
           <div className="flex items-center space-x-2">
-            <Sparkles className="h-4 w-4 text-purple-400" />
+            <Crown className="h-4 w-4 text-pink-400" />
             <span>Preço por Jogo: R$ {GAME_PRICE.toFixed(2)}</span>
           </div>
           <Button
@@ -836,7 +866,7 @@ export default function MegaSortePage() {
               setSoundEnabled(!soundEnabled)
               toggleAmbientSound()
             }}
-            className="text-gray-400 hover:text-purple-400 h-8 w-8 rounded-full"
+            className="text-gray-400 hover:text-pink-400 h-8 w-8 rounded-full"
           >
             {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
@@ -844,7 +874,7 @@ export default function MegaSortePage() {
 
         {/* Tabela de Prêmios em formato de grid */}
         <div className="mt-8 bg-gray-800/50 rounded-lg p-4">
-          <h3 className="text-xl font-bold text-purple-400 mb-4 text-center uppercase">
+          <h3 className="text-xl font-bold text-pink-400 mb-4 text-center uppercase">
             CONTEÚDO DESSA RASPADINHA:
           </h3>
           <div className="grid grid-cols-2 gap-4">
