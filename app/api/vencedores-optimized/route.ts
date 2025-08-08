@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     // Combinar vencedores reais e bots
     const allWinners = [...winners.real, ...winners.bots]
 
-    // Embaralhar e ordenar por data mais recente, limitando a 30 (aumentado)
+    // Embaralhar e ordenar por data mais recente, limitando a 30
     const sortedWinners = allWinners
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 30)

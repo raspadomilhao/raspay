@@ -45,6 +45,7 @@ interface Winner {
   prize_name?: string | null
   prize_image?: string | null
   is_physical_prize?: boolean
+  is_bot?: boolean
 }
 
 interface Game {
@@ -110,9 +111,12 @@ export default function HomePage() {
 
   const fetchRecentWinners = async () => {
     try {
-      const response = await fetch("/api/vencedores")
+      // Alterado para chamar a rota otimizada
+      const response = await fetch("/api/vencedores-optimized")
       if (response.ok) {
         const data = await response.json()
+        // A rota otimizada já retorna os vencedores combinados e ordenados.
+        // Apenas pegamos os 5 primeiros para exibição no carrossel.
         setWinners(data.winners?.slice(0, 5) || [])
       }
     } catch (error) {
@@ -203,8 +207,8 @@ export default function HomePage() {
                           <Image
                             src="/images/raspay-logo-new.png"
                             alt="RasPay Logo"
-                            width={32}
-                            height={32}
+                            width={36}
+                            height={36}
                             className="rounded-full"
                           />
                           <span className="text-foreground font-bold">RasPay</span>
@@ -483,17 +487,18 @@ export default function HomePage() {
                         <CardContent className="p-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              {winner.is_physical_prize && winner.prize_image ? (
+                              {winner.prize_image ? ( // Exibe a imagem se prize_image existir
                                 <div className="w-8 h-8 flex items-center justify-center rounded-full overflow-hidden">
                                   <Image
-                                    src={winner.prize_image || "/placeholder.svg"}
-                                    alt={winner.prize_name || "Prêmio Físico"}
+                                    src={winner.prize_image || "/placeholder.svg"} // Usar diretamente winner.prize_image
+                                    alt={winner.prize_name || "Prêmio"}
                                     width={32}
                                     height={32}
                                     className="object-contain"
                                   />
                                 </div>
                               ) : (
+                                // Fallback para o ícone de troféu se não houver imagem específica
                                 <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
                                   <Trophy className="h-4 w-4 text-white" />
                                 </div>
@@ -504,9 +509,10 @@ export default function HomePage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              {winner.is_physical_prize && winner.prize_name ? (
+                              {winner.prize_name ? ( // Prioriza prize_name if available
                                 <p className="text-green-400 font-bold text-xs">{winner.prize_name}</p>
                               ) : (
+                                // Fallback to prize_amount if no specific prize_name
                                 <p className="text-green-400 font-bold text-xs">
                                   R$ {formatCurrency(winner.prize_amount)}
                                 </p>
