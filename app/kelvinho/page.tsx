@@ -6,249 +6,311 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Bell, BellOff, Send, Smartphone, CheckCircle, AlertCircle, Zap, Settings } from 'lucide-react'
-import { toast } from 'sonner'
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const rawData = window.atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i)
-  }
-  return outputArray
-}
+import { Bell, BellOff, Send, Smartphone, CheckCircle, XCircle, Info } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function KelvinhoPage() {
-  const [isSupported, setIsSupported] = useState(false)
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null)
+  const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  
-  // Estados do formulário
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('Verificando...')
   const [formData, setFormData] = useState({
     usuario: '',
     valor: '',
-    metodo: '',
-    observacoes: ''
+    metodo: 'pix',
+    id: ''
   })
+  const { toast } = useToast()
 
+  // Verificar status das notificações ao carregar
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      setIsSupported(true)
-      registerServiceWorker()
-    }
+    checkNotificationStatus()
+    checkSubscriptionStatus()
   }, [])
 
-  async function registerServiceWorker() {
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-        updateViaCache: 'none',
-      })
-      const sub = await registration.pushManager.getSubscription()
-      setSubscription(sub)
-    } catch (error) {
-      console.error('Erro ao registrar service worker:', error)
+  const checkNotificationStatus = () => {
+    if (!('Notification' in window)) {
+      setSubscriptionStatus('❌ Navegador não suporta notificações')
+      return
+    }
+
+    const permission = Notification.permission
+    switch (permission) {
+      case 'granted':
+        setSubscriptionStatus('✅ Notificações permitidas')
+        break
+      case 'denied':
+        setSubscriptionStatus('❌ Notificações bloqueadas')
+        break
+      default:
+        setSubscriptionStatus('⚠️ Permissão pendente')
     }
   }
 
-  async function subscribeToPush() {
-    setIsLoading(true)
+  const checkSubscriptionStatus = async () => {
     try {
-      const registration = await navigator.serviceWorker.ready
-      const sub = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
-      })
-      
-      setSubscription(sub)
-      
       const response = await fetch('/api/kelvinho/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'subscribe', subscription: sub })
+        body: JSON.stringify({ action: 'status' })
       })
+
+      const data = await response.json()
+      if (data.success && data.activeSubscriptions > 0) {
+        setIsSubscribed(true)
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status:', error)
+    }
+  }
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      toast({
+        title: "❌ Não Suportado",
+        description: "Seu navegador não suporta notificações push.",
+        variant: "destructive"
+      })
+      return false
+    }
+
+    const permission = await Notification.requestPermission()
+    checkNotificationStatus()
+    
+    if (permission === 'granted') {
+      toast({
+        title: "✅ Permissão Concedida",
+        description: "Notificações foram habilitadas com sucesso!",
+      })
+      return true
+    } else {
+      toast({
+        title: "❌ Permissão Negada",
+        description: "Você precisa permitir notificações para receber alertas.",
+        variant: "destructive"
+      })
+      return false
+    }
+  }
+
+  const subscribeToNotifications = async () => {
+    setIsLoading(true)
+    
+    try {
+      // Primeiro, solicitar permissão
+      const hasPermission = await requestNotificationPermission()
+      if (!hasPermission) {
+        setIsLoading(false)
+        return
+      }
+
+      // Registrar service worker (se disponível)
+      if ('serviceWorker' in navigator) {
+        try {
+          await navigator.serviceWorker.register('/sw.js')
+        } catch (swError) {
+          console.log('Service Worker não disponível:', swError)
+        }
+      }
+
+      // Simular subscription (sem web-push real por enquanto)
+      const mockSubscription = {
+        endpoint: `https://mock-endpoint-${Date.now()}.com`,
+        keys: {
+          p256dh: 'mock-p256dh-key',
+          auth: 'mock-auth-key'
+        }
+      }
+
+      const response = await fetch('/api/kelvinho/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'subscribe',
+          subscription: mockSubscription
+        })
+      })
+
+      const data = await response.json()
       
-      const result = await response.json()
-      if (result.success) {
-        toast.success('🎉 Notificações automáticas ativadas! Você receberá alertas de depósitos confirmados.')
+      if (data.success) {
+        setIsSubscribed(true)
+        toast({
+          title: "🔔 Notificações Ativadas!",
+          description: data.message,
+        })
       } else {
-        throw new Error(result.error)
+        throw new Error(data.error || 'Erro ao ativar notificações')
       }
     } catch (error) {
       console.error('Erro ao ativar notificações:', error)
-      toast.error('Erro ao ativar notificações')
+      toast({
+        title: "❌ Erro",
+        description: error instanceof Error ? error.message : 'Erro ao ativar notificações',
+        variant: "destructive"
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  async function unsubscribeFromPush() {
+  const unsubscribeFromNotifications = async () => {
     setIsLoading(true)
+    
     try {
-      await subscription?.unsubscribe()
-      setSubscription(null)
-      
       const response = await fetch('/api/kelvinho/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'unsubscribe' })
       })
+
+      const data = await response.json()
       
-      const result = await response.json()
-      if (result.success) {
-        toast.success('Notificações desativadas')
+      if (data.success) {
+        setIsSubscribed(false)
+        toast({
+          title: "🔕 Notificações Desativadas",
+          description: data.message,
+        })
+      } else {
+        throw new Error(data.error || 'Erro ao desativar notificações')
       }
     } catch (error) {
       console.error('Erro ao desativar notificações:', error)
-      toast.error('Erro ao desativar notificações')
+      toast({
+        title: "❌ Erro",
+        description: error instanceof Error ? error.message : 'Erro ao desativar notificações',
+        variant: "destructive"
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  async function sendTestNotification() {
-    if (!subscription) {
-      toast.error('Ative as notificações primeiro!')
-      return
-    }
-
-    if (!formData.usuario || !formData.valor || !formData.metodo) {
-      toast.error('Preencha todos os campos obrigatórios!')
+  const sendTestNotification = async () => {
+    if (!formData.usuario || !formData.valor) {
+      toast({
+        title: "⚠️ Campos Obrigatórios",
+        description: "Preencha pelo menos o usuário e valor.",
+        variant: "destructive"
+      })
       return
     }
 
     setIsLoading(true)
+    
     try {
       const response = await fetch('/api/kelvinho/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'send',
-          usuario: formData.usuario,
-          valor: formData.valor,
-          metodo: formData.metodo,
-          id: Date.now().toString()
+          ...formData
         })
       })
+
+      const data = await response.json()
       
-      const result = await response.json()
-      if (result.success) {
-        toast.success('Notificação de teste enviada!')
+      if (data.success) {
+        toast({
+          title: "📱 Notificação Enviada!",
+          description: data.message,
+        })
+        
         // Limpar formulário
-        setFormData({ usuario: '', valor: '', metodo: '', observacoes: '' })
+        setFormData({
+          usuario: '',
+          valor: '',
+          metodo: 'pix',
+          id: ''
+        })
       } else {
-        throw new Error(result.error)
+        throw new Error(data.error || 'Erro ao enviar notificação')
       }
     } catch (error) {
       console.error('Erro ao enviar notificação:', error)
-      toast.error('Erro ao enviar notificação')
+      toast({
+        title: "❌ Erro",
+        description: error instanceof Error ? error.message : 'Erro ao enviar notificação',
+        variant: "destructive"
+      })
     } finally {
       setIsLoading(false)
     }
-  }
-
-  if (!isSupported) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <CardTitle>Não Suportado</CardTitle>
-            <CardDescription>
-              Seu navegador não suporta notificações push. Use um navegador moderno como Chrome, Firefox ou Safari.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center py-6">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Smartphone className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Kelvinho Push</h1>
-          </div>
-          <p className="text-gray-600">Sistema de notificações para depósitos confirmados</p>
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">
+            🔔 Notificações Kelvinho
+          </h1>
+          <p className="text-gray-600">
+            Sistema de alertas para depósitos confirmados
+          </p>
         </div>
 
-        {/* Status das Notificações Automáticas */}
-        <Card className="border-2 border-green-200 bg-green-50">
+        {/* Status Card */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-800">
-              <Zap className="w-5 h-5" />
-              Notificações Automáticas
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Status das Notificações
             </CardTitle>
-            <CardDescription className="text-green-700">
-              Receba alertas instantâneos quando depósitos forem confirmados pelo HorsePay
+            <CardDescription>
+              Configure e monitore suas notificações push
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-green-800">
-                  {subscription ? '🟢 Sistema Ativo' : '🔴 Sistema Inativo'}
-                </p>
-                <p className="text-sm text-green-700">
-                  {subscription 
-                    ? 'Você receberá notificações automáticas de todos os depósitos confirmados' 
-                    : 'Ative para receber alertas automáticos no seu celular'
-                  }
-                </p>
-              </div>
-              <Badge variant={subscription ? 'default' : 'secondary'} className="bg-green-600">
-                {subscription ? 'ATIVO' : 'INATIVO'}
+              <span className="text-sm font-medium">Permissão do Navegador:</span>
+              <Badge variant={subscriptionStatus.includes('✅') ? 'default' : 'secondary'}>
+                {subscriptionStatus}
               </Badge>
             </div>
             
-            <div className="bg-green-100 p-4 rounded-lg">
-              <h4 className="font-medium text-green-800 mb-2">Como funciona:</h4>
-              <ul className="text-sm text-green-700 space-y-1">
-                <li>• Webhook do HorsePay confirma depósito</li>
-                <li>• Sistema envia notificação push automaticamente</li>
-                <li>• Você recebe alerta instantâneo no celular</li>
-                <li>• Clique na notificação para ir ao painel admin</li>
-              </ul>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Status da Inscrição:</span>
+              <Badge variant={isSubscribed ? 'default' : 'outline'}>
+                {isSubscribed ? '✅ Ativo' : '❌ Inativo'}
+              </Badge>
             </div>
-            
-            <div className="flex gap-2">
-              {subscription ? (
+
+            <div className="pt-4">
+              {!isSubscribed ? (
                 <Button 
-                  onClick={unsubscribeFromPush} 
+                  onClick={subscribeToNotifications}
                   disabled={isLoading}
-                  variant="outline"
-                  className="flex items-center gap-2"
+                  className="w-full"
+                  size="lg"
                 >
-                  <BellOff className="w-4 h-4" />
-                  Desativar
+                  <Bell className="mr-2 h-4 w-4" />
+                  {isLoading ? 'Ativando...' : 'Ativar Notificações'}
                 </Button>
               ) : (
                 <Button 
-                  onClick={subscribeToPush} 
+                  onClick={unsubscribeFromNotifications}
                   disabled={isLoading}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
                 >
-                  <Bell className="w-4 h-4" />
-                  Ativar Notificações Automáticas
+                  <BellOff className="mr-2 h-4 w-4" />
+                  {isLoading ? 'Desativando...' : 'Desativar Notificações'}
                 </Button>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Formulário de Teste */}
+        {/* Test Form */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Teste Manual
+              <Send className="h-5 w-5" />
+              Simular Depósito Confirmado
             </CardTitle>
             <CardDescription>
               Envie uma notificação de teste para verificar se está funcionando
@@ -257,7 +319,7 @@ export default function KelvinhoPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="usuario">Nome do Usuário *</Label>
+                <Label htmlFor="usuario">Nome do Usuário</Label>
                 <Input
                   id="usuario"
                   placeholder="Ex: João Silva"
@@ -267,7 +329,7 @@ export default function KelvinhoPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="valor">Valor (R$) *</Label>
+                <Label htmlFor="valor">Valor (R$)</Label>
                 <Input
                   id="valor"
                   type="number"
@@ -279,72 +341,72 @@ export default function KelvinhoPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="metodo">Método de Pagamento *</Label>
-              <Select 
-                value={formData.metodo} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, metodo: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PIX">PIX</SelectItem>
-                  <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
-                  <SelectItem value="Cartão de Débito">Cartão de Débito</SelectItem>
-                  <SelectItem value="Boleto">Boleto</SelectItem>
-                  <SelectItem value="Transferência">Transferência</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="observacoes">Observações</Label>
-              <Textarea
-                id="observacoes"
-                placeholder="Informações adicionais (opcional)"
-                value={formData.observacoes}
-                onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
-                rows={3}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="metodo">Método de Pagamento</Label>
+                <Select 
+                  value={formData.metodo} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, metodo: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="boleto">Boleto</SelectItem>
+                    <SelectItem value="cartao">Cartão</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="id">ID da Transação (Opcional)</Label>
+                <Input
+                  id="id"
+                  placeholder="Ex: 12345"
+                  value={formData.id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+                />
+              </div>
             </div>
 
             <Button 
               onClick={sendTestNotification}
-              disabled={isLoading || !subscription}
-              className="w-full flex items-center gap-2"
+              disabled={isLoading || !isSubscribed}
+              className="w-full"
               size="lg"
-              variant="outline"
             >
-              <Send className="w-4 h-4" />
-              {isLoading ? 'Enviando...' : 'Enviar Teste'}
+              <Send className="mr-2 h-4 w-4" />
+              {isLoading ? 'Enviando...' : 'Enviar Notificação de Teste'}
             </Button>
 
-            {!subscription && (
-              <p className="text-sm text-amber-600 text-center">
-                ⚠️ Ative as notificações primeiro para poder enviar testes
-              </p>
+            {!isSubscribed && (
+              <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                <Info className="h-4 w-4" />
+                Ative as notificações primeiro para poder enviar testes
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Instruções */}
+        {/* Info Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Como Usar</CardTitle>
+            <CardTitle className="text-lg">ℹ️ Como Funciona</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">1</div>
-              <p className="text-sm">Clique em "Ativar Notificações Automáticas" e permita quando o navegador solicitar</p>
+          <CardContent className="space-y-3 text-sm text-gray-600">
+            <div className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span><strong>Ativar Notificações:</strong> Permite que o navegador envie alertas push</span>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">2</div>
-              <p className="text-sm">Agora você receberá alertas automáticos sempre que um depósito for confirmado</p>
+            <div className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span><strong>Teste Manual:</strong> Simula um depósito confirmado para testar o sistema</span>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">3</div>
-              <p className="text-sm">Use o formulário de teste para verificar se as notificações estão funcionando</p>
+            <div className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span><strong>Integração Futura:</strong> Será conectado ao webhook do HorsePay para alertas automáticos</span>
             </div>
           </CardContent>
         </Card>
