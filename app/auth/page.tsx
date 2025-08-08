@@ -10,18 +10,44 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Zap, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Zap, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import { AuthClient } from "@/lib/auth-client"
 import { Footer } from "@/components/footer"
 import Link from "next/link"
+
+// Função para avaliar força da senha
+const getPasswordStrength = (password: string) => {
+  let score = 0
+  let feedback = []
+
+  if (password.length >= 8) score += 1
+  else feedback.push("Pelo menos 8 caracteres")
+
+  if (/[a-z]/.test(password)) score += 1
+  else feedback.push("Letra minúscula")
+
+  if (/[A-Z]/.test(password)) score += 1
+  else feedback.push("Letra maiúscula")
+
+  if (/[0-9]/.test(password)) score += 1
+  else feedback.push("Número")
+
+  if (/[^A-Za-z0-9]/.test(password)) score += 1
+  else feedback.push("Caractere especial")
+
+  const strength = score <= 1 ? "weak" : score <= 3 ? "medium" : "strong"
+  const strengthText = score <= 1 ? "Fraca" : score <= 3 ? "Média" : "Forte"
+  const strengthColor = score <= 1 ? "bg-red-500" : score <= 3 ? "bg-yellow-500" : "bg-green-500"
+
+  return { score, strength, strengthText, strengthColor, feedback }
+}
 
 export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [referralInfo, setReferralInfo] = useState<{ type: string; code: string } | null>(null)
 
@@ -51,11 +77,18 @@ export default function AuthPage() {
   // Estados do formulário de registro
   const [registerData, setRegisterData] = useState({
     name: "",
-    username: "",
     phone: "",
     email: "",
     password: "",
-    confirmPassword: "",
+  })
+
+  // Estado para força da senha
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    strength: "weak",
+    strengthText: "Fraca",
+    strengthColor: "bg-red-500",
+    feedback: []
   })
 
   // Verificar se já está logado e processar códigos de referência
@@ -92,6 +125,21 @@ export default function AuthPage() {
       document.cookie = `affiliate_ref=${affiliateCode}; path=/; max-age=3600`
     }
   }, [router, searchParams])
+
+  // Atualizar força da senha quando a senha mudar
+  useEffect(() => {
+    if (registerData.password) {
+      setPasswordStrength(getPasswordStrength(registerData.password))
+    } else {
+      setPasswordStrength({
+        score: 0,
+        strength: "weak",
+        strengthText: "Fraca",
+        strengthColor: "bg-red-500",
+        feedback: []
+      })
+    }
+  }, [registerData.password])
 
   // Função de login
   const handleLogin = async (e: React.FormEvent) => {
@@ -173,15 +221,6 @@ export default function AuthPage() {
       return
     }
 
-    if (registerData.password !== registerData.confirmPassword) {
-      toast({
-        title: "Erro no cadastro",
-        description: "As senhas não coincidem",
-        variant: "destructive",
-      })
-      return
-    }
-
     if (registerData.password.length < 6) {
       toast({
         title: "Erro no cadastro",
@@ -204,7 +243,6 @@ export default function AuthPage() {
         credentials: "include",
         body: JSON.stringify({
           name: registerData.name,
-          username: registerData.username,
           phone: registerData.phone,
           email: registerData.email,
           password: registerData.password,
@@ -390,20 +428,6 @@ export default function AuthPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="text-gray-300">
-                        Nome de usuário
-                      </Label>
-                      <Input
-                        id="username"
-                        type="text"
-                        placeholder="Digite um nome de usuário"
-                        value={registerData.username}
-                        onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                        className="bg-slate-800 border-slate-600 text-white placeholder-gray-400 focus:border-cyan-400"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="phone" className="text-gray-300">
                         Telefone
                       </Label>
@@ -456,31 +480,32 @@ export default function AuthPage() {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password" className="text-gray-300">
-                        Confirmar senha
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="confirm-password"
-                          type={showConfirmPassword ? "text" : "password"}
-                          placeholder="Confirme sua senha"
-                          value={registerData.confirmPassword}
-                          onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                          className="bg-slate-800 border-slate-600 text-white placeholder-gray-400 focus:border-cyan-400 pr-10"
-                          required
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-300"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
+                      
+                      {/* Indicador de força da senha - apenas informativo */}
+                      {registerData.password && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Força da senha:</span>
+                            <span className={`text-sm font-medium ${
+                              passwordStrength.strength === 'weak' ? 'text-red-400' :
+                              passwordStrength.strength === 'medium' ? 'text-yellow-400' : 'text-green-400'
+                            }`}>
+                              {passwordStrength.strengthText}
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-700 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.strengthColor}`}
+                              style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                            />
+                          </div>
+                          {passwordStrength.feedback.length > 0 && passwordStrength.strength !== 'strong' && (
+                            <div className="text-xs text-gray-500">
+                              <p>Dica: Para uma senha mais segura, considere adicionar: {passwordStrength.feedback.slice(0, 2).join(', ')}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Checkbox de concordância com termos */}
