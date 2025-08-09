@@ -7,7 +7,26 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Zap, Trophy, Play, ArrowRight, Wallet, Menu, LogOut, Sparkles, Home, Gamepad2, CreditCard, TrendingUp, User, X, Star, Gift, Crown, Diamond } from 'lucide-react'
+import {
+  Zap,
+  Trophy,
+  Play,
+  ArrowRight,
+  Wallet,
+  Menu,
+  LogOut,
+  Sparkles,
+  Home,
+  Gamepad2,
+  CreditCard,
+  TrendingUp,
+  User,
+  X,
+  Star,
+  Gift,
+  Crown,
+  Diamond,
+} from "lucide-react"
 import { AuthClient } from "@/lib/auth-client"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Footer } from "@/components/footer"
@@ -22,6 +41,7 @@ import { LiveStoriesButton } from "@/components/live-stories-button"
 import SuperPremiosPage from "./jogo/super-premios/page"
 import SonhoDeConsumoPage from "./jogo/sonho-de-consumo/page"
 import OutfitPage from "./jogo/outfit/page"
+import { DepositModal } from "@/components/deposit-modal"
 
 interface UserProfile {
   user: {
@@ -69,7 +89,7 @@ const iconMap: { [key: string]: any } = {
   Sparkles,
   Crown,
   Diamond,
-  Gamepad2
+  Gamepad2,
 }
 
 export default function HomePage() {
@@ -85,6 +105,8 @@ export default function HomePage() {
   const [showReferralPopup, setShowReferralPopup] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false)
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
+  const [hasTriedAutoOpen, setHasTriedAutoOpen] = useState(false)
 
   useEffect(() => {
     const token = AuthClient.getToken()
@@ -99,6 +121,27 @@ export default function HomePage() {
     fetchRecentWinners()
     fetchGames()
   }, [router])
+
+  useEffect(() => {
+    // Only attempt once per session and only when authenticated AND profile loaded
+    if (!isLoggedIn || !userProfile || hasTriedAutoOpen) return
+    try {
+      const key = "raspay:opened-deposit-modal:v2"
+      const hasOpened = typeof window !== "undefined" ? localStorage.getItem(key) : "1"
+      if (!hasOpened) {
+        console.debug("[RasPay] Opening deposit modal on first visit (auth).")
+        setIsDepositModalOpen(true)
+        localStorage.setItem(key, "1")
+      } else {
+        console.debug("[RasPay] Deposit modal already opened before.")
+      }
+    } catch (e) {
+      console.debug("[RasPay] LocalStorage unavailable, attempting to open once this session.", e)
+      setIsDepositModalOpen(true)
+    } finally {
+      setHasTriedAutoOpen(true)
+    }
+  }, [isLoggedIn, userProfile, hasTriedAutoOpen])
 
   const fetchUserProfile = async () => {
     try {
@@ -134,12 +177,12 @@ export default function HomePage() {
           id: game.game_id,
           name: game.name,
           description: game.description,
-          minBet: parseFloat(game.min_bet) || 0,
-          maxPrize: parseFloat(game.max_prize) || 0,
+          minBet: Number.parseFloat(game.min_bet) || 0,
+          maxPrize: Number.parseFloat(game.max_prize) || 0,
           image: game.image_url,
           gradient: `from-${game.gradient_from} to-${game.gradient_to}`,
           bgGradient: `from-${game.gradient_from}/20 to-${game.gradient_to}/20`,
-          icon: game.icon
+          icon: game.icon,
         }))
         setGames(formattedGames)
       }
@@ -661,6 +704,19 @@ export default function HomePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <DepositModal
+        // Support both prop APIs
+        isOpen={isLoggedIn && isDepositModalOpen}
+        open={isLoggedIn && isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+        onOpenChange={(open: boolean) => setIsDepositModalOpen(open)}
+        userProfile={userProfile}
+        onDepositSuccess={() => {
+          // Refresh profile after successful deposit
+          fetchUserProfile()
+        }}
+      />
 
       <MobileBottomNav />
       <Footer />
