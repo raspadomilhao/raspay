@@ -41,7 +41,7 @@ const GAME_PRICE = 15.0 // Mega Sorte custa R$ 5
 
 // Configuração de prêmios para usuários regulares - MEGA SORTE
 const regularPrizeConfig = [
-  { value: 50, image: "/images/eletro50.png", chance: 99 },
+  { value: 5, image: "/images/eletro50.png", chance: 99 },
   { value: 70, image: "/images/eletro70.webp", chance: 1 },
   { value: 80, image: "/images/eletro80.png", chance: 0 },
   { value: 90, image: "/images/eletro90.webp", chance: 0 },
