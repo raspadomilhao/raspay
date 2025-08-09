@@ -1,19 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Wallet, Zap, Shield, Trophy, Crown, Star, TrendingUp, Users, Gift, Gamepad2, Home, User, LogOut, Menu, Play, ArrowRight, CheckCircle, Clock, DollarSign, X, Copy, QrCode, CreditCard, Smartphone, Plus, ArrowLeft } from 'lucide-react'
+import { Shield, Gift, Clock, CheckCircle, ArrowLeft, X, Copy } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { AuthClient } from "@/lib/auth-client"
-import { FeeCalculator } from "@/components/fee-calculator"
-import Link from "next/link"
 
 interface UserProfile {
   user: {
@@ -36,8 +32,10 @@ interface PaymentOrder {
 }
 
 interface DepositModalProps {
-  isOpen: boolean
+  isOpen?: boolean
+  open?: boolean
   onClose: () => void
+  onOpenChange?: (open: boolean) => void
   userProfile?: UserProfile | null
   onDepositSuccess?: () => void
 }
@@ -52,24 +50,34 @@ interface DepositProgress {
   bonus_100_claimed: boolean
 }
 
-type ModalState = 'form' | 'qrcode' | 'success'
+type ModalState = "form" | "qrcode" | "success"
 
-export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onDepositSuccess }: DepositModalProps) {
+export function DepositModal({
+  isOpen: isOpenProp,
+  open: openProp,
+  onClose,
+  onOpenChange,
+  userProfile: initialProfile,
+  onDepositSuccess,
+}: DepositModalProps) {
+  // Controlled/Uncontrolled compatibility
+  const isOpen = Boolean(isOpenProp ?? openProp ?? false)
+
   const [userProfile, setUserProfile] = useState<UserProfile | null>(initialProfile || null)
-  
-  // Estados da API HorsePay
+
+  // API HorsePay
   const [accessToken, setAccessToken] = useState<string>("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Estados do formulário de depósito
+  // Depósito
   const [amount, setAmount] = useState("")
   const [payerName, setPayerName] = useState("")
 
-  // Estados do modal
-  const [modalState, setModalState] = useState<ModalState>('form')
+  // Modal state
+  const [modalState, setModalState] = useState<ModalState>("form")
   const [paymentOrder, setPaymentOrder] = useState<PaymentOrder | null>(null)
-  const [timeLeft, setTimeLeft] = useState(600) // 10 minutos
+  const [timeLeft, setTimeLeft] = useState(600) // 10 min
   const [isChecking, setIsChecking] = useState(false)
   const [paymentDetected, setPaymentDetected] = useState(false)
   const [checkCount, setCheckCount] = useState(0)
@@ -78,26 +86,26 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
 
   const [isBlogger, setIsBlogger] = useState(false)
 
-  // Estados das configurações do sistema
+  // Configs do sistema
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({})
   const [minDepositAmount, setMinDepositAmount] = useState(20)
 
-  // Estados do progresso de depósitos
+  // Progresso dos depósitos
   const [depositProgress, setDepositProgress] = useState<DepositProgress>({
     total_deposited: 0,
     bonus_50_claimed: false,
     bonus_100_claimed: false,
   })
 
-  // Função utilitária para formatar valores monetários
+  // Util: moeda
   const formatCurrency = (value: string | number | undefined | null): string => {
     if (value === null || value === undefined) return "0.00"
     const numValue = typeof value === "string" ? Number.parseFloat(value) : value
     return isNaN(numValue) ? "0.00" : numValue.toFixed(2)
   }
 
-  // Buscar configurações do sistema
-  const fetchSystemSettings = async () => {
+  // Buscar configs
+  const fetchSystemSettings = useCallback(async () => {
     try {
       const response = await fetch("/api/settings")
       if (response.ok) {
@@ -110,82 +118,55 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
     } catch (error) {
       console.error("Erro ao buscar configurações:", error)
     }
-  }
+  }, [])
 
-  // Buscar progresso de depósitos do usuário
-  const fetchDepositProgress = async () => {
+  // Progresso de depósitos
+  const fetchDepositProgress = useCallback(async () => {
     try {
-      console.log("🔄 Buscando progresso de depósitos...")
       const response = await AuthClient.makeAuthenticatedRequest("/api/user/deposits")
       if (response.ok) {
         const data = await response.json()
-        console.log("📊 Dados recebidos:", data)
-
         setDepositProgress({
           total_deposited: data.total_deposited || 0,
           bonus_50_claimed: data.bonus_50_claimed || false,
           bonus_100_claimed: data.bonus_100_claimed || false,
         })
-
-        // Mostrar notificação se bônus foi concedido
         if (data.bonus_awarded) {
           toast({
             title: "🎉 Parabéns!",
             description: "Você ganhou um bônus de depósito!",
           })
         }
-
-        console.log("✅ Progresso atualizado:", {
-          total_deposited: data.total_deposited || 0,
-          bonus_50_claimed: data.bonus_50_claimed || false,
-          bonus_100_claimed: data.bonus_100_claimed || false,
-        })
-      } else {
-        console.error("❌ Erro na resposta:", response.status)
       }
     } catch (error) {
-      console.error("❌ Erro ao buscar progresso de depósitos:", error)
+      console.error("Erro ao buscar progresso de depósitos:", error)
     }
-  }
+  }, [])
 
-  // Buscar perfil do usuário
-  const fetchUserProfile = async () => {
+  // Perfil
+  const fetchUserProfile = useCallback(async () => {
     try {
       const response = await AuthClient.makeAuthenticatedRequest("/api/user/profile")
-
       if (response.ok) {
         const profile = await response.json()
         setUserProfile(profile)
-
-        if (profile.user.name && !payerName) {
-          setPayerName(profile.user.name)
-        }
-
-        if (profile.user.user_type === "blogger") {
-          setIsBlogger(true)
-        }
+        if (profile.user.name && !payerName) setPayerName(profile.user.name)
+        if (profile.user.user_type === "blogger") setIsBlogger(true)
       }
     } catch (error) {
       console.error("Erro ao buscar perfil:", error)
     }
-  }
+  }, [payerName])
 
-  // Autenticar com a API HorsePay
+  // HorsePay auth
   const authenticateHorsePay = async (): Promise<string> => {
     try {
-      console.log("🔐 Iniciando autenticação HorsePay...")
-
       const response = await fetch("/api/horsepay/auth", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       })
-
       const data = await response.json()
-
       if (data.success && data.access_token) {
-        console.log("✅ Autenticação HorsePay bem-sucedida")
         setAccessToken(data.access_token)
         setIsAuthenticated(true)
         return data.access_token
@@ -193,35 +174,25 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
         throw new Error("Falha na autenticação HorsePay: " + (data.error || "Token não recebido"))
       }
     } catch (error) {
-      console.error("❌ Erro na autenticação HorsePay:", error)
+      console.error("Erro na autenticação HorsePay:", error)
       throw error
     }
   }
 
-  // Function to check payment status
-  const checkPayment = async () => {
+  // Checar pagamento
+  const checkPayment = useCallback(async () => {
     if (!paymentOrder || paymentDetected || isChecking) return
-
     setIsChecking(true)
     const currentCheck = checkCount + 1
     setCheckCount(currentCheck)
 
     try {
-      console.log(`🔍 Verificação ${currentCheck} para external_id: ${paymentOrder.external_id}`)
-
-      // Obter token de autenticação
       const token = AuthClient.getToken()
-      console.log(`🔑 Token disponível: ${token ? "Sim" : "Não"}`)
-
-      // Adicionar token no header Authorization
       const headers: HeadersInit = {
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
       }
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`
-      }
+      if (token) headers["Authorization"] = `Bearer ${token}`
 
       const response = await fetch(`/api/transactions/${paymentOrder.external_id}/status?t=${Date.now()}`, {
         method: "GET",
@@ -229,30 +200,22 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
         headers,
       })
 
-      console.log(`📡 Response status: ${response.status}`)
-
       if (response.ok) {
         const data = await response.json()
-        console.log(`📊 Dados recebidos:`, data)
-
-        // USAR EXATAMENTE A MESMA CONDIÇÃO DO WEBHOOK
         if (data.processed === true && data.status === "success") {
-          console.log(`✅ PAGAMENTO DETECTADO! external_id: ${paymentOrder.external_id}`)
           handlePaymentDetected()
           return
-        } else {
-          console.log(`⏳ Ainda não processado: processed=${data.processed}, status=${data.status}`)
         }
       } else {
-        const errorData = await response.text()
-        console.log(`❌ Erro na resposta: ${response.status} - ${errorData}`)
+        // optional: log text
+        await response.text()
       }
     } catch (error) {
-      console.error("❌ Erro ao verificar pagamento:", error)
+      console.error("Erro ao verificar pagamento:", error)
     } finally {
       setIsChecking(false)
     }
-  }
+  }, [paymentOrder, paymentDetected, isChecking, checkCount])
 
   // Gerar PIX
   const generatePix = async () => {
@@ -266,7 +229,6 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
       })
       return
     }
-
     if (!payerName.trim()) {
       toast({
         title: "Nome obrigatório",
@@ -278,20 +240,13 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
 
     setLoading(true)
     try {
-      console.log("🚀 Iniciando geração de PIX...")
-
-      // Sempre autenticar antes de gerar PIX para garantir token válido
       const currentToken = await authenticateHorsePay()
-
-      console.log("💰 Gerando PIX com token válido...")
 
       const body = {
         payer_name: payerName,
         amount: amountNum,
         callback_url: "https://v0-raspay.vercel.app/api/webhook/horsepay",
       }
-
-      console.log("📤 Enviando requisição para HorsePay:", body)
 
       const horsePayResponse = await fetch("https://api.horsepay.io/transaction/neworder", {
         method: "POST",
@@ -302,15 +257,11 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
         body: JSON.stringify(body),
       })
 
-      console.log("📥 Resposta HorsePay status:", horsePayResponse.status)
-
       if (horsePayResponse.ok) {
         const data: PaymentOrder = await horsePayResponse.json()
-        console.log("✅ PIX gerado com sucesso:", data.external_id)
-
         setPaymentOrder(data)
 
-        // Salvar transação no banco
+        // Persistir transação
         await AuthClient.makeAuthenticatedRequest("/api/transactions", {
           method: "POST",
           body: JSON.stringify({
@@ -324,48 +275,37 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
           }),
         })
 
-        // Mudar para tela do QR code
-        setModalState('qrcode')
-        setTimeLeft(600) // Reset timer
+        // Alterar tela
+        setModalState("qrcode")
+        setTimeLeft(600)
         setPaymentDetected(false)
         setCheckCount(0)
 
-        // Se for blogger, simular pagamento após 7 segundos
+        // Simulação p/ blogger
         if (isBlogger) {
-          console.log("🎭 Blogger detectado - simulação será executada em 7 segundos")
           setTimeout(async () => {
             try {
               const simulateResponse = await AuthClient.makeAuthenticatedRequest("/api/simulate-deposit", {
                 method: "POST",
-                body: JSON.stringify({
-                  external_id: data.external_id,
-                }),
+                body: JSON.stringify({ external_id: data.external_id }),
               })
-
               if (simulateResponse.ok) {
                 const simulateData = await simulateResponse.json()
-                console.log("🎭 Depósito simulado:", simulateData)
-
-                // Atualizar perfil e progresso
                 await fetchUserProfile()
                 await fetchDepositProgress()
-                setModalState('success')
+                setModalState("success")
                 setAmount("")
                 setPaymentOrder(null)
-
                 toast({
                   title: "Depósito realizado com sucesso!",
                   description: `R$ ${simulateData.amount.toFixed(2)} creditado na sua conta.`,
                 })
-
-                if (onDepositSuccess) {
-                  onDepositSuccess()
-                }
+                onDepositSuccess?.()
               }
             } catch (error) {
               console.error("Erro na simulação:", error)
             }
-          }, 7000) // 7 segundos
+          }, 7000)
         }
 
         toast({
@@ -374,11 +314,10 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
         })
       } else {
         const errorText = await horsePayResponse.text()
-        console.error("❌ Erro HorsePay:", errorText)
         throw new Error(`Falha ao gerar PIX: ${errorText}`)
       }
     } catch (error) {
-      console.error("❌ Erro ao gerar PIX:", error)
+      console.error("Erro ao gerar PIX:", error)
       toast({
         title: "Erro ao gerar PIX",
         description: error instanceof Error ? error.message : "Tente novamente.",
@@ -390,9 +329,7 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
   }
 
   const handlePaymentDetected = () => {
-    console.log("🎉 Processando detecção de pagamento...")
-
-    // Clear all intervals
+    // Limpar intervals
     if (paymentCheckRef.current) {
       clearInterval(paymentCheckRef.current)
       paymentCheckRef.current = null
@@ -403,8 +340,8 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
     }
 
     setPaymentDetected(true)
-    setModalState('success')
-    
+    setModalState("success")
+
     toast({
       title: "🎉 Pagamento Detectado!",
       description: "Seu depósito foi processado com sucesso!",
@@ -415,21 +352,17 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
     fetchDepositProgress()
     setAmount("")
     setPaymentOrder(null)
+    onDepositSuccess?.()
 
-    if (onDepositSuccess) {
-      onDepositSuccess()
-    }
-
-    // Fechar modal após 3 segundos
+    // Fechar após 3s
     setTimeout(() => {
       handleClose()
     }, 3000)
   }
 
-  // Timer countdown
+  // Timer
   useEffect(() => {
-    if (modalState !== 'qrcode' || paymentDetected || !paymentOrder) return
-
+    if (modalState !== "qrcode" || paymentDetected || !paymentOrder) return
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -439,14 +372,12 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(timer)
   }, [modalState, paymentDetected, paymentOrder])
 
-  // Setup payment checking interval
+  // Interval de verificação
   useEffect(() => {
-    if (modalState !== 'qrcode' || !paymentOrder || paymentDetected) {
-      // Clear any existing intervals
+    if (modalState !== "qrcode" || !paymentOrder || paymentDetected) {
       if (paymentCheckRef.current) {
         clearInterval(paymentCheckRef.current)
         paymentCheckRef.current = null
@@ -454,13 +385,8 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
       return
     }
 
-    // Initial check
-    checkPayment()
-
-    // Setup interval for subsequent checks
-    if (!paymentCheckRef.current) {
-      paymentCheckRef.current = setInterval(checkPayment, 5000)
-    }
+    checkPayment() // primeira
+    if (!paymentCheckRef.current) paymentCheckRef.current = setInterval(checkPayment, 5000)
 
     return () => {
       if (paymentCheckRef.current) {
@@ -468,46 +394,38 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
         paymentCheckRef.current = null
       }
     }
-  }, [modalState, paymentOrder, paymentDetected])
+  }, [modalState, paymentOrder, paymentDetected, checkPayment])
 
-  // Inicializar dados quando o modal abrir
+  // Init quando abrir
   useEffect(() => {
     if (isOpen) {
       fetchSystemSettings()
       if (initialProfile) {
         setUserProfile(initialProfile)
-        if (initialProfile.user.name && !payerName) {
-          setPayerName(initialProfile.user.name)
-        }
-        if (initialProfile.user.user_type === "blogger") {
-          setIsBlogger(true)
-        }
+        if (initialProfile.user.name && !payerName) setPayerName(initialProfile.user.name)
+        if (initialProfile.user.user_type === "blogger") setIsBlogger(true)
       } else {
         fetchUserProfile()
       }
       fetchDepositProgress()
+    } else {
+      // Reset ao fechar
+      cleanupState()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialProfile])
 
-  // Calcular progresso
-  const getProgressPercentage = (target: number) => {
-    return Math.min((depositProgress.total_deposited / target) * 100, 100)
-  }
-
-  const getNextBonus = () => {
-    if (!depositProgress.bonus_50_claimed && depositProgress.total_deposited < 50) {
-      return { target: 50, bonus: 5, remaining: 50 - depositProgress.total_deposited }
+  // Fechar com ESC
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose()
     }
-    if (!depositProgress.bonus_100_claimed && depositProgress.total_deposited < 100) {
-      return { target: 100, bonus: 10, remaining: 100 - depositProgress.total_deposited }
-    }
-    return null
-  }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [isOpen])
 
-  const nextBonus = getNextBonus()
-
-  const handleClose = () => {
-    // Clear all intervals
+  const cleanupState = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
@@ -516,17 +434,19 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
       clearInterval(paymentCheckRef.current)
       paymentCheckRef.current = null
     }
-    
-    setModalState('form')
+    setModalState("form")
     setPaymentOrder(null)
     setAmount("")
-    setPayerName("")
     setPaymentDetected(false)
+  }
+
+  const handleClose = () => {
+    cleanupState()
+    onOpenChange?.(false)
     onClose()
   }
 
   const handleBackToForm = () => {
-    // Clear intervals when going back
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
@@ -535,8 +455,7 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
       clearInterval(paymentCheckRef.current)
       paymentCheckRef.current = null
     }
-    
-    setModalState('form')
+    setModalState("form")
     setPaymentOrder(null)
     setPaymentDetected(false)
   }
@@ -555,7 +474,7 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
     })
   }
 
-  // Valores sugeridos atualizados conforme solicitado
+  // Valores sugeridos
   const suggestedAmounts = [
     { value: 20, label: "R$ 20", badge: "Popular", badgeColor: "bg-orange-500" },
     { value: 40, label: "R$ 40", badge: "+Querido", badgeColor: "bg-orange-500" },
@@ -568,81 +487,113 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
     { value: 5000, label: "R$ 5.000", badge: "Lendário", badgeColor: "bg-yellow-600" },
   ]
 
+  // Responsivo: um único contêiner com comportamento de bottom-sheet no mobile e central no desktop
   if (!isOpen) return null
 
   return (
     <>
       {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[100] data-[state=open]:animate-in"
         onClick={handleClose}
+        role="presentation"
+        aria-hidden="true"
       />
-      
-      {/* Modal */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ${
-        isOpen ? 'translate-y-0' : 'translate-y-full'
-      }`}>
-        <div className="bg-slate-900 rounded-t-3xl max-h-[90vh] overflow-y-auto">
-          {/* Header - Dinâmico baseado no estado */}
-          <div className="flex items-center justify-between p-4 pb-3">
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={modalState === 'form' ? handleClose : handleBackToForm}
-                className="text-white hover:bg-slate-800 rounded-full w-8 h-8"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h1 className="text-lg font-semibold text-white">
-                {modalState === 'form' && 'Depositar'}
-                {modalState === 'qrcode' && 'Escaneie o QR Code'}
-                {modalState === 'success' && 'Pagamento Confirmado!'}
-              </h1>
-            </div>
+      {/* Container responsivo: bottom no mobile; central no desktop */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deposit-modal-title"
+        className="
+          fixed z-[101] bg-slate-900 text-white
+          w-full max-h-[90vh] overflow-y-auto
+          bottom-0 left-0 right-0 rounded-t-3xl
+          shadow-2xl
+          md:bottom-auto md:left-1/2 md:top-1/2 md:right-auto
+          md:-translate-x-1/2 md:-translate-y-1/2
+          md:rounded-2xl md:w-[720px] md:max-h-[85vh]
+        "
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={modalState === "form" ? handleClose : handleBackToForm}
+              className="text-white hover:bg-slate-800 rounded-full w-8 h-8"
+              aria-label={modalState === "form" ? "Fechar" : "Voltar"}
+            >
+              {modalState === "form" ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+            </Button>
+            <h1 id="deposit-modal-title" className="text-base md:text-lg font-semibold">
+              {modalState === "form" && "Depositar"}
+              {modalState === "qrcode" && "Escaneie o QR Code"}
+              {modalState === "success" && "Pagamento Confirmado!"}
+            </h1>
           </div>
 
-          {/* Content - Baseado no estado do modal */}
-          <div className="px-4 pb-6 space-y-4">
-            {modalState === 'form' && (
-              <>
-                {/* Security Banner - Compacto para mobile */}
-                <div className="bg-green-600/20 border border-green-600/30 rounded-lg p-3">
+          {/* Extra close on desktop */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            className="hidden md:inline-flex text-slate-300 hover:text-white hover:bg-slate-800 rounded-full w-8 h-8"
+            aria-label="Fechar modal"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="px-4 md:px-6 py-4 md:py-6">
+          {modalState === "form" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 md:gap-6 gap-4">
+              {/* Coluna esquerda: formulário */}
+              <div className="space-y-4">
+                {/* Segurança */}
+                <div className="bg-green-600/20 border border-green-600/30 rounded-lg p-3 md:p-4">
                   <div className="flex items-center space-x-2">
-                    <Shield className="h-4 w-4 text-green-400 flex-shrink-0" />
-                    <span className="text-green-400 font-medium text-sm">Pagamento seguro e verificado.</span>
+                    <Shield className="h-4 w-4 md:h-5 md:w-5 text-green-400 flex-shrink-0" />
+                    <span className="text-green-400 font-medium text-sm md:text-base">
+                      Pagamento seguro e verificado.
+                    </span>
                   </div>
                 </div>
 
-                {/* Suggested Amounts Grid - 3x3 layout */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {suggestedAmounts.map((suggested) => (
-                    <div key={suggested.value} className="relative">
-                      <Button
-                        variant="outline"
-                        onClick={() => setAmount(suggested.value.toString())}
-                        className={`w-full h-10 bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600 rounded-md flex items-center justify-center transition-all p-1 ${
-                          amount === suggested.value.toString() ? 'border-green-500 bg-green-500/10' : ''
-                        }`}
-                      >
-                        <span className="text-white font-medium text-xs leading-tight">{suggested.label}</span>
-                      </Button>
-                      <Badge 
-                        className={`absolute -top-1 left-1/2 transform -translate-x-1/2 ${suggested.badgeColor} text-white border-0 text-[10px] px-1 py-0.5 rounded-full whitespace-nowrap`}
-                      >
-                        {suggested.badge}
-                      </Badge>
-                    </div>
-                  ))}
+                {/* Valores sugeridos */}
+                <div>
+                  <Label className="text-white font-medium text-sm md:text-base">Valores sugeridos</Label>
+                  <div className="mt-2 grid grid-cols-3 gap-1.5 md:gap-2">
+                    {suggestedAmounts.map((s) => (
+                      <div key={s.value} className="relative">
+                        <Button
+                          variant="outline"
+                          onClick={() => setAmount(s.value.toString())}
+                          className={`w-full h-10 md:h-11 bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600 rounded-md flex items-center justify-center transition-all p-1 ${
+                            amount === s.value.toString() ? "border-green-500 bg-green-500/10" : ""
+                          }`}
+                        >
+                          <span className="text-white font-medium text-xs md:text-sm leading-tight">{s.label}</span>
+                        </Button>
+                        <Badge
+                          className={`absolute -top-1 left-1/2 -translate-x-1/2 ${s.badgeColor} text-white border-0 text-[10px] md:text-[11px] px-1.5 py-0.5 rounded-full whitespace-nowrap`}
+                        >
+                          {s.badge}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Custom Amount Input - Compacto para mobile */}
-                <div className="space-y-2">
+                {/* Valor */}
+                <div className="space-y-1.5">
                   <div>
-                    <Label className="text-white font-medium text-sm">
+                    <Label className="text-white font-medium text-sm md:text-base">
                       Valor do depósito <span className="text-red-400">*</span>
                     </Label>
-                    <p className="text-slate-400 text-xs mt-0.5">
+                    <p className="text-slate-400 text-xs md:text-sm mt-0.5">
                       Mínimo R$ {minDepositAmount.toFixed(2)} / Máximo R$ 50.000,00
                     </p>
                   </div>
@@ -655,16 +606,11 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
                     min={minDepositAmount}
                     step="0.01"
                   />
+                  {/* Nome oculto (já preenchido) */}
+                  <input type="hidden" value={payerName} onChange={(e) => setPayerName(e.target.value)} />
                 </div>
 
-                {/* Hidden Name Input (auto-filled) */}
-                <input
-                  type="hidden"
-                  value={payerName}
-                  onChange={(e) => setPayerName(e.target.value)}
-                />
-
-                {/* Create Deposit Button - Otimizado para mobile */}
+                {/* CTA */}
                 <Button
                   onClick={generatePix}
                   disabled={loading || !amount || Number.parseFloat(amount) < minDepositAmount}
@@ -679,142 +625,169 @@ export function DepositModal({ isOpen, onClose, userProfile: initialProfile, onD
                     "Criar depósito"
                   )}
                 </Button>
+              </div>
 
-                {/* Bonus Section - Corrigido para estar de acordo com o sistema */}
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Gift className="h-5 w-5 text-white" />
-                    <span className="text-white font-semibold text-base">Bônus de Depósito</span>
+              {/* Coluna direita: bônus e progresso (mostrado abaixo no mobile) */}
+              <div className="space-y-3 md:space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Gift className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                  <span className="text-white font-semibold text-base md:text-lg">Bônus de Depósito</span>
+                </div>
+
+                {getNextBonus(depositProgress) ? (
+                  <div className="text-slate-300 text-sm md:text-base">
+                    <span>Deposite </span>
+                    <span className="text-green-400 font-semibold">
+                      R$ {getNextBonus(depositProgress)!.target.toFixed(2)}
+                    </span>
+                    <span> hoje para ganhar </span>
+                    <span className="text-green-400 font-semibold">
+                      +R$ {getNextBonus(depositProgress)!.bonus.toFixed(2)}
+                    </span>
+                    <span> de bônus!</span>
                   </div>
-                  
-                  {nextBonus ? (
-                    <div className="text-slate-300 text-sm">
-                      <span>Deposite </span>
-                      <span className="text-green-400 font-semibold">R$ {nextBonus.target.toFixed(2)}</span>
-                      <span> hoje para ganhar </span>
-                      <span className="text-green-400 font-semibold">+R$ {nextBonus.bonus.toFixed(2)}</span>
-                      <span> de bônus!</span>
-                    </div>
-                  ) : (
-                    <div className="text-slate-300 text-sm">
-                      Todos os bônus de hoje foram conquistados! 🎉
-                    </div>
-                  )}
-
-                  {/* Progress Indicators - Compacto para mobile */}
-                  {nextBonus && (
-                    <div className="bg-slate-800 rounded-lg p-3 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 text-xs">Progresso atual</span>
-                        <span className="text-white font-semibold text-sm">R$ {depositProgress.total_deposited.toFixed(2)}</span>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <Progress 
-                          value={getProgressPercentage(nextBonus.target)} 
-                          className="h-1.5 bg-slate-700"
-                        />
-                        <div className="flex justify-between text-xs text-slate-400">
-                          <span>R$ 0</span>
-                          <span>R$ {nextBonus.target}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="text-center">
-                        <span className="text-slate-400 text-xs">Faltam </span>
-                        <span className="text-green-400 font-semibold text-xs">R$ {nextBonus.remaining.toFixed(2)}</span>
-                        <span className="text-slate-400 text-xs"> para +R$ {nextBonus.bonus}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {modalState === 'qrcode' && paymentOrder && (
-              <>
-                {/* Timer */}
-                <div className="text-center">
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    <Clock className="h-4 w-4 text-orange-400" />
-                    <span className="text-sm text-gray-300">Tempo restante:</span>
-                  </div>
-                  <Badge variant={timeLeft < 60 ? "destructive" : "secondary"} className="text-lg px-4 py-2">
-                    {formatTime(timeLeft)}
-                  </Badge>
-                </div>
-
-                {/* QR Code */}
-                <Card className="bg-slate-800 border-slate-600">
-                  <CardContent className="p-4 text-center">
-                    <div className="mb-4">
-                      <img
-                        src={paymentOrder.payment || "/placeholder.svg"}
-                        alt="QR Code PIX"
-                        className="mx-auto max-w-full h-auto border rounded-lg border-slate-600"
-                        style={{ maxWidth: "200px" }}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-300 mb-4">
-                      Escaneie com o app do seu banco ou use o código PIX abaixo
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Código PIX */}
-                <Card className="bg-slate-800 border-slate-600">
-                  <CardContent className="p-4">
-                    <Button
-                      onClick={() => copyToClipboard(paymentOrder.copy_past)}
-                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                      variant="default"
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copiar Código PIX
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Instruções */}
-                <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
-                  <div className="text-center text-sm text-gray-300 space-y-2">
-                    <p className="text-purple-400 font-semibold flex items-center justify-center space-x-1">
-                      <span>💡</span>
-                      <span>Como pagar:</span>
-                    </p>
-                    <div className="space-y-1 text-gray-300">
-                      <p>1. Abra o app do seu banco</p>
-                      <p>2. Escolha PIX → Ler QR Code ou Colar Código</p>
-                      <p>3. Confirme o pagamento</p>
-                      <p className="text-purple-300 font-medium">4. Aguarde - verificamos a cada 5 segundos!</p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {modalState === 'success' && (
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center border border-green-400/30">
-                  <CheckCircle className="h-8 w-8 text-green-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-green-400">Pagamento Confirmado!</h3>
-                  <p className="text-gray-300">Seu saldo foi atualizado automaticamente.</p>
-                </div>
-                {paymentOrder && (
-                  <div className="bg-green-500/10 border border-green-400/30 p-4 rounded-lg">
-                    <p className="text-sm text-green-300">
-                      <strong>ID da Transação:</strong> {paymentOrder.external_id}
-                    </p>
+                ) : (
+                  <div className="text-slate-300 text-sm md:text-base">
+                    Todos os bônus de hoje foram conquistados! 🎉
                   </div>
                 )}
-                <p className="text-slate-400 text-sm">Fechando automaticamente...</p>
+
+                {getNextBonus(depositProgress) && (
+                  <div className="bg-slate-800 rounded-lg p-3 md:p-4 space-y-2 md:space-y-3 border border-slate-700">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-xs md:text-sm">Progresso atual</span>
+                      <span className="text-white font-semibold text-sm md:text-base">
+                        R$ {depositProgress.total_deposited.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Progress
+                        value={getProgressPercentage(depositProgress, getNextBonus(depositProgress)!.target)}
+                        className="h-1.5 bg-slate-700"
+                      />
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>R$ 0</span>
+                        <span>R$ {getNextBonus(depositProgress)!.target}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-center">
+                      <span className="text-slate-400 text-xs md:text-sm">Faltam </span>
+                      <span className="text-green-400 font-semibold text-xs md:text-sm">
+                        R$ {getNextBonus(depositProgress)!.remaining.toFixed(2)}
+                      </span>
+                      <span className="text-slate-400 text-xs md:text-sm">
+                        {" "}
+                        para +R$ {getNextBonus(depositProgress)!.bonus}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {modalState === "qrcode" && paymentOrder && (
+            <div className="space-y-4 md:space-y-6">
+              {/* Timer */}
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <Clock className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
+                  <span className="text-sm md:text-base text-gray-300">Tempo restante:</span>
+                </div>
+                <Badge variant={timeLeft < 60 ? "destructive" : "secondary"} className="text-lg px-4 py-2">
+                  {formatTime(timeLeft)}
+                </Badge>
+              </div>
+
+              {/* QR Code + Código lado a lado em desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+                <Card className="bg-slate-800 border-slate-600">
+                  <CardContent className="p-4 md:p-6 text-center">
+                    <div className="mb-4">
+                      <img
+                        src={paymentOrder.payment || "/placeholder.svg?height=200&width=200&query=qr-code"}
+                        alt="QR Code PIX"
+                        className="mx-auto max-w-full h-auto border rounded-lg border-slate-600"
+                        style={{ maxWidth: "220px" }}
+                      />
+                    </div>
+                    <p className="text-sm md:text-base text-gray-300">
+                      Escaneie com o app do seu banco ou use o código PIX.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-4">
+                  <Card className="bg-slate-800 border-slate-600">
+                    <CardContent className="p-4 md:p-6">
+                      <Button
+                        onClick={() => copyToClipboard(paymentOrder.copy_past)}
+                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                        variant="default"
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copiar Código PIX
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <div className="bg-slate-800 border border-slate-600 rounded-lg p-4 md:p-6">
+                    <div className="text-center text-sm md:text-base text-gray-300 space-y-2">
+                      <p className="text-purple-400 font-semibold flex items-center justify-center gap-1">
+                        <span>💡</span>
+                        <span>Como pagar:</span>
+                      </p>
+                      <div className="space-y-1 text-gray-300">
+                        <p>1. Abra o app do seu banco</p>
+                        <p>2. Escolha PIX → Ler QR Code ou Colar Código</p>
+                        <p>3. Confirme o pagamento</p>
+                        <p className="text-purple-300 font-medium">4. Aguarde - verificamos a cada 5 segundos!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {modalState === "success" && (
+            <div className="text-center space-y-4 md:space-y-6">
+              <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-green-500/20 rounded-full flex items-center justify-center border border-green-400/30">
+                <CheckCircle className="h-8 w-8 md:h-10 md:w-10 text-green-400" />
+              </div>
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold text-green-400">Pagamento Confirmado!</h3>
+                <p className="text-gray-300">Seu saldo foi atualizado automaticamente.</p>
+              </div>
+              {paymentOrder && (
+                <div className="bg-green-500/10 border border-green-400/30 p-4 rounded-lg">
+                  <p className="text-sm text-green-300">
+                    <strong>ID da Transação:</strong> {paymentOrder.external_id}
+                  </p>
+                </div>
+              )}
+              <p className="text-slate-400 text-sm">Fechando automaticamente...</p>
+            </div>
+          )}
         </div>
       </div>
     </>
   )
+}
+
+// Helpers
+function getNextBonus(progress: DepositProgress) {
+  if (!progress.bonus_50_claimed && progress.total_deposited < 50) {
+    return { target: 50, bonus: 5, remaining: 50 - progress.total_deposited }
+  }
+  if (!progress.bonus_100_claimed && progress.total_deposited < 100) {
+    return { target: 100, bonus: 10, remaining: 100 - progress.total_deposited }
+  }
+  return null
+}
+
+function getProgressPercentage(progress: DepositProgress, target: number) {
+  return Math.min((progress.total_deposited / target) * 100, 100)
 }
