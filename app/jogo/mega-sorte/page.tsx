@@ -37,70 +37,74 @@ interface GameState {
 }
 
 const NUM_CELLS = 9
-const GAME_PRICE = 15.0 // Mega Sorte custa R$ 5
+const GAME_PRICE = 5.0 // Mega Sorte custa R$ 5
 
 // Configuração de prêmios para usuários regulares - MEGA SORTE
 const regularPrizeConfig = [
-  { value: 50, image: "/images/eletro50.png", chance: 99 },
-  { value: 70, image: "/images/eletro70.webp", chance: 1 },
-  { value: 80, image: "/images/eletro80.png", chance: 0 },
-  { value: 90, image: "/images/eletro90.webp", chance: 0 },
-  { value: 110, image: "/images/eletro110.png", chance: 0 },
-  { value: 130, image: "/images/eletro130.png", chance: 0 },
-  { value: 260, image: "/images/eletro260.png", chance: 0 },
-  { value: 450, image: "/images/eletro450.webp", chance: 0 },
-  { value: 500, image: "/images/eletro500.png", chance: 0 },
-  { value: 1500, image: "/images/eletro1500.png", chance: 0 },
-  { value: 2000, image: "/images/eletro2000.png", chance: 0 },
-  { value: 2500, image: "/images/eletro2500.png", chance: 0 },
-  { value: 4000, image: "/images/eletro4000.png", chance: 0 },
+  { value: 0.5, image: "/images/50centavos.png", chance: 57 },
+  { value: 1, image: "/images/1real.png", chance: 20.5 },
+  { value: 2, image: "/images/2reais.png", chance: 12 },
+  { value: 5, image: "/images/5reais.png", chance: 6 },
+  { value: 10, image: "/images/10reais.png", chance: 3 },
+  { value: 20, image: "/images/20reais.png", chance: 1.5 },
+  { value: 50, image: "/images/50reais.png", chance: 0.0 },
+  { value: 100, image: "/images/100reais.png", chance: 0 },
+  { value: 200, image: "/images/200reais.png", chance: 0 },
+  { value: 500, image: "/images/500reais.png", chance: 0 },
+  { value: 1000, image: "/images/1mil.png", chance: 0 },
+  { value: 2000, image: "/images/2mil.png", chance: 0 },
+  { value: 5000, image: "/images/5mil.png", chance: 0 },
+  { value: 10000, image: "/images/10mil.png", chance: 0 },
+  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers - MEGA SORTE
 const bloggerPrizeConfig = [
-  { value: 50, image: "/images/eletro50.png", chance: 40 },
-  { value: 70, image: "/images/eletro70.webp", chance: 10 },
-  { value: 80, image: "/images/eletro80.png", chance: 10 },
-  { value: 90, image: "/images/eletro90.webp", chance: 5 },
-  { value: 110, image: "/images/eletro110.png", chance: 5 },
-  { value: 130, image: "/images/eletro130.png", chance: 5 },
-  { value: 260, image: "/images/eletro260.png", chance: 5 },
-  { value: 450, image: "/images/eletro450.webp", chance: 5 },
-  { value: 500, image: "/images/eletro500.png", chance: 5 },
-  { value: 1500, image: "/images/eletro1500.png", chance: 5 },
-  { value: 2000, image: "/images/eletro2000.png", chance: 5 },
-  { value: 2500, image: "/images/eletro2500.png", chance: 0 },
-  { value: 4000, image: "/images/eletro4000.png", chance: 0 },
+  { value: 2, image: "/images/2reais.png", chance: 8 },
+  { value: 5, image: "/images/5reais.png", chance: 12 },
+  { value: 10, image: "/images/10reais.png", chance: 15 },
+  { value: 20, image: "/images/20reais.png", chance: 18 },
+  { value: 50, image: "/images/50reais.png", chance: 15 },
+  { value: 100, image: "/images/100reais.png", chance: 12 },
+  { value: 200, image: "/images/200reais.png", chance: 8 },
+  { value: 500, image: "/images/500reais.png", chance: 6 },
+  { value: 1000, image: "/images/1mil.png", chance: 3 },
+  { value: 2000, image: "/images/2mil.png", chance: 2 },
+  { value: 5000, image: "/images/5mil.png", chance: 1 },
+  { value: 10000, image: "/images/10mil.png", chance: 0 },
+  { value: 25000, image: "/images/25mil.png", chance: 0 },
 ]
 
 // Configurações gerais
 const regularConfig = {
-  winFrequency: 0.01, // 10% de chance de ganhar
+  winFrequency: 0.5, // 60% de chance de ganhar
   scratchThreshold: 0.7,
   prizeConfig: regularPrizeConfig,
 }
 
 const bloggerConfig = {
-  winFrequency: 0.50, // 30% de chance de ganhar para bloggers
+  winFrequency: 0.65, // 85% de chance de ganhar para bloggers
   scratchThreshold: 0.7,
   prizeConfig: bloggerPrizeConfig,
 }
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
-  R$50: "/images/eletro50.png",
-  R$70: "/images/eletro70.webp",
-  R$80: "/images/eletro80.png",
-  R$90: "/images/eletro90.webp",
-  R$110: "/images/eletro110.png",
-  R$130: "/images/eletro130.png",
-  R$260: "/images/eletro260.png",
-  R$450: "/images/eletro450.webp",
-  R$500: "/images/eletro500.png",
-  R$1500: "/images/eletro1500.png",
-  R$2000: "/images/eletro2000.png",
-  R$2500: "/images/eletro2500.png",
-  R$4000: "/images/eletro4000.png",
+  "R$0.5": "/images/50centavos.png",
+  R$1: "/images/1real.png",
+  R$2: "/images/2reais.png",
+  R$5: "/images/5reais.png",
+  R$10: "/images/10reais.png",
+  R$20: "/images/20reais.png",
+  R$50: "/images/50reais.png",
+  R$100: "/images/100reais.png",
+  R$200: "/images/200reais.png",
+  R$500: "/images/500reais.png",
+  R$1000: "/images/1mil.png",
+  R$2000: "/images/2mil.png",
+  R$5000: "/images/5mil.png",
+  R$10000: "/images/10mil.png",
+  R$25000: "/images/25mil.png",
 }
 
 const winMessages = [
@@ -144,20 +148,21 @@ const isBlogger = (userProfile: UserProfile | null): boolean => {
 
 // Conteúdo para exibição na tabela de prêmios (baseado na imagem fornecida)
 const gameContentDisplay = [
-{ name: "Geladeira", value: 4000, image: "/images/eletro4000.png" },
-{ name: "Máquina de Lavar", value: 2500, image: "/images/eletro2500.png" },
-{ name: 'TV 50"', value: 2000, image: "/images/eletro2000.png" },
-{ name: "Ar Condicionado", value: 1500, image: "/images/eletro1500.png" },
-{ name: "Microondas", value: 500, image: "/images/eletro500.png" },
-{ name: "Fogão 4 bocas", value: 450, image: "/images/eletro450.webp" },
-{ name: "Air Fryer", value: 260, image: "/images/eletro260.png" },
-{ name: "Liquidificador", value: 130, image: "/images/eletro130.png" },
-{ name: "Ventilador", value: 110, image: "/images/eletro110.png" },
-{ name: "Mixer", value: 90, image: "/images/eletro90.webp" },
-{ name: "Sanduicheira", value: 80, image: "/images/eletro80.png" },
-{ name: "Cafeteira", value: 70, image: "/images/eletro70.webp" },
-{ name: "Ferro de Passar", value: 50, image: "/images/eletro50.png" },
-]
+  { name: "50 Centavos", value: 0.50, image: "/images/50centavos.png" },
+  { name: "1 Real", value: 1, image: "/images/1real.png" },
+  { name: "2 Reais", value: 2, image: "/images/2reais.png" },
+  { name: "5 Reais", value: 5, image: "/images/5reais.png" },
+  { name: "10 Reais", value: 10, image: "/images/10reais.png" },
+  { name: "20 Reais", value: 20, image: "/images/20reais.png" },
+  { name: "50 Reais", value: 50, image: "/images/50reais.png" },
+  { name: "100 Reais", value: 100, image: "/images/100reais.png" },
+  { name: "500 Reais", value: 500, image: "/images/500reais.png" },
+  { name: "Mil Reais", value: 1000, image: "/images/1mil.png" },
+  { name: "Dois Mil Reais", value: 2000, image: "/images/2mil.png" },
+  { name: "Cinco Mil Reais", value: 5000, image: "/images/5mil.png" },
+  { name: "Dez Mil Reais", value: 10000, image: "/images/10mil.png" },
+  { name: "Vinte e Cinco Mil Reais", value: 25000, image: "/images/25mil.png" },
+];
 
 export default function MegaSortePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -781,7 +786,7 @@ export default function MegaSortePage() {
       <main className="relative z-10 max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col justify-center">
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-            Eletrodomesticos
+            Mega Sorte
           </h1>
           <p className="text-purple-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
         </div>

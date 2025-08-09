@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createWebhookLog, getUserWallet, sql, processAffiliateCommission } from "@/lib/database"
-import { sendDepositNotification } from "@/lib/push-notifications"
 
 interface DepositCallback {
   external_id: number
@@ -191,10 +190,7 @@ async function processDepositCallback(payload: DepositCallback) {
   // Buscar a transação no banco
   console.log(`🔎 Buscando transação com external_id: ${payload.external_id}`)
   const [transaction] = await sql`
-  SELECT t.*, u.name as user_name, u.email as user_email
-  FROM transactions t
-  JOIN users u ON t.user_id = u.id
-  WHERE t.external_id = ${payload.external_id}
+  SELECT * FROM transactions WHERE external_id = ${payload.external_id}
 `
 
   if (!transaction) {
@@ -251,21 +247,6 @@ async function processDepositCallback(payload: DepositCallback) {
     `
 
       console.log(`🎉 Sucesso! Valor integral creditado ao usuário!`)
-
-      // 🔔 ENVIAR NOTIFICAÇÃO PUSH DE DEPÓSITO CONFIRMADO
-      console.log(`🔔 Enviando notificação push de depósito confirmado...`)
-      try {
-        await sendDepositNotification({
-          userName: transaction.user_name || 'Usuário',
-          amount: originalAmount,
-          method: payload.payer_name ? 'PIX' : 'Pagamento Online',
-          transactionId: transaction.id
-        })
-        console.log(`✅ Notificação push enviada com sucesso!`)
-      } catch (notificationError) {
-        console.error(`❌ Erro ao enviar notificação push:`, notificationError)
-        // Não falhar o webhook por causa da notificação
-      }
 
       console.log(`📊 VERIFICANDO PROGRESSO DE BÔNUS PARA USUÁRIO ${transaction.user_id}`)
 

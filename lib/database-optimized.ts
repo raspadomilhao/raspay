@@ -882,100 +882,7 @@ export async function processAffiliateLossCommission(
   }
 }
 
-// Prêmios específicos do gameContentDisplay de cada jogo
-const gameContentDisplayPrizes = [
-  // Raspe da Esperança
-  { name: "R$ 2,00", value: 2, image: "/images/2reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 5,00", value: 5, image: "/images/5reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 10,00", value: 10, image: "/images/10reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 20,00", value: 20, image: "/images/20reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 50,00", value: 50, image: "/images/50reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 100,00", value: 100, image: "/images/100reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 200,00", value: 200, image: "/images/200reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 500,00", value: 500, image: "/images/500reais.png", game: "Raspe da Esperança" },
-  { name: "R$ 1.000,00", value: 1000, image: "/images/1mil.png", game: "Raspe da Esperança" },
-  { name: "R$ 2.000,00", value: 2000, image: "/images/2mil.png", game: "Raspe da Esperança" },
-  { name: "R$ 5.000,00", value: 5000, image: "/images/5mil.png", game: "Raspe da Esperança" },
-  { name: "R$ 10.000,00", value: 10000, image: "/images/10mil.png", game: "Raspe da Esperança" },
-  { name: "R$ 25.000,00", value: 25000, image: "/images/25mil.png", game: "Raspe da Esperança" },
-
-  // Fortuna Dourada
-  { name: "R$ 5,00", value: 5, image: "/images/memimei5.webp", game: "Fortuna Dourada" },
-  { name: "R$ 10,00", value: 10, image: "/images/memimei10.webp", game: "Fortuna Dourada" },
-  { name: "R$ 20,00", value: 20, image: "/images/memimei20.webp", game: "Fortuna Dourada" },
-  { name: "R$ 25,00", value: 25, image: "/images/memimei25.webp", game: "Fortuna Dourada" },
-  { name: "R$ 30,00", value: 30, image: "/images/memimei30.webp", game: "Fortuna Dourada" },
-  { name: "R$ 50,00", value: 50, image: "/images/memimei50.webp", game: "Fortuna Dourada" },
-  { name: "R$ 200,00", value: 200, image: "/images/memimei200.webp", game: "Fortuna Dourada" },
-  { name: "R$ 400,00", value: 400, image: "/images/memimei400.webp", game: "Fortuna Dourada" },
-  { name: "R$ 500,00", value: 500, image: "/images/memimei500.webp", game: "Fortuna Dourada" },
-  { name: "R$ 1.000,00", value: 1000, image: "/images/memimei1000.webp", game: "Fortuna Dourada" },
-
-  // Mega Sorte
-  { name: "R$ 50,00", value: 50, image: "/images/eletro50.png", game: "Mega Sorte" },
-  { name: "R$ 70,00", value: 70, image: "/images/eletro70.webp", game: "Mega Sorte" },
-  { name: "R$ 80,00", value: 80, image: "/images/eletro80.png", game: "Mega Sorte" },
-  { name: "R$ 90,00", value: 90, image: "/images/eletro90.webp", game: "Mega Sorte" },
-  { name: "R$ 110,00", value: 110, image: "/images/eletro110.png", game: "Mega Sorte" },
-  { name: "R$ 130,00", value: 130, image: "/images/eletro130.png", game: "Mega Sorte" },
-  { name: "R$ 260,00", value: 260, image: "/images/eletro260.png", game: "Mega Sorte" },
-  { name: "R$ 450,00", value: 450, image: "/images/eletro450.webp", game: "Mega Sorte" },
-  { name: "R$ 500,00", value: 500, image: "/images/eletro500.png", game: "Mega Sorte" },
-  { name: "R$ 1.500,00", value: 1500, image: "/images/eletro1500.png", game: "Mega Sorte" },
-  { name: "R$ 2.000,00", value: 2000, image: "/images/eletro2000.png", game: "Mega Sorte" },
-  { name: "R$ 2.500,00", value: 2500, image: "/images/eletro2500.png", game: "Mega Sorte" },
-  { name: "R$ 4.000,00", value: 4000, image: "/images/eletro4000.png", game: "Mega Sorte" },
-
-  // Sonho de Consumo
-  { name: "R$ 5,00", value: 5, image: "/images/sonhodeconsumo5.webp", game: "Sonho de Consumo" },
-  { name: "R$ 10,00", value: 10, image: "/images/sonhodeconsumo10.webp", game: "Sonho de Consumo" },
-  { name: "R$ 15,00", value: 15, image: "/images/sonhodeconsumo15.webp", game: "Sonho de Consumo" },
-  { name: "R$ 20,00", value: 20, image: "/images/sonhodeconsumo20.webp", game: "Sonho de Consumo" },
-  { name: "R$ 35,00", value: 35, image: "/images/sonhodeconsumo35.webp", game: "Sonho de Consumo" },
-  { name: "R$ 50,00", value: 50, image: "/images/sonhodeconsumo50.webp", game: "Sonho de Consumo" },
-  { name: "R$ 80,00", value: 80, image: "/images/sonhodeconsumo80.webp", game: "Sonho de Consumo" },
-  { name: "R$ 150,00", value: 150, image: "/images/sonhodeconsumo150.webp", game: "Sonho de Consumo" },
-  { name: "R$ 400,00", value: 400, image: "/images/sonhodeconsumo400.webp", game: "Sonho de Consumo" },
-  { name: "R$ 700,00", value: 700, image: "/images/sonhodeconsumo700.webp", game: "Sonho de Consumo" },
-  { name: "R$ 900,00", value: 900, image: "/images/sonhodeconsumo900.webp", game: "Sonho de Consumo" },
-  { name: "R$ 1.500,00", value: 1500, image: "/images/sonhodeconsumo1500.webp", game: "Sonho de Consumo" },
-  { name: "R$ 2.000,00", value: 2000, image: "/images/sonhodeconsumo2000.webp", game: "Sonho de Consumo" },
-  { name: "R$ 2.500,00", value: 2500, image: "/images/sonhodeconsumo2500.webp", game: "Sonho de Consumo" },
-  { name: "R$ 3.000,00", value: 3000, image: "/images/sonhodeconsumo3000.webp", game: "Sonho de Consumo" },
-  { name: "R$ 5.000,00", value: 5000, image: "/images/sonhodeconsumo5000.webp", game: "Sonho de Consumo" },
-
-  // Super Prêmios
-  { name: "R$ 5,00", value: 5, image: "/images/superpremio5.webp", game: "Super Prêmios" },
-  { name: "R$ 25,00", value: 25, image: "/images/superpremio25.webp", game: "Super Prêmios" },
-  { name: "R$ 40,00", value: 40, image: "/images/superpremio40.webp", game: "Super Prêmios" },
-  { name: "R$ 150,00", value: 150, image: "/images/superpremio150.webp", game: "Super Prêmios" },
-  { name: "R$ 300,00", value: 300, image: "/images/superpremio300.webp", game: "Super Prêmios" },
-  { name: "R$ 700,00", value: 700, image: "/images/superpremio700.webp", game: "Super Prêmios" },
-  { name: "R$ 1.000,00", value: 1000, image: "/images/superpremio1000.webp", game: "Super Prêmios" },
-  { name: "R$ 1.500,00", value: 1500, image: "/images/superpremio1500.webp", game: "Super Prêmios" },
-  { name: "R$ 10.000,00", value: 10000, image: "/images/superpremio10000.webp", game: "Super Prêmios" },
-  { name: "Moto", value: 10000, image: "/images/superpremio10000bike.webp", game: "Super Prêmios", is_physical_prize: true },
-  { name: "R$ 20.000,00", value: 20000, image: "/images/superpremio20000.webp", game: "Super Prêmios" },
-
-  // Outfit
-  { name: "R$ 25,00", value: 25, image: "/images/out25.png", game: "Outfit" },
-  { name: "R$ 50,00", value: 50, image: "/images/out50.webp", game: "Outfit" },
-  { name: "R$ 100,00", value: 100, image: "/images/out100.webp", game: "Outfit" },
-  { name: "R$ 200,00", value: 200, image: "/images/out200.webp", game: "Outfit" },
-  { name: "R$ 250,00", value: 250, image: "/images/out250.webp", game: "Outfit" },
-  { name: "R$ 280,00", value: 280, image: "/images/out280.webp", game: "Outfit" },
-  { name: "R$ 300,00", value: 300, image: "/images/out300.png", game: "Outfit" },
-  { name: "R$ 350,00", value: 350, image: "/images/out350.png", game: "Outfit" },
-  { name: "R$ 400,00", value: 400, image: "/images/out400.webp", game: "Outfit" },
-  { name: "R$ 600,00", value: 600, image: "/images/out600.webp", game: "Outfit" },
-  { name: "R$ 1.000,00", value: 1000, image: "/images/out1000.png", game: "Outfit" },
-  { name: "R$ 1.500,00", value: 1500, image: "/images/out1500.webp", game: "Outfit" },
-  { name: "R$ 3.500,00", value: 3500, image: "/images/out3500.webp", game: "Outfit" },
-  { name: "R$ 12.000,00", value: 12000, image: "/images/out12000.webp", game: "Outfit" },
-  { name: "R$ 20.000,00", value: 20000, image: "/images/out20000.webp", game: "Outfit" },
-  { name: "R$ 80.000,00", value: 80000, image: "/images/out80000.webp", game: "Outfit" },
-]
-
+// Funções para gerar bots (atualizadas com novos prêmios físicos)
 const botNames = [
   "Carlos M.",
   "Ana S.",
@@ -1029,6 +936,48 @@ const botNames = [
   "Silvia L.",
 ]
 
+const gameNames = ["Raspe da Esperança", "Fortuna Dourada", "Mega Sorte"]
+
+const prizes = {
+  "Raspe da Esperança": [2, 5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000],
+  "Fortuna Dourada": [5, 10, 25, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000],
+  "Mega Sorte": [10, 25, 50, 100, 200, 300, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000],
+}
+
+// Prêmios físicos com imagens específicas e chances MUITO aumentadas
+const physicalPrizes = [
+  {
+    name: "Smartwatch",
+    value: 800,
+    rarity: 0.25, // 25% chance - MUITO FREQUENTE
+    image: "https://files.raspouganhou.net/premio-jackpot/smartwatch_e489b606.webp",
+  },
+  {
+    name: "JBL Bluetooth",
+    value: 400,
+    rarity: 0.3, // 30% chance - MUITO FREQUENTE
+    image: "https://files.raspouganhou.net/premio-jackpot/JBL_944de913.webp",
+  },
+  {
+    name: "PlayStation 5",
+    value: 3500,
+    rarity: 0.15, // 15% chance - FREQUENTE
+    image: "https://files.raspouganhou.net/premio-jackpot/ps5_c17dbda1.webp",
+  },
+  {
+    name: "Cadeira Gamer",
+    value: 1200,
+    rarity: 0.2, // 20% chance - MUITO FREQUENTE
+    image: "https://files.raspouganhou.net/3c4fa837-cbdf-436f-af74-9c13fa794089.png",
+  },
+  {
+    name: "Redmi Note 14C",
+    value: 900,
+    rarity: 0.22, // 22% chance - MUITO FREQUENTE
+    image: "https://files.raspouganhou.net/premio-jackpot/redmi_14c_7ea01a6b.webp",
+  },
+]
+
 const cities = [
   "São Paulo - SP",
   "Rio de Janeiro - RJ",
@@ -1064,15 +1013,50 @@ function generateBotWinners(count: number) {
 
     usedNames.add(name)
 
-    // Selecionar um prêmio aleatório do gameContentDisplayPrizes
-    const randomPrizeIndex = Math.floor(Math.random() * gameContentDisplayPrizes.length)
-    const selectedPrize = gameContentDisplayPrizes[randomPrizeIndex]
+    const game = gameNames[Math.floor(Math.random() * gameNames.length)]
 
-    const prize = selectedPrize.value
-    const prizeName = selectedPrize.name
-    const prizeImage = selectedPrize.image
-    const gameName = selectedPrize.game
-    const isPhysicalPrize = selectedPrize.is_physical_prize || false; // Adiciona a propriedade is_physical_prize
+    // 🔥 NOVA LÓGICA: 70% chance de prêmio físico (MUITO MAIS FREQUENTE)
+    let prize
+    let prizeType = "monetary"
+    let prizeName = null
+    let prizeImage = null
+
+    // Chance MUITO ALTA de prêmio físico
+    const physicalPrizeRoll = Math.random()
+    let wonPhysicalPrize = false
+
+    if (physicalPrizeRoll < 0.7) {
+      // 70% chance de prêmio físico
+      // Ordenar prêmios por raridade (do mais comum para o menos comum)
+      const sortedPhysicalPrizes = [...physicalPrizes].sort((a, b) => b.rarity - a.rarity)
+
+      for (const physicalPrize of sortedPhysicalPrizes) {
+        if (Math.random() < physicalPrize.rarity) {
+          prize = physicalPrize.value
+          prizeName = physicalPrize.name
+          prizeImage = physicalPrize.image
+          prizeType = "physical"
+          wonPhysicalPrize = true
+          break
+        }
+      }
+    }
+
+    // Se não ganhou prêmio físico, usar prêmio monetário normal (30% dos casos)
+    if (!wonPhysicalPrize) {
+      const gamePrizes = prizes[game as keyof typeof prizes]
+
+      // Prêmios menores são mais comuns (80% chance), prêmios maiores são mais raros (20% chance)
+      if (Math.random() < 0.8) {
+        // 80% chance de prêmio pequeno/médio (primeiros 60% da lista)
+        const smallPrizes = gamePrizes.slice(0, Math.ceil(gamePrizes.length * 0.6))
+        prize = smallPrizes[Math.floor(Math.random() * smallPrizes.length)]
+      } else {
+        // 20% chance de prêmio grande (últimos 40% da lista)
+        const bigPrizes = gamePrizes.slice(Math.ceil(gamePrizes.length * 0.6))
+        prize = bigPrizes[Math.floor(Math.random() * bigPrizes.length)]
+      }
+    }
 
     const minutesAgo = Math.floor(Math.random() * 180) + 0.5
     const timestamp = new Date(Date.now() - minutesAgo * 60 * 1000)
@@ -1082,14 +1066,14 @@ function generateBotWinners(count: number) {
     bots.push({
       id: `bot_${Date.now()}_${i}`,
       user_name: name,
-      game_name: gameName,
+      game_name: game,
       prize_amount: prize,
       prize_name: prizeName,
       prize_image: prizeImage,
       created_at: timestamp.toISOString(),
       is_bot: true,
       city: city,
-      is_physical_prize: isPhysicalPrize, // Usar a propriedade do objeto de prêmio
+      is_physical_prize: prizeType === "physical",
     })
   }
 
@@ -1099,32 +1083,82 @@ function generateBotWinners(count: number) {
 function generateSpecialWinners() {
   const specialWinners = []
 
-  // 40% chance de ter um prêmio especial recente
+  // 40% chance de ter um prêmio físico especial recente (AUMENTADO)
   if (Math.random() < 0.4) {
-    // Filtrar prêmios de alto valor do gameContentDisplayPrizes
-    const highValuePrizes = gameContentDisplayPrizes.filter(p => p.value >= 5000)
+    const specialPhysicalPrizes = [
+      {
+        name: "PlayStation 5",
+        value: 3500,
+        image: "https://files.raspouganhou.net/premio-jackpot/ps5_c17dbda1.webp",
+      },
+      {
+        name: "Smartwatch Premium",
+        value: 1200,
+        image: "https://files.raspouganhou.net/premio-jackpot/smartwatch_e489b606.webp",
+      },
+      {
+        name: "JBL Premium",
+        value: 600,
+        image: "https://files.raspouganhou.net/premio-jackpot/JBL_944de913.webp",
+      },
+      {
+        name: "Cadeira Gamer Pro",
+        value: 1800,
+        image: "https://files.raspouganhou.net/3c4fa837-cbdf-436f-af74-9c13fa794089.png",
+      },
+      {
+        name: "Redmi Note 14C Pro",
+        value: 1200,
+        image: "https://files.raspouganhou.net/premio-jackpot/redmi_14c_7ea01a6b.webp",
+      },
+    ]
 
-    if (highValuePrizes.length > 0) {
-      const name = botNames[Math.floor(Math.random() * botNames.length)]
-      const specialPrize = highValuePrizes[Math.floor(Math.random() * highValuePrizes.length)]
+    const name = botNames[Math.floor(Math.random() * botNames.length)]
+    const game = gameNames[Math.floor(Math.random() * gameNames.length)]
+    const physicalPrize = specialPhysicalPrizes[Math.floor(Math.random() * specialPhysicalPrizes.length)]
 
-      // Prêmio especial entre 5 minutos e 2 horas atrás
-      const minutesAgo = Math.floor(Math.random() * 115) + 5
-      const timestamp = new Date(Date.now() - minutesAgo * 60 * 1000)
+    // Prêmio físico entre 5 minutos e 2 horas atrás (mais recente)
+    const minutesAgo = Math.floor(Math.random() * 115) + 5
+    const timestamp = new Date(Date.now() - minutesAgo * 60 * 1000)
 
-      specialWinners.push({
-        id: `special_${Date.now()}`,
-        user_name: name,
-        game_name: specialPrize.game,
-        prize_amount: specialPrize.value,
-        prize_name: specialPrize.name,
-        prize_image: specialPrize.image,
-        created_at: timestamp.toISOString(),
-        is_bot: true,
-        is_physical_prize: specialPrize.is_physical_prize || false, // Usar a propriedade do objeto de prêmio
-        is_special: true,
-      })
-    }
+    specialWinners.push({
+      id: `physical_special_${Date.now()}`,
+      user_name: name,
+      game_name: game,
+      prize_amount: physicalPrize.value,
+      prize_name: physicalPrize.name,
+      prize_image: physicalPrize.image,
+      created_at: timestamp.toISOString(),
+      is_bot: true,
+      is_physical_prize: true,
+      is_special_physical: true,
+    })
+  }
+
+  // 10% chance de ter um jackpot recente
+  if (Math.random() < 0.1) {
+    const jackpotPrizes = [5000, 7500, 10000, 15000, 20000]
+    const jackpotGames = ["Mega Sorte", "Fortuna Dourada"]
+
+    const name = botNames[Math.floor(Math.random() * botNames.length)]
+    const game = jackpotGames[Math.floor(Math.random() * jackpotGames.length)]
+    const prize = jackpotPrizes[Math.floor(Math.random() * jackpotPrizes.length)]
+
+    const minutesAgo = Math.floor(Math.random() * 110) + 10
+    const timestamp = new Date(Date.now() - minutesAgo * 60 * 1000)
+
+    specialWinners.push({
+      id: `jackpot_${Date.now()}`,
+      user_name: name,
+      game_name: game,
+      prize_amount: prize,
+      prize_name: null,
+      prize_image: null,
+      created_at: timestamp.toISOString(),
+      is_bot: true,
+      is_jackpot: true,
+      is_physical_prize: false,
+    })
   }
 
   return specialWinners

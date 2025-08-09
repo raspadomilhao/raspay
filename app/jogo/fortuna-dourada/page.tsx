@@ -37,66 +37,78 @@ realPrizeAmount: number
 }
 
 const NUM_CELLS = 9
-const GAME_PRICE = 5.0
+const GAME_PRICE = 3.0
 
 // Configuração de prêmios para usuários regulares
 const regularPrizeConfig = [
-{ value: 5, image: "/images/memimei5.webp", chance: 97 },
-{ value: 10, image: "/images/memimei10.webp", chance: 2 },
-{ value: 20, image: "/images/memimei20.webp", chance: 0.5 },
-{ value: 25, image: "/images/memimei25.webp", chance: 0.4 },
-{ value: 30, image: "/images/memimei30.webp", chance: 0.1 },
-{ value: 50, image: "/images/memimei50.webp", chance: 0},
-{ value: 200, image: "/images/memimei200.webp", chance: 0 },
-{ value: 400, image: "/images/memimei400.webp", chance: 0 },
-{ value: 500, image: "/images/memimei500.webp", chance: 0 },
-{ value: 1000, image: "/images/memimei1000.webp", chance: 0 },
+{ value: 0.5, image: "/images/50centavos.png", chance: 57 },
+{ value: 1, image: "/images/1real.png", chance: 20.5 },
+{ value: 2, image: "/images/2reais.png", chance: 12 },
+{ value: 5, image: "/images/5reais.png", chance: 6 },
+{ value: 10, image: "/images/10reais.png", chance: 3 },
+{ value: 20, image: "/images/20reais.png", chance: 1.5 },
+{ value: 50, image: "/images/50reais.png", chance: 0.0 },
+{ value: 100, image: "/images/100reais.png", chance: 0 },
+{ value: 200, image: "/images/200reais.png", chance: 0 },
+{ value: 500, image: "/images/500reais.png", chance: 0 },
+{ value: 1000, image: "/images/1mil.png", chance: 0 },
+{ value: 2000, image: "/images/2mil.png", chance: 0 },
+{ value: 5000, image: "/images/5mil.png", chance: 0 },
+{ value: 10000, image: "/images/10mil.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
 const bloggerPrizeConfig = [
-{ value: 5, image: "/images/memimei5.webp", chance: 57 },
-{ value: 10, image: "/images/memimei10.webp", chance: 20.5 },
-{ value: 20, image: "/images/memimei20.webp", chance: 12 },
-{ value: 25, image: "/images/memimei25.webp", chance: 6 },
-{ value: 30, image: "/images/memimei30.webp", chance: 3 },
-{ value: 50, image: "/images/memimei50.webp", chance: 1.5 },
-{ value: 200, image: "/images/memimei200.webp", chance: 0.0 },
-{ value: 400, image: "/images/memimei400.webp", chance: 0 },
-{ value: 500, image: "/images/memimei500.webp", chance: 0 },
-{ value: 1000, image: "/images/memimei1000.webp", chance: 0 },
+{ value: 0.5, image: "/images/50centavos.png", chance: 10 },
+{ value: 1, image: "/images/1real.png", chance: 10 },
+{ value: 2, image: "/images/2reais.png", chance: 15 },
+{ value: 5, image: "/images/5reais.png", chance: 17 },
+{ value: 10, image: "/images/10reais.png", chance: 18 },
+{ value: 20, image: "/images/20reais.png", chance: 12 },
+{ value: 50, image: "/images/50reais.png", chance: 8 },
+{ value: 100, image: "/images/100reais.png", chance: 5 },
+{ value: 200, image: "/images/200reais.png", chance: 5 },
+{ value: 500, image: "/images/500reais.png", chance: 0 },
+{ value: 1000, image: "/images/1mil.png", chance: 0 },
+{ value: 2000, image: "/images/2mil.png", chance: 0 },
+{ value: 5000, image: "/images/5mil.png", chance: 0 },
+{ value: 10000, image: "/images/10mil.png", chance: 0 },
 ]
 
 // Configurações gerais
 const regularConfig = {
-winFrequency: 0.50, // 15% de chance de ganhar
+winFrequency: 0.5, // 50% de chance de ganhar
 scratchThreshold: 0.7,
 prizeConfig: regularPrizeConfig,
 }
 
 const bloggerConfig = {
-winFrequency: 0.50, // 30% de chance de ganhar para bloggers
+winFrequency: 0.65, // 75% de chance de ganhar para bloggers
 scratchThreshold: 0.7,
 prizeConfig: bloggerPrizeConfig,
 }
 
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
-R$5: "/images/memimei5.webp",
-R$10: "/images/memimei10.webp",
-R$20: "/images/memimei20.webp",
-R$25: "/images/memimei25.webp",
-R$30: "/images/memimei30.webp",
-R$50: "/images/memimei50.webp",
-R$200: "/images/memimei200.webp",
-R$400: "/images/memimei400.webp",
-R$500: "/images/memimei500.webp",
-R$1000: "/images/memimei1000.webp",
+"R$0.5": "/images/50centavos.png",
+R$1: "/images/1real.png",
+R$2: "/images/2reais.png",
+R$5: "/images/5reais.png",
+R$10: "/images/10reais.png",
+R$20: "/images/20reais.png",
+R$50: "/images/50reais.png",
+R$100: "/images/100reais.png",
+R$200: "/images/200reais.png",
+R$500: "/images/500reais.png",
+R$1000: "/images/1mil.png",
+R$2000: "/images/2mil.png",
+R$5000: "/images/5mil.png",
+R$10000: "/images/10mil.png",
 }
 
 const winMessages = [
-"Me Mimei! Ganhou R$@valor@!",
-"Parabéns! Você merece esse mimo R$@valor@!",
+"Fortuna dourada! Ganhou R$@valor@!",
+"Parabéns! A sorte dourada te premiou com R$@valor@!",
 "Que fortuna! R$@valor@ em ouro na sua conta!",
 ]
 
@@ -135,16 +147,19 @@ return bloggerEmails.includes(userProfile.user.email.toLowerCase())
 
 // Conteúdo para exibição na tabela de prêmios (baseado na imagem fornecida)
 const gameContentDisplay = [
-{ name: "Kit Kerastase Cabelo", value: 1000, image: "/images/memimei1000.webp" },
-{ name: "Perfume Dior", value: 500, image: "/images/memimei500.webp" },
-{ name: "Combo Wepink", value: 400, image: "/images/memimei400.webp" },
-{ name: "Kit de Maquiagem", value: 200, image: "/images/memimei200.webp" },
-{ name: "Escova Alisadora", value: 50, image: "/images/memimei50.webp" },
-{ name: "BodySplash Wepink", value: 30, image: "/images/memimei30.webp" },
-{ name: "Mini Bolsa Shein", value: 25, image: "/images/memimei25.webp" },
-{ name: "Cartão Shein - R$20", value: 20, image: "/images/memimei20.webp" },
-{ name: "Removedor Cravo de Carvão", value: 10, image: "/images/memimei10.webp" },
-{ name: "Cabo de Carregador", value: 5, image: "/images/memimei5.webp" },
+  { name: "50 Centavos", value: 0.50, image: "/images/50centavos.png" },
+  { name: "1 Real", value: 1, image: "/images/1real.png" },
+  { name: "2 Reais", value: 2, image: "/images/2reais.png" },
+  { name: "5 Reais", value: 5, image: "/images/5reais.png" },
+  { name: "10 Reais", value: 10, image: "/images/10reais.png" },
+  { name: "20 Reais", value: 20, image: "/images/20reais.png" },
+  { name: "50 Reais", value: 50, image: "/images/50reais.png" },
+  { name: "100 Reais", value: 100, image: "/images/100reais.png" },
+  { name: "500 Reais", value: 500, image: "/images/500reais.png" },
+  { name: "Mil Reais", value: 1000, image: "/images/1mil.png" },
+  { name: "Dois Mil Reais", value: 2000, image: "/images/2mil.png" },
+  { name: "Cinco Mil Reais", value: 5000, image: "/images/5mil.png" },
+  { name: "Dez Mil Reais", value: 10000, image: "/images/10mil.png" },
 ];
 
 export default function FortunaDouradaPage() {
@@ -768,7 +783,7 @@ return (
     <main className="relative z-10 max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col justify-center">
       <div className="text-center mb-6">
         <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-          Me Mimei
+          Fortuna Dourada
         </h1>
         <p className="text-blue-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
       </div>

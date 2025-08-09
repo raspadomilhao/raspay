@@ -7,26 +7,7 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Zap,
-  Trophy,
-  Play,
-  ArrowRight,
-  Wallet,
-  Menu,
-  LogOut,
-  Sparkles,
-  Home,
-  Gamepad2,
-  CreditCard,
-  TrendingUp,
-  User,
-  X,
-  Star,
-  Gift,
-  Crown,
-  Diamond,
-} from "lucide-react"
+import { Zap, Trophy, Play, ArrowRight, Wallet, Menu, LogOut, Sparkles, Home, Gamepad2, CreditCard, TrendingUp, User, X } from 'lucide-react'
 import { AuthClient } from "@/lib/auth-client"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Footer } from "@/components/footer"
@@ -38,10 +19,6 @@ import RaspeDaEsperancaPage from "./jogo/raspe-da-esperanca/page"
 import FortunaDauradaPage from "./jogo/fortuna-dourada/page"
 import MegaSortePage from "./jogo/mega-sorte/page"
 import { LiveStoriesButton } from "@/components/live-stories-button"
-import SuperPremiosPage from "./jogo/super-premios/page"
-import SonhoDeConsumoPage from "./jogo/sonho-de-consumo/page"
-import OutfitPage from "./jogo/outfit/page"
-import { DepositModal } from "@/components/deposit-modal"
 
 interface UserProfile {
   user: {
@@ -62,34 +39,9 @@ interface Winner {
   game_name: string
   prize_amount: number
   created_at: string
-  prize_name?: string | null
-  prize_image?: string | null
-  is_physical_prize?: boolean
-  is_bot?: boolean
-}
-
-interface Game {
-  id: string
-  name: string
-  description: string
-  minBet: number
-  maxPrize: number
-  image: string
-  gradient: string
-  bgGradient: string
-  icon: string
-}
-
-// Mapeamento de ícones
-const iconMap: { [key: string]: any } = {
-  Zap,
-  Star,
-  Gift,
-  Trophy,
-  Sparkles,
-  Crown,
-  Diamond,
-  Gamepad2,
+  prize_name?: string | null // Adicionado para prêmios físicos
+  prize_image?: string | null // Adicionado para prêmios físicos
+  is_physical_prize?: boolean // Adicionado para prêmios físicos
 }
 
 export default function HomePage() {
@@ -97,16 +49,14 @@ export default function HomePage() {
   const pathname = usePathname()
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [winners, setWinners] = useState<Winner[]>([])
-  const [games, setGames] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showSideMenu, setShowSideMenu] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isGameModalOpen, setIsGameModalOpen] = useState(false)
+  // REMOVIDO: isFortunaDauradaModalOpen, isMegaSorteModalOpen
   const [showReferralPopup, setShowReferralPopup] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false)
-  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
-  const [hasTriedAutoOpen, setHasTriedAutoOpen] = useState(false)
 
   useEffect(() => {
     const token = AuthClient.getToken()
@@ -119,29 +69,8 @@ export default function HomePage() {
     }
 
     fetchRecentWinners()
-    fetchGames()
+    setIsLoading(false)
   }, [router])
-
-  useEffect(() => {
-    // Only attempt once per session and only when authenticated AND profile loaded
-    if (!isLoggedIn || !userProfile || hasTriedAutoOpen) return
-    try {
-      const key = "raspay:opened-deposit-modal:v2"
-      const hasOpened = typeof window !== "undefined" ? localStorage.getItem(key) : "1"
-      if (!hasOpened) {
-        console.debug("[RasPay] Opening deposit modal on first visit (auth).")
-        setIsDepositModalOpen(true)
-        localStorage.setItem(key, "1")
-      } else {
-        console.debug("[RasPay] Deposit modal already opened before.")
-      }
-    } catch (e) {
-      console.debug("[RasPay] LocalStorage unavailable, attempting to open once this session.", e)
-      setIsDepositModalOpen(true)
-    } finally {
-      setHasTriedAutoOpen(true)
-    }
-  }, [isLoggedIn, userProfile, hasTriedAutoOpen])
 
   const fetchUserProfile = async () => {
     try {
@@ -154,42 +83,13 @@ export default function HomePage() {
 
   const fetchRecentWinners = async () => {
     try {
-      // Alterado para chamar a rota otimizada
-      const response = await fetch("/api/vencedores-optimized")
+      const response = await fetch("/api/vencedores")
       if (response.ok) {
         const data = await response.json()
-        // A rota otimizada já retorna os vencedores combinados e ordenados.
-        // Apenas pegamos os 5 primeiros para exibição no carrossel.
         setWinners(data.winners?.slice(0, 5) || [])
       }
     } catch (error) {
       console.error("Erro ao buscar vencedores:", error)
-    }
-  }
-
-  const fetchGames = async () => {
-    try {
-      const response = await fetch("/api/games/list")
-      if (response.ok) {
-        const data = await response.json()
-        // Transformar os dados do banco para o formato esperado
-        const formattedGames = data.games.map((game: any) => ({
-          id: game.game_id,
-          name: game.name,
-          description: game.description,
-          minBet: Number.parseFloat(game.min_bet) || 0,
-          maxPrize: Number.parseFloat(game.max_prize) || 0,
-          image: game.image_url,
-          gradient: `from-${game.gradient_from} to-${game.gradient_to}`,
-          bgGradient: `from-${game.gradient_from}/20 to-${game.gradient_to}/20`,
-          icon: game.icon,
-        }))
-        setGames(formattedGames)
-      }
-    } catch (error) {
-      console.error("Erro ao buscar jogos:", error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -207,8 +107,44 @@ export default function HomePage() {
     }
 
     setSelectedGame(gameId)
-    setIsGameModalOpen(true)
+    setIsGameModalOpen(true) // Agora todos os jogos abrem o mesmo modal
   }
+
+  const games = [
+    {
+      id: "raspe-da-esperanca",
+      name: "Raspe da Esperança",
+      description: "Prêmios de até R$ 1.000!",
+      minBet: 1,
+      maxPrize: 1000,
+      icon: Zap,
+      gradient: "from-cyan-500 to-blue-500",
+      bgGradient: "from-cyan-500/20 to-blue-500/20",
+      image: "/images/raspe-esperanca-banner-updated.png",
+    },
+    {
+      id: "fortuna-dourada",
+      name: "Fortuna Dourada",
+      description: "Tesouros escondidos com prêmios de até R$ 5.000!",
+      minBet: 3,
+      maxPrize: 5000,
+      icon: Trophy,
+      gradient: "from-yellow-500 to-orange-500",
+      bgGradient: "from-yellow-500/20 to-orange-500/20",
+      image: "/images/banner3reais.png",
+    },
+    {
+      id: "mega-sorte",
+      name: "Mega Sorte",
+      description: "Os maiores prêmios! Ganhe até R$ 10.000!",
+      minBet: 5,
+      maxPrize: 10000,
+      icon: Sparkles,
+      gradient: "from-purple-500 to-pink-500",
+      bgGradient: "from-purple-500/20 to-pink-500/20",
+      image: "/images/banner5reais.png",
+    },
+  ]
 
   const bannerImages = [
     "/images/carousel-banner-new-4.png",
@@ -250,8 +186,8 @@ export default function HomePage() {
                           <Image
                             src="/images/raspay-logo-new.png"
                             alt="RasPay Logo"
-                            width={36}
-                            height={36}
+                            width={32}
+                            height={32}
                             className="rounded-full"
                           />
                           <span className="text-foreground font-bold">RasPay</span>
@@ -530,18 +466,17 @@ export default function HomePage() {
                         <CardContent className="p-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              {winner.prize_image ? ( // Exibe a imagem se prize_image existir
+                              {winner.is_physical_prize && winner.prize_image ? (
                                 <div className="w-8 h-8 flex items-center justify-center rounded-full overflow-hidden">
                                   <Image
-                                    src={winner.prize_image || "/placeholder.svg"} // Usar diretamente winner.prize_image
-                                    alt={winner.prize_name || "Prêmio"}
+                                    src={winner.prize_image || "/placeholder.svg"}
+                                    alt={winner.prize_name || "Prêmio Físico"}
                                     width={32}
                                     height={32}
                                     className="object-contain"
                                   />
                                 </div>
                               ) : (
-                                // Fallback para o ícone de troféu se não houver imagem específica
                                 <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
                                   <Trophy className="h-4 w-4 text-white" />
                                 </div>
@@ -552,10 +487,9 @@ export default function HomePage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              {winner.prize_name ? ( // Prioriza prize_name if available
+                              {winner.is_physical_prize && winner.prize_name ? (
                                 <p className="text-green-400 font-bold text-xs">{winner.prize_name}</p>
                               ) : (
-                                // Fallback to prize_amount if no specific prize_name
                                 <p className="text-green-400 font-bold text-xs">
                                   R$ {formatCurrency(winner.prize_amount)}
                                 </p>
@@ -576,48 +510,41 @@ export default function HomePage() {
 
           <section>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {games.map((game) => {
-                const IconComponent = iconMap[game.icon] || Zap
-                return (
-                  <Card
-                    key={game.id}
-                    className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
-                  >
-                    <CardContent className="p-0">
-                      <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
-                        {/* Background Image */}
-                        <img
-                          src={game.image || "/placeholder.svg"}
-                          alt={game.name}
-                          className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
-                        />
+              {games.map((game) => (
+                <Card
+                  key={game.id}
+                  className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all group overflow-hidden"
+                >
+                  <CardContent className="p-0">
+                    <div className="relative bg-slate-800 overflow-hidden rounded-t-lg">
+                      {/* Background Image */}
+                      <img
+                        src={game.image || "/placeholder.svg"}
+                        alt={game.name}
+                        className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
 
-                        {/* Text Overlay - Only R$ value in top right corner */}
-                        <div className="absolute top-3 right-3">
-                          <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
-                            R$ {game.minBet.toFixed(2)}
-                          </Badge>
-                        </div>
+                      {/* Text Overlay - Only R$ value in top right corner */}
+                      <div className="absolute top-3 right-3">
+                        <Badge variant="secondary" className="bg-green-500/80 text-white text-sm backdrop-blur-sm">
+                          R$ {game.minBet}
+                        </Badge>
                       </div>
-                      {/* Game Name and Description */}
-                      <div className="p-3 pt-2">
-                        <h3 className="text-white font-bold text-center mb-2">{game.name}</h3>
-                        <p className="text-sm text-muted-foreground text-center">{game.description}</p>
-                      </div>
-                      {/* Button Section */}
-                      <div className="p-3 pt-0">
-                        <Button
-                          onClick={() => handleGameClick(game.id)}
-                          className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          Jogar Agora
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+                    </div>
+
+                    {/* Button Section */}
+                    <div className="p-3">
+                      <Button
+                        onClick={() => handleGameClick(game.id)}
+                        className={`w-full bg-gradient-to-r ${game.gradient} hover:opacity-90 text-white text-sm py-2`}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Jogar Agora
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </section>
 
@@ -698,25 +625,9 @@ export default function HomePage() {
             {selectedGame === "raspe-da-esperanca" && <RaspeDaEsperancaPage />}
             {selectedGame === "fortuna-dourada" && <FortunaDauradaPage />}
             {selectedGame === "mega-sorte" && <MegaSortePage />}
-            {selectedGame === "super-premios" && <SuperPremiosPage />}
-            {selectedGame === "sonho-de-consumo" && <SonhoDeConsumoPage />}
-            {selectedGame === "outfit" && <OutfitPage />}
           </div>
         </DialogContent>
       </Dialog>
-
-      <DepositModal
-        // Support both prop APIs
-        isOpen={isLoggedIn && isDepositModalOpen}
-        open={isLoggedIn && isDepositModalOpen}
-        onClose={() => setIsDepositModalOpen(false)}
-        onOpenChange={(open: boolean) => setIsDepositModalOpen(open)}
-        userProfile={userProfile}
-        onDepositSuccess={() => {
-          // Refresh profile after successful deposit
-          fetchUserProfile()
-        }}
-      />
 
       <MobileBottomNav />
       <Footer />

@@ -14,23 +14,6 @@ function getUserTypeFromEmail(email: string): string {
   return isBlogger ? "blogger" : "regular"
 }
 
-// Função para gerar username único baseado no nome e email
-function generateUsername(name: string, email: string): string {
-  // Pegar primeira parte do nome (sem espaços e caracteres especiais)
-  const firstName = name.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
-  
-  // Pegar parte antes do @ do email
-  const emailPart = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
-  
-  // Gerar timestamp único
-  const timestamp = Date.now().toString().slice(-4)
-  
-  // Combinar: primeira parte do nome + parte do email + timestamp
-  const username = `${firstName}${emailPart}${timestamp}`.substring(0, 20)
-  
-  return username
-}
-
 export async function POST(request: NextRequest) {
   try {
     console.log("📝 Iniciando processo de registro...")
@@ -44,9 +27,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Dados inválidos enviados" }, { status: 400 })
     }
 
-    const { name, phone, email, password } = body
+    const { name, username, phone, email, password } = body
 
-    console.log("📋 Dados recebidos:", { name, email, phone })
+    console.log("📋 Dados recebidos:", { name, username, email, phone })
 
     // Verificar código de afiliado no cookie
     const affiliateCode = request.cookies.get("affiliate_ref")?.value
@@ -84,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validações básicas
-    if (!name || !phone || !email || !password) {
+    if (!name || !username || !phone || !email || !password) {
       console.log("❌ Campos obrigatórios faltando")
       return NextResponse.json({ success: false, error: "Todos os campos são obrigatórios" }, { status: 400 })
     }
@@ -110,44 +93,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Erro interno do servidor" }, { status: 500 })
     }
 
-    // Gerar username único
-    let username = generateUsername(name, email)
-    let usernameAttempts = 0
-    const maxAttempts = 10
+    // Verificar se username já existe
+    try {
+      console.log("🔍 Verificando se username já existe...")
+      const existingUserByUsername = await sql`
+        SELECT id FROM users WHERE username = ${username} LIMIT 1
+      `
 
-    // Verificar se username gerado já existe e gerar alternativas se necessário
-    while (usernameAttempts < maxAttempts) {
-      try {
-        console.log(`🔍 Verificando username: ${username}`)
-        const existingUserByUsername = await sql`
-          SELECT id FROM users WHERE username = ${username} LIMIT 1
-        `
-
-        if (existingUserByUsername.length === 0) {
-          console.log(`✅ Username disponível: ${username}`)
-          break
-        } else {
-          // Gerar nova variação
-          usernameAttempts++
-          const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-          username = `${generateUsername(name, email)}${randomSuffix}`.substring(0, 20)
-          console.log(`⚠️ Username já existe, tentando: ${username}`)
-        }
-      } catch (error) {
-        console.error("❌ Erro ao verificar username:", error)
-        return NextResponse.json({ success: false, error: "Erro interno do servidor" }, { status: 500 })
+      if (existingUserByUsername.length > 0) {
+        console.log("❌ Username já existe")
+        return NextResponse.json({ success: false, error: "Este nome de usuário já está em uso" }, { status: 400 })
       }
-    }
-
-    if (usernameAttempts >= maxAttempts) {
-      console.error("❌ Não foi possível gerar username único")
-      return NextResponse.json({ success: false, error: "Erro ao gerar nome de usuário único" }, { status: 500 })
+    } catch (error) {
+      console.error("❌ Erro ao verificar username:", error)
+      return NextResponse.json({ success: false, error: "Erro interno do servidor" }, { status: 500 })
     }
 
     // Determinar tipo de usuário
     const userType = getUserTypeFromEmail(email)
     console.log(`✅ Tipo de usuário determinado: ${userType} para email: ${email}`)
-    console.log(`✅ Username gerado: ${username}`)
 
     // Hash da senha
     let passwordHash
@@ -180,7 +144,7 @@ export async function POST(request: NextRequest) {
       }
 
       newUser = userResult[0]
-      console.log("✅ Usuário criado:", newUser.id, "Tipo:", newUser.user_type, "Username:", newUser.username)
+      console.log("✅ Usuário criado:", newUser.id, "Tipo:", newUser.user_type)
 
       // 🔗 CRIAR REGISTRO DE INDICAÇÃO SE HOUVER
       if (referrerUserId) {

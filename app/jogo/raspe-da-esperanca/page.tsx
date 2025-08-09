@@ -52,6 +52,7 @@ const regularPrizeConfig = [
 { value: 200, image: "/images/200reais.png", chance: 0 },
 { value: 500, image: "/images/500reais.png", chance: 0 },
 { value: 1000, image: "/images/1mil.png", chance: 0 },
+{ value: 400, image: "/images/airfryer.png", chance: 0 },
 ]
 
 // Configuração de prêmios para bloggers
@@ -67,6 +68,7 @@ const bloggerPrizeConfig = [
 { value: 200, image: "/images/200reais.png", chance: 5 },
 { value: 500, image: "/images/500reais.png", chance: 0 },
 { value: 1000, image: "/images/1mil.png", chance: 0 },
+{ value: 400, image: "/images/airfryer.png", chance: 0 },
 ]
 
 // Configurações gerais
@@ -85,6 +87,7 @@ prizeConfig: bloggerPrizeConfig,
 // Mapeamento de imagens específicas para cada valor de prêmio
 const prizeImageMap: { [key: string]: string } = {
 "R$0.5": "/images/50centavos.png",
+R$400: "/images/airfryer.png",
 R$1: "/images/1real.png",
 R$2: "/images/2reais.png",
 R$5: "/images/5reais.png",
@@ -141,16 +144,19 @@ return bloggerEmails.includes(userProfile.user.email.toLowerCase())
 
 // Conteúdo para exibição na tabela de prêmios (baseado na imagem fornecida)
 const gameContentDisplay = [
-{ name: "Mil Reais", value: 1000, image: "/images/1mil.png" },
-{ name: "500 Reais", value: 500, image: "/images/500reais.png" },
-{ name: "100 Reais", value: 100, image: "/images/100reais.png" },
-{ name: "50 Reais", value: 50, image: "/images/50reais.png" },
-{ name: "20 Reais", value: 20, image: "/images/20reais.png" },
-{ name: "10 Reais", value: 10, image: "/images/10reais.png" },
-{ name: "5 Reais", value: 5, image: "/images/5reais.png" },
-{ name: "2 Reais", value: 2, image: "/images/2reais.png" },
-{ name: "1 Real", value: 1, image: "/images/1real.png" },
-{ name: "50 Centavos", value: 0.50, image: "/images/50centavos.png" },
+  { name: "Air Fryer", value: 400, image: "/images/airfryer.png" },
+  { name: "GalaxyA06", value: 900, image: "/images/GalaxyA06.png" },
+  { name: "Phone JBL", value: 250, image: "/images/phonejbl.png" },
+  { name: "50 Centavos", value: 0.50, image: "/images/50centavos.png" },
+  { name: "1 Real", value: 1, image: "/images/1real.png" },
+  { name: "2 Reais", value: 2, image: "/images/2reais.png" },
+  { name: "5 Reais", value: 5, image: "/images/5reais.png" },
+  { name: "10 Reais", value: 10, image: "/images/10reais.png" },
+  { name: "20 Reais", value: 20, image: "/images/20reais.png" },
+  { name: "50 Reais", value: 50, image: "/images/50reais.png" },
+  { name: "100 Reais", value: 100, image: "/images/100reais.png" },
+  { name: "500 Reais", value: 500, image: "/images/500reais.png" },
+  { name: "Mil Reais", value: 1000, image: "/images/1mil.png" },
 ];
 
 export default function RaspeDaEsperancaPage() {
@@ -792,7 +798,7 @@ return (
     <main className="relative z-10 max-w-md mx-auto px-4 py-8 min-h-screen flex flex-col justify-center">
       <div className="text-center mb-6">
         <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-          Pix na conta
+          Raspe da Esperança
         </h1>
         <p className="text-blue-200/80 mt-1">Encontre 3 símbolos iguais para ganhar!</p>
       </div>

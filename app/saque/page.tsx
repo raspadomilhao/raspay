@@ -58,10 +58,6 @@ interface UserProfile {
   }
 }
 
-interface SystemSettings {
-  min_withdraw_amount?: string
-}
-
 // Função segura para obter iniciais
 const getInitials = (name: string | undefined | null): string => {
   if (!name || typeof name !== "string") return "?"
@@ -150,10 +146,6 @@ export default function SaquePage() {
   const [pixType, setPixType] = useState("cpf")
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Configurações do sistema (valor mínimo de saque)
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>({})
-  const [minWithdrawAmount, setMinWithdrawAmount] = useState<number>(10) // fallback
-
   useEffect(() => {
     const token = AuthClient.getToken()
     if (!token || !AuthClient.isLoggedIn()) {
@@ -163,26 +155,7 @@ export default function SaquePage() {
 
     fetchUserProfile()
     fetchWithdrawHistory()
-    fetchSystemSettings() // Buscar configurações para refletir o mínimo de saque
   }, [router])
-
-  const fetchSystemSettings = async () => {
-    try {
-      const res = await fetch("/api/settings", { cache: "no-store" })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const settings: SystemSettings = data.settings || {}
-      setSystemSettings(settings)
-      if (settings.min_withdraw_amount) {
-        const parsed = Number.parseFloat(settings.min_withdraw_amount)
-        if (!Number.isNaN(parsed) && parsed > 0) {
-          setMinWithdrawAmount(parsed)
-        }
-      }
-    } catch (err) {
-      console.warn("Não foi possível carregar as configurações do sistema, usando padrão.", err)
-    }
-  }
 
   const fetchUserProfile = async () => {
     try {
@@ -212,6 +185,7 @@ export default function SaquePage() {
         const data = await response.json()
         console.log("📋 Resposta da API:", data)
 
+        // Corrigido: usar 'withdraws' da resposta da API
         const withdraws = data.withdraws || []
         setWithdrawHistory(withdraws)
         console.log(`💾 Histórico atualizado: ${withdraws.length} saques encontrados`)
@@ -235,10 +209,6 @@ export default function SaquePage() {
     return 0
   }
 
-  const parsedAmount = Number.parseFloat(amount || "0")
-  const amountIsValid =
-    !Number.isNaN(parsedAmount) && parsedAmount >= minWithdrawAmount && parsedAmount <= getCurrentBalance()
-
   const handleLogout = () => {
     AuthClient.logout()
     router.push("/auth")
@@ -246,35 +216,6 @@ export default function SaquePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const amountNum = Number.parseFloat(amount)
-
-    if (Number.isNaN(amountNum)) {
-      toast({
-        title: "Valor inválido",
-        description: "Informe um valor numérico válido.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (amountNum < minWithdrawAmount) {
-      toast({
-        title: "Atenção",
-        description: `O valor mínimo de saque é R$ ${minWithdrawAmount.toFixed(2)}.`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (amountNum > getCurrentBalance()) {
-      toast({
-        title: "Saldo insuficiente",
-        description: "O valor solicitado excede seu saldo disponível.",
-        variant: "destructive",
-      })
-      return
-    }
-
     setSubmitting(true)
 
     try {
@@ -285,7 +226,7 @@ export default function SaquePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: amountNum,
+          amount: Number.parseFloat(amount),
           pix_key: pixKey,
           pix_type: pixType,
         }),
@@ -576,7 +517,7 @@ export default function SaquePage() {
                         id="amount"
                         type="number"
                         step="0.01"
-                        min={minWithdrawAmount}
+                        min="10"
                         max={getCurrentBalance()}
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
@@ -584,7 +525,6 @@ export default function SaquePage() {
                         required
                         className="h-12 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
                       />
-                      <p className="text-xs text-gray-400">Mínimo: R$ {minWithdrawAmount.toFixed(2)}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -624,8 +564,8 @@ export default function SaquePage() {
 
                   <Button
                     type="submit"
-                    disabled={submitting || !amountIsValid}
-                    className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold text-lg disabled:opacity-60"
+                    disabled={submitting}
+                    className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold text-lg"
                   >
                     {submitting ? (
                       <div className="flex items-center space-x-2">
