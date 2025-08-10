@@ -1,48 +1,50 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!)
-
-function isAdminTokenValid(token: string | null | undefined) {
-  if (!token) return false
-  const allowed = new Set<string>(["admin-full-access", "admin-managers-only", process.env.ADMIN_TOKEN || ""])
-  return allowed.has(token)
+function getSql() {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL
+  if (!url) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+  return neon(url)
 }
 
-export async function GET(request: Request) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const q = (searchParams.get("q") || "").trim()
-    const adminToken = request.headers.get("x-admin-token")
-    if (!isAdminTokenValid(adminToken)) {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
+    const cookieStore = cookies()
+    const cookieToken = cookieStore.get("admin-token")?.value
+    const envToken = process.env.ADMIN_TOKEN
+    const clientHeaderToken = req.headers.get("x-admin-token")
+
+    const isAuthorized = (!!envToken && cookieToken === envToken) || (!!envToken && clientHeaderToken === envToken)
+
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const { searchParams } = new URL(req.url)
+    const q = (searchParams.get("q") || "").trim()
+
     if (!q) {
       return NextResponse.json({ users: [] })
     }
 
-    const users = await sql<{
-      id: number
-      name: string | null
-      email: string
-      username: string | null
-      user_type: string | null
-    }>`
-      SELECT id, name, email, username, user_type
+    const sql = getSql()
+    const rows = await sql<{ id: number; name: string | null; email: string | null; username: string | null }[]>`
+      SELECT id, name, email, COALESCE(username, NULL) AS username
       FROM users
-      WHERE COALESCE(user_type, 'user') NOT IN ('admin','manager','affiliate')
-        AND (
-          name ILIKE ${"%" + q + "%"} OR
-          email ILIKE ${"%" + q + "%"} OR
-          username ILIKE ${"%" + q + "%"}
-        )
-      ORDER BY created_at DESC
-      LIMIT 25
+      WHERE
+        (name ILIKE ${"%" + q + "%"}
+          OR email ILIKE ${"%" + q + "%"}
+          OR COALESCE(username,'') ILIKE ${"%" + q + "%"})
+      ORDER BY id DESC
+      LIMIT 20
     `
 
-    return NextResponse.json({ users })
-  } catch (error) {
-    console.error("Erro em /api/cg160/admin/search-users:", error)
-    return NextResponse.json({ error: "Erro interno do servidor", users: [] }, { status: 500 })
+    return NextResponse.json({ users: rows })
+  } catch (err: any) {
+    console.error("GET /api/cg160/admin/search-users error:", err)
+    return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

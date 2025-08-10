@@ -2,62 +2,85 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Loader2, Ticket } from "lucide-react"
 
-type Profile = { id: number; name?: string | null; email?: string }
+type Profile = {
+  id: number | string
+  name?: string
+  email?: string
+}
 
-export default function MyTicketsToday({ className = "" }: { className?: string }) {
-  const [count, setCount] = useState<number | null>(null)
+export default function MyTicketsToday() {
+  const [loading, setLoading] = useState(true)
+  const [tickets, setTickets] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let active = true
-    ;(async () => {
-      try {
-        // Get current user profile to obtain user id
-        const profileRes = await fetch("/api/user/profile", { cache: "no-store" })
-        if (!profileRes.ok) throw new Error("Não autenticado")
-        const profile = (await profileRes.json()) as { user: Profile }
-        const userId = profile?.user?.id
-        if (!userId) throw new Error("Usuário inválido")
+    let cancelled = false
 
-        const ticketsRes = await fetch(`/api/cg160/my-tickets?user_id=${userId}`, { cache: "no-store" })
-        if (!ticketsRes.ok) throw new Error("Erro ao buscar números de hoje")
-        const data = (await ticketsRes.json()) as { tickets_today: number }
-        if (active) {
-          setCount(data.tickets_today ?? 0)
+    async function run() {
+      try {
+        setLoading(true)
+        // 1) Get profile to know user id
+        const profRes = await fetch("/api/user/profile", { credentials: "include" })
+        if (!profRes.ok) throw new Error("Falha ao carregar perfil")
+        const profData = await profRes.json()
+        const profile: Profile | null = profData?.user || profData?.profile || null
+        const userId = profile?.id
+        if (!userId) throw new Error("Usuário não autenticado")
+
+        // 2) Get my tickets for today
+        const tRes = await fetch(`/api/cg160/my-tickets?userId=${encodeURIComponent(String(userId))}`, {
+          credentials: "include",
+        })
+        if (!tRes.ok) throw new Error("Falha ao carregar números de hoje")
+        const tData = await tRes.json()
+        if (!cancelled) {
+          setTickets(Number(tData?.tickets || 0))
           setError(null)
         }
-      } catch (err) {
-        if (active) {
-          setError("Não foi possível carregar seus números de hoje.")
-          setCount(0)
-        }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || "Erro ao carregar")
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    })()
+    }
+
+    run()
     return () => {
-      active = false
+      cancelled = true
     }
   }, [])
 
   return (
-    <Card className={`bg-slate-900/50 border-slate-700 ${className}`}>
-      <CardHeader>
-        <CardTitle className="text-white">Seus Números da Sorte (hoje)</CardTitle>
+    <Card className="w-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2">
+          <Ticket className="h-5 w-5 text-emerald-600" />
+          {"Seus Números da Sorte (hoje)"}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="flex items-center justify-between">
-        <div className="text-gray-400 text-sm">Total de números válidos apenas para o dia de hoje.</div>
-        {count === null ? (
-          <div className="flex items-center gap-2 text-gray-300">
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Carregando...</span>
+            {"Carregando..."}
           </div>
+        ) : error ? (
+          <div className="text-red-600">{error}</div>
         ) : (
-          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-base px-3 py-1">{count}</Badge>
+          <div className="flex items-baseline gap-4">
+            <div className="text-4xl font-bold tabular-nums">{tickets}</div>
+            <div className="text-muted-foreground">{"números para o sorteio de hoje"}</div>
+          </div>
         )}
+        <div className="mt-4">
+          <Button variant="outline" onClick={() => (window.location.href = "/deposito")}>
+            {"Fazer depósito"}
+          </Button>
+        </div>
       </CardContent>
-      {error && <div className="px-6 pb-4 text-sm text-red-300">{error}</div>}
     </Card>
   )
 }

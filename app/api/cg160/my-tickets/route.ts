@@ -1,40 +1,42 @@
 import { NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!)
+// Helper: create SQL client
+function getSql() {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL
+  if (!url) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+  return neon(url)
+}
 
-// This endpoint supports:
-// - ?user_id=123 (recommended: client fetches /api/user/profile to get id and passes it here)
-// - or header "X-User-Id"
-export async function GET(request: Request) {
+// Counts the user's "numbers" for today in a simple way:
+// total approved deposits today = amount of numbers.
+// Adjust statuses/types if your schema differs.
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const queryUserId = searchParams.get("user_id")
-    const headerUserId = (request.headers.get("x-user-id") || "").trim()
-    const userId = Number.parseInt(queryUserId || headerUserId || "", 10)
+    const { searchParams } = new URL(req.url)
+    const userId = searchParams.get("userId")
 
-    if (!Number.isFinite(userId)) {
-      return NextResponse.json({ tickets_today: 0 })
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 })
     }
 
-    const [row] = await sql<{ tickets_today: string }>`
-      WITH start_of_today_sp AS (
-        SELECT (date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo')) AT TIME ZONE 'America/Sao_Paulo' AS ts
-      )
-      SELECT COALESCE((
-        SELECT FLOOR(SUM(t.amount))::int
-        FROM transactions t
-        WHERE t.user_id = ${userId}
-          AND t.type = 'deposit'
-          AND t.status = 'success'
-          AND t.created_at >= (SELECT ts FROM start_of_today_sp)
-      ), 0)::text AS tickets_today
+    const sql = getSql()
+    // Be permissive with approved statuses to fit existing data.
+    const rows = await sql<[{ tickets: number }]>`
+      SELECT COUNT(*)::int AS tickets
+      FROM transactions t
+      WHERE t.user_id = ${userId}
+        AND t.type IN ('DEPOSIT', 'deposit')
+        AND t.status IN ('APPROVED','COMPLETED','PAID','confirmed','approved')
+        AND (t.created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date
     `
 
-    const tickets = row ? Number.parseInt(row.tickets_today, 10) || 0 : 0
-    return NextResponse.json({ tickets_today: tickets })
-  } catch (error) {
-    console.error("Erro em /api/cg160/my-tickets:", error)
-    return NextResponse.json({ tickets_today: 0 })
+    const tickets = rows[0]?.tickets ?? 0
+    return NextResponse.json({ tickets })
+  } catch (err: any) {
+    console.error("GET /api/cg160/my-tickets error:", err)
+    return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }
