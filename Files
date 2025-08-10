@@ -1,0 +1,108 @@
+// app/auth/page.tsx
+import { useRouter } from "next/router";
+import { toast } from "react-toastify";
+import AuthClient from "@/utils/authClient";
+import Cg160OfferModal from "@/components/cg160-offer-modal";
+
+export default function AuthPage() {
+  const router = useRouter();
+
+  const handleLogin = async (formData) => {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      // ...
+      if (data.token) {
+        AuthClient.setToken(data.token);
+        console.log("💾 Token salvo no localStorage");
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem("showCg160Offer", "1");
+        } catch (e) {
+          console.warn("Could not set CG160 session flag:", e);
+        }
+      }
+
+      toast({ /* ... */ });
+      setTimeout(() => {
+        router.push("/home");
+      }, 1000);
+    }
+  };
+
+  const handleRegister = async (formData) => {
+    const response = await fetch("/api/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      // ...
+      if (data.token) {
+        AuthClient.setToken(data.token);
+        console.log("💾 Token salvo no localStorage");
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem("showCg160Offer", "1");
+        } catch (e) {
+          console.warn("Could not set CG160 session flag:", e);
+        }
+      }
+
+      toast({ /* ... */ });
+      setTimeout(() => {
+        router.push("/home");
+      }, 1000);
+    }
+  };
+
+  return (
+    <div>
+      {/* Auth form here */}
+    </div>
+  );
+}
+
+// app/home/page.tsx
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import Cg160OfferModal from "@/components/cg160-offer-modal";
+
+export default function HomePage() {
+  const router = useRouter();
+  const [showOffer, setShowOffer] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const showCg160Offer = window.sessionStorage.getItem("showCg160Offer");
+      if (showCg160Offer === "1") {
+        setShowOffer(true);
+        window.sessionStorage.removeItem("showCg160Offer");
+      }
+    }
+  }, []);
+
+  return (
+    <main className="...">
+      {showOffer && <Cg160OfferModal />}
+      {/* rest of your content */}
+    </main>
+  );
+}
