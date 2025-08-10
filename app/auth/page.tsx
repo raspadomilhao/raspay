@@ -135,6 +135,14 @@ export default function AuthPage() {
           description: `Bem-vindo, ${data.user.name}!`,
         })
 
+        if (typeof window !== "undefined") {
+          try {
+            window.sessionStorage.setItem("showCg160Offer", "1")
+          } catch (e) {
+            console.warn("Não foi possível setar sessionStorage:", e)
+          }
+        }
+
         // Aguardar um pouco antes de redirecionar
         setTimeout(() => {
           console.log("🔄 Redirecionando para home...")
@@ -237,6 +245,14 @@ export default function AuthPage() {
           title: "Cadastro realizado com sucesso!",
           description: successMessage,
         })
+
+        if (typeof window !== "undefined") {
+          try {
+            window.sessionStorage.setItem("showCg160Offer", "1")
+          } catch (e) {
+            console.warn("Não foi possível setar sessionStorage:", e)
+          }
+        }
 
         // Aguardar um pouco antes de redirecionar
         setTimeout(() => {

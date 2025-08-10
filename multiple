@@ -1,0 +1,70 @@
+/// app/home/page.tsx
+import React from "react";
+import Cg160OfferModal from "@/components/cg160-offer-modal";
+
+const HomePage = () => {
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <Cg160OfferModal />
+      <div className="flex-1 pb-20 md:pb-0">
+        {/* rest of code here */}
+      </div>
+      {/* rest of code here */}
+    </div>
+  );
+};
+
+export default HomePage;
+
+// app/auth/page.tsx
+import React from "react";
+import { useRouter } from "next/router";
+
+const AuthPage = () => {
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    const response = await fetch("/api/login");
+    const data = await response.json();
+    if (response.ok && data.success) {
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("showCg160Offer", "1");
+        }
+      } catch (e) {
+        console.warn("Não foi possível setar sessionStorage:", e);
+      }
+      setTimeout(() => {
+        router.push("/home");
+      }, 2000);
+    }
+  };
+
+  const handleRegister = async () => {
+    const response = await fetch("/api/register");
+    const data = await response.json();
+    if (response.ok && data.success) {
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("showCg160Offer", "1");
+        }
+      } catch (e) {
+        console.warn("Não foi possível setar sessionStorage:", e);
+      }
+      setTimeout(() => {
+        router.push("/home");
+      }, 2000);
+    }
+  };
+
+  return (
+    <div>
+      {/* rest of code here */}
+      <button onClick={handleLogin}>Login</button>
+      <button onClick={handleRegister}>Register</button>
+      {/* rest of code here */}
+    </div>
+  );
+};
+
+export default AuthPage;

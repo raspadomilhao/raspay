@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,7 +8,22 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Zap, Trophy, Play, ArrowRight, Wallet, Menu, LogOut, Sparkles, X, Home, Gamepad2, CreditCard, TrendingUp, User } from 'lucide-react'
+import {
+  Zap,
+  Trophy,
+  Play,
+  ArrowRight,
+  Wallet,
+  Menu,
+  LogOut,
+  Sparkles,
+  X,
+  HomeIcon,
+  Gamepad2,
+  CreditCard,
+  TrendingUp,
+  User,
+} from "lucide-react"
 import { AuthClient } from "@/lib/auth-client"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Footer } from "@/components/footer"
@@ -20,6 +36,9 @@ import { LiveStoriesButton } from "@/components/live-stories-button"
 import RaspeDaEsperancaPage from "@/app/jogo/raspe-da-esperanca/page"
 import FortunaDouradaPage from "@/app/jogo/fortuna-dourada/page"
 import MegaSortePage from "@/app/jogo/mega-sorte/page"
+
+// Modal CG160 (apenas montado; não muda a página)
+import Cg160OfferModal from "@/components/cg160-offer-modal"
 
 interface UserProfile {
   user: {
@@ -40,9 +59,9 @@ interface Winner {
   game_name: string
   prize_amount: number
   created_at: string
-  prize_name?: string | null // Adicionado para prêmios físicos
-  prize_image?: string | null // Adicionado para prêmios físicos
-  is_physical_prize?: boolean // Adicionado para prêmios físicos
+  prize_name?: string | null
+  prize_image?: string | null
+  is_physical_prize?: boolean
 }
 
 export default function HomePage() {
@@ -161,6 +180,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Apenas o modal montado. Não altera a UI da página. */}
+      <Cg160OfferModal />
+
       <div className="flex-1 pb-20 md:pb-0">
         <header className="bg-card/80 backdrop-blur-lg border-b border-border sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -196,7 +218,7 @@ export default function HomePage() {
                               variant={pathname === "/" ? "secondary" : "ghost"}
                               className="w-full justify-start text-foreground hover:bg-accent"
                             >
-                              <Home className="h-4 w-4 mr-3" />
+                              <HomeIcon className="h-4 w-4 mr-3" />
                               Home
                             </Button>
                           </Link>
@@ -435,7 +457,7 @@ export default function HomePage() {
                       muted
                       className="w-full max-w-lg rounded-lg mb-4"
                     >
-                      Seu navegador não suporta a tag de vídeo.
+                      {"Seu navegador não suporta a tag de vídeo."}
                     </video>
                     <p className="text-center text-muted-foreground">
                       Assista aos momentos de sorte dos nossos jogadores!
@@ -588,12 +610,15 @@ export default function HomePage() {
             <div>
               <h4 className="font-semibold text-foreground">Como faço um depósito?</h4>
               <p className="text-sm">
-                Você pode fazer um depósito clicando no botão "Depositar" na página inicial e seguindo as instruções.
+                Você pode fazer um depósito clicando no botão {'"Depositar"'} na página inicial e seguindo as
+                instruções.
               </p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground">Como posso sacar meus ganhos?</h4>
-              <p className="text-sm">Para sacar, vá para a seção "Sacar" e siga os passos para solicitar seu saque.</p>
+              <p className="text-sm">
+                Para sacar, vá para a seção {'"Sacar"'} e siga os passos para solicitar seu saque.
+              </p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground">Os jogos são justos?</h4>
